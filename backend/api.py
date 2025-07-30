@@ -186,6 +186,7 @@ When users ask about uploaded documents, analyze the content provided in the use
                     )
                     
                     full_response = ""
+                    tools_used = []
                     process_query = True
                     
                     while process_query:
@@ -197,6 +198,7 @@ When users ask about uploaded documents, analyze the content provided in the use
                                 if len(response.content) == 1:
                                     process_query = False
                             elif content.type == 'tool_use':
+                                tools_used.append(content.name)
                                 assistant_content.append(content)
                                 messages.append({'role': 'assistant', 'content': assistant_content})
                                 
@@ -231,6 +233,11 @@ When users ask about uploaded documents, analyze the content provided in the use
                                 if len(response.content) == 1 and response.content[0].type == "text":
                                     full_response += response.content[0].text
                                     process_query = False
+                    
+                    # Add tools used information to response
+                    if tools_used:
+                        tools_info = "\n\n---\n🔧 **Tools Used:** " + ", ".join(set(tools_used))
+                        full_response += tools_info
                     
                     return full_response
                     

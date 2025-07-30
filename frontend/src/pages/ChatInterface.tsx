@@ -449,6 +449,20 @@ const ChatInterface: React.FC = () => {
                         ×
                       </button>
                     </div>
+                    <div className="flex space-x-2 mb-3">
+                      <button
+                        onClick={() => setSettings(prev => ({ ...prev, enabledTools: availableTools.map(tool => tool.name) }))}
+                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      >
+                        Enable All
+                      </button>
+                      <button
+                        onClick={() => setSettings(prev => ({ ...prev, enabledTools: [] }))}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                      >
+                        Disable All
+                      </button>
+                    </div>
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                       {availableTools.map((tool) => (
                         <label key={tool.name} className="group cursor-pointer block">

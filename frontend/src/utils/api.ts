@@ -133,7 +133,7 @@ export const apiClient = {
   // File management endpoints
   async listFiles(): Promise<{ files: any[]; status: string; message: string }> {
     try {
-      const response = await api.get('/api/files')
+      const response = await api.get('/api/files', { timeout: 15000 })
       return response.data
     } catch (error) {
       console.error('Failed to list files:', error)
