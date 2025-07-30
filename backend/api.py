@@ -127,12 +127,14 @@ class MCPInterface:
                                 prompt_result = await session.get_prompt(target_prompt.name, arguments={})
                                 prompt_content = prompt_result.messages[0].content.text if prompt_result.messages else ""
                                 
-                                # Use the prompt content as system message
+                                # Use the prompt content as system message with formatting instructions
+                                enhanced_system = prompt_content + "\n\nIMPORTANT: Format your response with clear headings, bullet points, and proper spacing for readability. Use markdown formatting with ## for main sections, ### for subsections, and bullet points for lists."
+                                
                                 selected_model = model or "claude-3-7-sonnet-20250219"
                                 response = self.anthropic.messages.create(
                                     max_tokens=3048,
                                     model=selected_model,
-                                    system=prompt_content,
+                                    system=enhanced_system,
                                     messages=[{'role': 'user', 'content': f"Analyze the uploaded documents using this framework.{file_context}"}]
                                 )
                                 return response.content[0].text if response.content else "No response generated"
@@ -147,7 +149,7 @@ class MCPInterface:
                 response = self.anthropic.messages.create(
                     max_tokens=2048,
                     model=selected_model,
-                    system="You are BroadAxis-AI, an intelligent RFP/RFQ management assistant. Analyze the uploaded documents and provide clear, concise summaries.",
+                    system="You are BroadAxis-AI, an intelligent RFP/RFQ management assistant. Analyze the uploaded documents and provide clear, concise summaries. Format your response with proper headings (##), bullet points, and clear sections for easy reading.",
                     messages=[{'role': 'user', 'content': enhanced_query}]
                 )
                 return response.content[0].text if response.content else "No response generated"

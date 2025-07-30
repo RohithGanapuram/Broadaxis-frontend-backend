@@ -60,9 +60,7 @@ export interface AppSettings {
 
 export interface GeneratedFile {
   filename: string
-  file_path: string
   file_size: number
   modified_at: string
-  mime_type: string
   type: string
 }

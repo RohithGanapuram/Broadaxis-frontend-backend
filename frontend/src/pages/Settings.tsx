@@ -51,41 +51,41 @@ const Settings: React.FC = () => {
   return (
     <div className="w-full p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">⚙️ Settings</h1>
-        <p className="text-gray-600">Manage your account and preferences</p>
+        <h1 className="text-3xl font-bold text-blue-900 mb-2">⚙️ Settings</h1>
+        <p className="text-blue-600">Manage your account and preferences</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* User Profile */}
         <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">👤 User Profile</h2>
+          <h2 className="text-lg font-semibold text-blue-900 mb-4">👤 User Profile</h2>
           <div className="space-y-4">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                 <span className="text-2xl font-bold text-blue-600">{userProfile.name.split(' ').map(n => n[0]).join('')}</span>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">{userProfile.name}</h3>
-                <p className="text-gray-600">{userProfile.role}</p>
+                <h3 className="text-xl font-semibold text-blue-900">{userProfile.name}</h3>
+                <p className="text-blue-600">{userProfile.role}</p>
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <p className="text-sm text-gray-900">{userProfile.email}</p>
+                <label className="block text-sm font-medium text-blue-700 mb-1">Email</label>
+                <p className="text-sm text-blue-900">{userProfile.email}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                <p className="text-sm text-gray-900">{userProfile.department}</p>
+                <label className="block text-sm font-medium text-blue-700 mb-1">Department</label>
+                <p className="text-sm text-blue-900">{userProfile.department}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                <p className="text-sm text-gray-900">{userProfile.role}</p>
+                <label className="block text-sm font-medium text-blue-700 mb-1">Role</label>
+                <p className="text-sm text-blue-900">{userProfile.role}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Join Date</label>
-                <p className="text-sm text-gray-900">{new Date(userProfile.joinDate).toLocaleDateString()}</p>
+                <label className="block text-sm font-medium text-blue-700 mb-1">Join Date</label>
+                <p className="text-sm text-blue-900">{new Date(userProfile.joinDate).toLocaleDateString()}</p>
               </div>
             </div>
           </div>
@@ -93,7 +93,7 @@ const Settings: React.FC = () => {
 
         {/* Server Status */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">🔌 Server Status</h2>
+          <h2 className="text-lg font-semibold text-blue-900 mb-4">🔌 Server Status</h2>
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <div className={`w-3 h-3 rounded-full ${
@@ -105,7 +105,7 @@ const Settings: React.FC = () => {
                  serverStatus === 'error' ? 'Disconnected' : 'Checking...'}
               </span>
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-blue-500">
               Status updated automatically
             </div>
           </div>
@@ -113,16 +113,16 @@ const Settings: React.FC = () => {
 
         {/* Model Configuration */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">🤖 AI Model</h2>
+          <h2 className="text-lg font-semibold text-blue-900 mb-4">🤖 AI Model</h2>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-blue-700 mb-2">
                 Select Model
               </label>
               <select
                 value={settings.model}
                 onChange={(e) => handleModelChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="claude-3-7-sonnet-20250219">🚀 Claude 3.7 Sonnet</option>
                 <option value="claude-opus-4-20250514">⭐ Claude Opus 4</option>
@@ -138,7 +138,7 @@ const Settings: React.FC = () => {
                 onChange={(e) => handleAutoAnalyzeChange(e.target.checked)}
                 className="rounded"
               />
-              <label htmlFor="autoAnalyze" className="ml-2 text-sm text-gray-700">
+              <label htmlFor="autoAnalyze" className="ml-2 text-sm text-blue-700">
                 Auto-analyze uploaded files
               </label>
             </div>
@@ -147,10 +147,10 @@ const Settings: React.FC = () => {
 
         {/* Theme Settings */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">🎨 Appearance</h2>
+          <h2 className="text-lg font-semibold text-blue-900 mb-4">🎨 Appearance</h2>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-blue-700 mb-2">
                 Theme
               </label>
               <div className="flex space-x-2">
@@ -159,7 +159,7 @@ const Settings: React.FC = () => {
                   className={`px-3 py-2 text-sm rounded-md transition-colors ${
                     settings.theme === 'light'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                   }`}
                 >
                   ☀️ Light
@@ -169,7 +169,7 @@ const Settings: React.FC = () => {
                   className={`px-3 py-2 text-sm rounded-md transition-colors ${
                     settings.theme === 'dark'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                   }`}
                 >
                   🌙 Dark
@@ -181,12 +181,12 @@ const Settings: React.FC = () => {
 
         {/* Account Actions */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">🔐 Account</h2>
+          <h2 className="text-lg font-semibold text-blue-900 mb-4">🔐 Account</h2>
           <div className="space-y-3">
-            <button className="w-full px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
+            <button className="w-full px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">
               🔑 Change Password
             </button>
-            <button className="w-full px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
+            <button className="w-full px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">
               📧 Update Email
             </button>
             <button className="w-full px-3 py-2 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">

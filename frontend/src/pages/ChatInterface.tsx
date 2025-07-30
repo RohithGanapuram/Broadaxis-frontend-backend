@@ -20,6 +20,7 @@ const ChatInterface: React.FC = () => {
   })
   const [wsConnected, setWsConnected] = useState(false)
   const [showToolsPanel, setShowToolsPanel] = useState(false)
+  const [showPromptsPanel, setShowPromptsPanel] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -168,7 +169,8 @@ const ChatInterface: React.FC = () => {
       'text/plain': ['.txt'],
       'text/markdown': ['.md']
     },
-    multiple: true
+    multiple: true,
+    noClick: true // Disable dropzone click to avoid conflicts
   })
 
   const removeFile = (index: number) => {
@@ -187,10 +189,10 @@ const ChatInterface: React.FC = () => {
 
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-gray-50">
-      {/* Left Sidebar - Chat History & Tools */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b">
+    <div className="flex h-[calc(100vh-4.5rem)] bg-blue-50">
+      {/* Compact Left Sidebar */}
+      <div className="w-48 bg-white/70 backdrop-blur-md border-r border-blue-200/50 flex flex-col shadow-xl">
+        <div className="p-3 border-b border-blue-200/50">
           <button 
             onClick={async () => {
               setMessages([])
@@ -198,149 +200,68 @@ const ChatInterface: React.FC = () => {
               setInputMessage('')
               toast.success('New chat started')
             }}
-            className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium text-sm"
           >
-            ➕ New Chat
+            ✨ New Chat
           </button>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold text-gray-700 mb-2">💬 Recent Chats</h3>
-              {messages.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="p-2 text-sm bg-gray-50 hover:bg-gray-100 rounded border cursor-pointer">
-                    <div className="font-medium truncate">
-                      {messages[0]?.content.substring(0, 30)}...
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {messages.length} messages
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">No previous chats</p>
-              )}
-            </div>
-            
-            {availablePrompts.length > 0 && (
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-2">📝 Prompt Templates</h3>
-                <div className="space-y-2">
-                  {availablePrompts.map((prompt, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        // Send prompt invocation message
-                        const promptMessage = `Please use the "${prompt.name}" prompt template to analyze the uploaded documents.`
-                        setInputMessage(promptMessage)
-                        // Auto-send the message to invoke the prompt
-                        setTimeout(() => {
-                          if (globalWebSocket.getConnectionStatus()) {
-                            const userMessage: ChatMessage = {
-                              id: Date.now().toString(),
-                              type: 'user',
-                              content: promptMessage,
-                              timestamp: new Date()
-                            }
-                            const assistantMessage: ChatMessage = {
-                              id: (Date.now() + 1).toString(),
-                              type: 'assistant',
-                              content: '',
-                              timestamp: new Date(),
-                              isLoading: true
-                            }
-                            addMessage(userMessage)
-                            addMessage(assistantMessage)
-                            setIsLoading(true)
-                            
-                            globalWebSocket.sendMessage({
-                              query: `PROMPT:${prompt.name}`,
-                              enabled_tools: settings.enabledTools,
-                              model: settings.model
-                            })
-                            setInputMessage('')
-                          }
-                        }, 100)
-                      }}
-                      className="w-full text-left p-2 text-sm bg-gray-50 hover:bg-gray-100 rounded border transition-colors"
-                    >
-                      <div className="font-medium">{prompt.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">{prompt.description}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="p-4 border-t">
-          <div className={`text-sm px-3 py-2 rounded-lg text-center ${
-            wsConnected 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-red-100 text-red-800'
-          }`}>
-            {wsConnected ? `✅ Connected (${availableTools.length} tools)` : '❌ Disconnected'}
-          </div>
-        </div>
+        <div className="flex-1"></div>
       </div>
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 p-4">
+        <div className="bg-white/70 backdrop-blur-md border-b border-blue-200/50 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h2 className="text-lg font-semibold">Chat Interface</h2>
+              <h2 className="text-lg font-semibold text-blue-800">Chat Interface</h2>
               <select
                 value={settings.model}
                 onChange={(e) => setSettings(prev => ({ ...prev, model: e.target.value }))}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                className="px-3 py-2 border border-blue-300/50 rounded-xl text-sm bg-white/80 text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
                 <option value="claude-3-7-sonnet-20250219">🚀 Claude 3.7 Sonnet</option>
                 <option value="claude-opus-4-20250514">⭐ Claude Opus 4</option>
                 <option value="claude-sonnet-4-20250514">💎 Claude 4 Sonnet</option>
               </select>
             </div>
-            
-            <button
-              onClick={() => setShowToolsPanel(!showToolsPanel)}
-              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-sm"
-            >
-              🔧 Tools ({settings.enabledTools.length})
-            </button>
           </div>
         </div>
 
-        {/* Uploaded Files */}
+        {/* Uploaded Files - Compact Design */}
         {uploadedFiles.length > 0 && (
-          <div className="bg-blue-50 border-b border-blue-200 p-4">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">📎 Attached Files</h3>
-            <div className="space-y-2">
-              {uploadedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">📄</span>
-                    <div>
-                      <p className="text-sm font-medium">{file.filename}</p>
-                      <p className="text-xs text-gray-500">
-                        {(file.size / 1024).toFixed(1)} KB
-                      </p>
+          <div className="bg-blue-500/10 border-b border-blue-200/50 px-4 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-blue-700 font-medium text-sm">📎 Files:</span>
+                <div className="flex items-center space-x-1">
+                  {uploadedFiles.map((file, index) => (
+                    <div key={index} className="group relative">
+                      <div className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-sm hover:shadow-md transition-all">
+                        <span>📄</span>
+                        <span className="max-w-20 truncate">{file.filename}</span>
+                        <button
+                          onClick={() => {
+                            removeFile(index)
+                            toast.success(`${file.filename} removed`)
+                          }}
+                          className="ml-1 text-blue-200 hover:text-white transition-colors"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-blue-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                        {file.filename} ({(file.size / 1024).toFixed(1)} KB)
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      removeFile(index)
-                      toast.success(`${file.filename} removed`)
-                    }}
-                    className="text-red-500 hover:text-red-700 text-sm"
-                  >
-                    🗑️
-                  </button>
+                  ))}
                 </div>
-              ))}
+              </div>
+              <span className="text-xs text-blue-600">
+                {uploadedFiles.length}/3 files
+              </span>
             </div>
           </div>
         )}
@@ -348,7 +269,7 @@ const ChatInterface: React.FC = () => {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
-            <div className="text-center text-gray-500 mt-20">
+            <div className="text-center text-blue-500 mt-20">
               <h3 className="text-lg font-medium mb-2">Welcome to BroadAxis-AI</h3>
               <p>Upload RFP/RFQ documents and ask questions about them</p>
               {uploadedFiles.length > 0 && (
@@ -364,15 +285,15 @@ const ChatInterface: React.FC = () => {
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-3xl px-4 py-2 rounded-lg ${
+                  className={`max-w-3xl px-6 py-4 rounded-2xl shadow-lg ${
                     message.type === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white border border-gray-200'
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
+                      : 'bg-white/80 backdrop-blur-md border border-blue-200/50'
                   }`}
                 >
                   {message.isLoading ? (
                     <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                       <span>Processing...</span>
                     </div>
                   ) : (
@@ -387,88 +308,202 @@ const ChatInterface: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="bg-white border-t border-gray-200 p-4">
-          {/* File Drop Zone */}
-          <div
-            {...getRootProps()}
-            className={`mb-4 p-4 border-2 border-dashed rounded-lg text-center transition-colors ${
-              uploadedFiles.length >= 3
-                ? 'border-gray-200 bg-gray-100 cursor-not-allowed'
-                : isDragActive
-                ? 'border-blue-400 bg-blue-50 cursor-pointer'
-                : 'border-gray-300 hover:border-gray-400 cursor-pointer'
-            }`}
-            style={{ pointerEvents: uploadedFiles.length >= 3 ? 'none' : 'auto' }}
-          >
-            <input {...getInputProps()} />
-            <p className="text-sm text-gray-600">
-              {uploadedFiles.length >= 3
-                ? '🚫 Maximum 3 files reached. Remove files to upload more.'
-                : isDragActive
-                ? 'Drop files here...'
-                : `📎 Drag & drop files to upload (PDF, DOCX, TXT, MD) - Max 3 files (${uploadedFiles.length}/3)`}
-            </p>
-            {uploadedFiles.length > 0 && (
-              <p className="text-xs text-blue-600 mt-1">
-                Files will be available for questions in chat
-              </p>
-            )}
-          </div>
+        {/* Input Area with Integrated Buttons */}
+        <div className="bg-white/70 backdrop-blur-md border-t border-blue-200/50 p-4 shadow-lg relative">
+          <div className="flex items-end space-x-3">
+            {/* File Upload Button */}
+            <div className="relative">
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.docx,.doc,.txt,.md"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || [])
+                  if (files.length > 0) {
+                    handleFileUpload(files)
+                  }
+                  e.target.value = '' // Reset input
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={uploadedFiles.length >= 3}
+              />
+              <button
+                className={`p-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl ${
+                  uploadedFiles.length >= 3
+                    ? 'bg-blue-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 transform hover:scale-105'
+                }`}
+                title={`Upload files (${uploadedFiles.length}/3)`}
+                onClick={(e) => {
+                  if (uploadedFiles.length < 3) {
+                    const input = e.currentTarget.parentElement?.querySelector('input[type="file"]') as HTMLInputElement
+                    input?.click()
+                  }
+                }}
+              >
+                <span className="text-white text-lg">📎</span>
+              </button>
+            </div>
 
-          {/* Message Input */}
-          <div className="flex space-x-2">
+            {/* Prompts Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowPromptsPanel(!showPromptsPanel)}
+                className="p-3 bg-blue-600 hover:bg-blue-700 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                title="Prompt Templates"
+              >
+                <span className="text-white text-lg">📝</span>
+              </button>
+              
+              {/* Prompts Dropdown */}
+              {showPromptsPanel && (
+                <div className="absolute bottom-full left-0 mb-2 w-80 bg-white/90 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl z-50">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-bold text-blue-800">📝 Prompt Templates ({availablePrompts.length})</h3>
+                      <button
+                        onClick={() => setShowPromptsPanel(false)}
+                        className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {availablePrompts.length > 0 ? (
+                        availablePrompts.map((prompt, index) => (
+                          <button
+                            key={index}
+                            onClick={() => {
+                              const promptMessage = `Please use the "${prompt.name}" prompt template to analyze the uploaded documents.`
+                              setInputMessage(promptMessage)
+                              setTimeout(() => {
+                                if (globalWebSocket.getConnectionStatus()) {
+                                  const userMessage: ChatMessage = {
+                                    id: Date.now().toString(),
+                                    type: 'user',
+                                    content: promptMessage,
+                                    timestamp: new Date()
+                                  }
+                                  const assistantMessage: ChatMessage = {
+                                    id: (Date.now() + 1).toString(),
+                                    type: 'assistant',
+                                    content: '',
+                                    timestamp: new Date(),
+                                    isLoading: true
+                                  }
+                                  addMessage(userMessage)
+                                  addMessage(assistantMessage)
+                                  setIsLoading(true)
+                                  
+                                  globalWebSocket.sendMessage({
+                                    query: `PROMPT:${prompt.name}`,
+                                    enabled_tools: settings.enabledTools,
+                                    model: settings.model
+                                  })
+                                  setInputMessage('')
+                                  setShowPromptsPanel(false)
+                                }
+                              }, 100)
+                            }}
+                            className="w-full text-left p-3 bg-blue-700/10 hover:bg-blue-700/20 rounded-lg transition-colors"
+                          >
+                            <div className="font-medium text-blue-800 text-sm">{prompt.name}</div>
+                            <div className="text-xs text-blue-600 mt-1">{prompt.description}</div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-blue-600">
+                          <p className="text-sm">No prompt templates available</p>
+                          <p className="text-xs mt-1">Check server connection</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Tools Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowToolsPanel(!showToolsPanel)}
+                className="p-3 bg-blue-700 hover:bg-blue-800 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-1"
+                title="Available Tools"
+              >
+                <span className="text-white text-lg">🔧</span>
+                <span className="bg-white text-blue-700 px-1.5 py-0.5 rounded-full text-xs font-bold">
+                  {settings.enabledTools.length}
+                </span>
+              </button>
+              
+              {/* Tools Dropdown */}
+              {showToolsPanel && (
+                <div className="absolute bottom-full right-0 mb-2 w-80 bg-white/90 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl z-50">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-bold text-blue-800">🔧 Available Tools</h3>
+                      <button
+                        onClick={() => setShowToolsPanel(false)}
+                        className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {availableTools.map((tool) => (
+                        <label key={tool.name} className="group cursor-pointer block">
+                          <div className={`p-3 rounded-lg border transition-all duration-200 ${
+                            settings.enabledTools.includes(tool.name)
+                              ? 'border-blue-700 bg-blue-700/10'
+                              : 'border-blue-200/50 hover:border-blue-400'
+                          }`}>
+                            <div className="flex items-start space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={settings.enabledTools.includes(tool.name)}
+                                onChange={() => toggleTool(tool.name)}
+                                className="mt-0.5 w-4 h-4 rounded border-blue-300 text-blue-700 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-blue-800">{tool.name}</p>
+                                <p className="text-xs text-blue-600 mt-1">{tool.description}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Message Input */}
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
               placeholder={uploadedFiles.length > 0 ? "Ask questions about your uploaded documents..." : "Message BroadAxis-AI..."}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-6 py-4 border border-blue-200/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white/80 backdrop-blur-md shadow-lg placeholder-blue-500"
               disabled={isLoading}
             />
+
+            {/* Send Button */}
             <button
               onClick={handleSendMessage}
               disabled={isLoading || (!inputMessage.trim() && uploadedFiles.length === 0)}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
             >
-              Send
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Sidebar - Tools Panel */}
-      {showToolsPanel && (
-        <div className="w-80 bg-white border-l border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Available Tools</h3>
-            <button
-              onClick={() => setShowToolsPanel(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
+              🚀
             </button>
           </div>
           
-          <div className="space-y-2">
-            {availableTools.map((tool) => (
-              <label key={tool.name} className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={settings.enabledTools.includes(tool.name)}
-                  onChange={() => toggleTool(tool.name)}
-                  className="rounded"
-                />
-                <div>
-                  <p className="text-sm font-medium">{tool.name}</p>
-                  <p className="text-xs text-gray-500">{tool.description}</p>
-                </div>
-              </label>
-            ))}
-          </div>
+
         </div>
-      )}
+      </div>
+
+
     </div>
   )
 }

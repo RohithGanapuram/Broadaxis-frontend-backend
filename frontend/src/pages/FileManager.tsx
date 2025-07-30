@@ -91,8 +91,8 @@ const FileManager: React.FC = () => {
   return (
     <div className="w-full p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">📁 Generated Files</h1>
-        <p className="text-gray-600">Manage files created by BroadAxis-AI</p>
+        <h1 className="text-3xl font-bold text-blue-900 mb-2">📁 Generated Files</h1>
+        <p className="text-blue-600">Manage files created by BroadAxis-AI</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -100,7 +100,7 @@ const FileManager: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-blue-900">
                 Generated Files ({generatedFiles.length})
               </h2>
               <button
@@ -114,12 +114,12 @@ const FileManager: React.FC = () => {
             
             <div className="divide-y divide-gray-200">
               {isLoading ? (
-                <div className="px-6 py-8 text-center text-gray-500">
+                <div className="px-6 py-8 text-center text-blue-500">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
                   <p>Loading files...</p>
                 </div>
               ) : generatedFiles.length === 0 ? (
-                <div className="px-6 py-8 text-center text-gray-500">
+                <div className="px-6 py-8 text-center text-blue-500">
                   <div className="text-4xl mb-2">📄</div>
                   <p>No generated files yet</p>
                   <p className="text-sm">Files created by AI tools will appear here</p>
@@ -128,8 +128,8 @@ const FileManager: React.FC = () => {
                 generatedFiles.map((file, index) => (
                   <div
                     key={index}
-                    className={`px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                      selectedFile?.filename === file.filename ? 'bg-blue-50' : ''
+                    className={`px-6 py-4 hover:bg-blue-50 cursor-pointer transition-colors ${
+                      selectedFile?.filename === file.filename ? 'bg-blue-100' : ''
                     }`}
                     onClick={() => setSelectedFile(file)}
                   >
@@ -137,10 +137,10 @@ const FileManager: React.FC = () => {
                       <div className="flex items-center space-x-3">
                         <span className="text-2xl">{getFileIcon(file.type)}</span>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-blue-900">
                             {file.filename}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-blue-500">
                             {formatFileSize(file.file_size)} • {new Date(file.modified_at).toLocaleDateString()}
                           </p>
                         </div>
@@ -152,7 +152,7 @@ const FileManager: React.FC = () => {
                             e.stopPropagation()
                             handleDownload(file.filename)
                           }}
-                          className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
                         >
                           ⬇️ Download
                         </button>
@@ -176,13 +176,13 @@ const FileManager: React.FC = () => {
           {/* File Actions */}
           {generatedFiles.length > 0 && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">🛠️ Bulk Actions</h2>
+              <h2 className="text-lg font-semibold text-blue-900 mb-4">🛠️ Bulk Actions</h2>
               <div className="flex space-x-3">
                 <button
                   onClick={() => {
                     generatedFiles.forEach(file => handleDownload(file.filename))
                   }}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                 >
                   📦 Download All
                 </button>
@@ -207,7 +207,7 @@ const FileManager: React.FC = () => {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">File Details</h2>
+              <h2 className="text-lg font-semibold text-blue-900">File Details</h2>
             </div>
             
             <div className="p-6">
@@ -216,8 +216,8 @@ const FileManager: React.FC = () => {
                   <div className="flex items-center space-x-3">
                     <span className="text-3xl">{getFileIcon(selectedFile.type)}</span>
                     <div>
-                      <p className="font-medium text-gray-900">{selectedFile.filename}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-medium text-blue-900">{selectedFile.filename}</p>
+                      <p className="text-sm text-blue-500">
                         {formatFileSize(selectedFile.file_size)}
                       </p>
                     </div>
@@ -225,15 +225,15 @@ const FileManager: React.FC = () => {
                   
                   <div className="grid grid-cols-1 gap-3 text-sm">
                     <div>
-                      <p className="text-gray-500">File Type</p>
+                      <p className="text-blue-500">File Type</p>
                       <p className="font-medium">{selectedFile.type.toUpperCase()}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Size</p>
+                      <p className="text-blue-500">Size</p>
                       <p className="font-medium">{formatFileSize(selectedFile.file_size)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Modified</p>
+                      <p className="text-blue-500">Modified</p>
                       <p className="font-medium">{new Date(selectedFile.modified_at).toLocaleString()}</p>
                     </div>
                   </div>
@@ -254,7 +254,7 @@ const FileManager: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="text-center text-gray-500">
+                <div className="text-center text-blue-500">
                   <div className="text-4xl mb-2">👁️</div>
                   <p>Select a file to view details</p>
                 </div>
