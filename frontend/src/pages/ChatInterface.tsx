@@ -11,7 +11,7 @@ const ChatInterface: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<FileInfo[]>([])
-  const { tools: availableTools, prompts: availablePrompts, isConnected, messages, setMessages, addMessage } = useAppContext()
+  const { tools: availableTools, prompts: availablePrompts, isConnected, messages, setMessages, addMessage, chatSessions, currentSessionId, createNewSession, switchToSession, deleteSession } = useAppContext()
   const [settings, setSettings] = useState<AppSettings>({
     model: 'claude-3-7-sonnet-20250219',
     enabledTools: [],
@@ -190,12 +190,12 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="flex h-[calc(100vh-4.5rem)] bg-blue-50">
-      {/* Compact Left Sidebar */}
-      <div className="w-48 bg-white/70 backdrop-blur-md border-r border-blue-200/50 flex flex-col shadow-xl">
+      {/* Chat History Sidebar */}
+      <div className="w-64 bg-white/70 backdrop-blur-md border-r border-blue-200/50 flex flex-col shadow-xl">
         <div className="p-3 border-b border-blue-200/50">
           <button 
-            onClick={async () => {
-              setMessages([])
+            onClick={() => {
+              createNewSession()
               setUploadedFiles([])
               setInputMessage('')
               toast.success('New chat started')
@@ -206,7 +206,48 @@ const ChatInterface: React.FC = () => {
           </button>
         </div>
         
-        <div className="flex-1"></div>
+        {/* Chat Sessions List */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-2">
+            <h3 className="text-xs font-semibold text-blue-600 mb-2 px-2">CHAT HISTORY</h3>
+            <div className="space-y-1">
+              {chatSessions.slice().reverse().map((session) => (
+                <div key={session.id} className="group relative">
+                  <button
+                    onClick={() => switchToSession(session.id)}
+                    className={`w-full text-left p-2 rounded-lg text-sm transition-colors ${
+                      currentSessionId === session.id
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'text-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    <div className="truncate font-medium">{session.title}</div>
+                    <div className="text-xs text-blue-400 mt-1">
+                      {session.updatedAt.toLocaleDateString()}
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (confirm('Delete this chat?')) {
+                        deleteSession(session.id)
+                        toast.success('Chat deleted')
+                      }
+                    }}
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-xs bg-red-100 text-red-600 hover:bg-red-200 transition-all"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {chatSessions.length === 0 && (
+                <div className="text-center text-blue-400 text-xs py-4">
+                  No chat history yet
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Main Chat Area */}

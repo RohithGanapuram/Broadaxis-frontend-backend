@@ -58,6 +58,14 @@ export interface AppSettings {
   theme: 'light' | 'dark'
 }
 
+export interface ChatSession {
+  id: string
+  title: string
+  messages: ChatMessage[]
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface GeneratedFile {
   filename: string
   file_size: number

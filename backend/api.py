@@ -6,6 +6,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 from typing import Dict, List
 
 import nest_asyncio
@@ -81,28 +82,9 @@ class MCPInterface:
             return "Anthropic API not available"
             
         try:
-            # Check if there are uploaded files to include
+            # No file context for simple queries - prevent hallucination
             file_context = ""
-            has_files = bool(uploaded_files_content)
-            
-            if has_files:
-                # Determine content strategy based on query type
-                is_summary_query = any(word in query.lower() for word in ['summary', 'summarize', 'about', 'analyze', 'what is', 'overview'])
-                is_specific_query = any(word in query.lower() for word in ['find', 'search', 'where', 'how', 'when', 'who', 'specific', 'detail'])
-                
-                file_context = "\n\nUploaded Documents:\n"
-                for filename, file_data in uploaded_files_content.items():
-                    if is_summary_query:
-                        # Use summary content for overview questions
-                        content = file_data['summary_content']
-                    elif is_specific_query:
-                        # Use full content for detailed questions
-                        content = file_data['full_content'][:15000]  # Limit to 15k for specific queries
-                    else:
-                        # Default to summary content
-                        content = file_data['summary_content']
-                    
-                    file_context += f"\n--- {filename} ---\n{content}\n"
+            has_files = False
             
             enhanced_query = query + file_context
             
@@ -283,8 +265,8 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Store uploaded files temporarily
-uploaded_files_content = {}
+# Store uploaded files per session
+session_files = {}
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -306,20 +288,15 @@ async def upload_file(file: UploadFile = File(...)):
             # For text files
             text_content = file_content.decode('utf-8', errors='ignore')
         
-        # Store full content for comprehensive analysis
-        uploaded_files_content[file.filename] = {
-            "full_content": text_content,  # Store complete content
-            "summary_content": text_content[:8000],  # First 8k for summaries
-            "filename": file.filename,
-            "size": len(file_content)
-        }
+        # Note: File upload now only confirms upload, doesn't store globally
+        # Files should be re-uploaded per session for analysis
         
         return {
             "status": "success",
             "filename": file.filename,
             "size": len(file_content),
             "message": f"File '{file.filename}' uploaded and analyzed. You can now ask questions about it.",
-            "analysis": f"Document '{file.filename}' has been processed and is ready for analysis. Ask me questions about its content."
+            "analysis": f"Document '{file.filename}' uploaded successfully. You can now ask questions about it."
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -380,6 +357,8 @@ async def get_available_prompts():
 async def websocket_chat(websocket: WebSocket):
     """WebSocket endpoint for real-time chat communication."""
     await manager.connect(websocket)
+    session_id = f"ws_{id(websocket)}_{int(time.time())}"
+    
     try:
         while True:
             # Receive message from client
@@ -389,6 +368,31 @@ async def websocket_chat(websocket: WebSocket):
             query = message_data.get("query", "")
             enabled_tools = message_data.get("enabled_tools", [])
             model = message_data.get("model", "claude-3-7-sonnet-20250219")
+            
+            # Handle simple responses naturally
+            simple_queries = {
+                'hello': "Hello! How can I help you today?",
+                'hi': "Hi there! What can I assist you with?",
+                'hey': "Hey! How can I help?",
+                'test': "I'm working perfectly! How can I assist you?",
+                'awesome': "Glad you think so! What would you like to work on?",
+                'great': "Thanks! How can I help you today?",
+                'good': "Great to hear! What can I do for you?",
+                'thanks': "You're welcome! Anything else I can help with?",
+                'thank you': "You're welcome! Let me know if you need anything else."
+            }
+            
+            query_lower = query.lower().strip()
+            if query_lower in simple_queries:
+                await manager.send_personal_message(
+                    json.dumps({
+                        "type": "response",
+                        "message": simple_queries[query_lower],
+                        "status": "success"
+                    }),
+                    websocket
+                )
+                continue
 
             # Send acknowledgment
             await manager.send_personal_message(
