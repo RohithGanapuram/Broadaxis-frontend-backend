@@ -71,53 +71,78 @@ class MCPInterface:
             env=None,
         )
         self.anthropic = None
+        self._tools_cache = None
+        self._prompts_cache = None
+        self._cache_lock = asyncio.Lock()
         try:
             from anthropic import Anthropic
             self.anthropic = Anthropic()
         except ImportError:
             print("Warning: Anthropic not available")
     
+    async def get_tools(self):
+        """Get cached tools or fetch from server"""
+        async with self._cache_lock:
+            if self._tools_cache is None:
+                try:
+                    async with stdio_client(self.server_params) as (read, write):
+                        async with ClientSession(read, write) as session:
+                            await session.initialize()
+                            tools_response = await session.list_tools()
+                            self._tools_cache = [{
+                                "name": tool.name,
+                                "description": tool.description,
+                                "input_schema": tool.inputSchema
+                            } for tool in tools_response.tools]
+                except Exception as e:
+                    print(f"Failed to fetch tools: {e}")
+                    self._tools_cache = []
+            return self._tools_cache
+    
+    async def get_prompts(self):
+        """Get cached prompts or fetch from server"""
+        async with self._cache_lock:
+            if self._prompts_cache is None:
+                try:
+                    async with stdio_client(self.server_params) as (read, write):
+                        async with ClientSession(read, write) as session:
+                            await session.initialize()
+                            prompts_response = await session.list_prompts()
+                            self._prompts_cache = [{
+                                "name": prompt.name,
+                                "description": prompt.description
+                            } for prompt in prompts_response.prompts]
+                except Exception as e:
+                    print(f"Failed to fetch prompts: {e}")
+                    self._prompts_cache = []
+            return self._prompts_cache
+    
     async def process_query_with_anthropic(self, query: str, enabled_tools: List[str] = None, model: str = None) -> str:
         if not self.anthropic:
             return "Anthropic API not available"
             
         try:
-            # No file context for simple queries - prevent hallucination
-            file_context = ""
-            has_files = False
-            
-            enhanced_query = query + file_context
-            
             # Handle MCP prompt invocations
             if query.startswith('PROMPT:'):
-                prompt_name = query[7:]  # Remove 'PROMPT:' prefix
+                prompt_name = query[7:]
                 try:
                     async with stdio_client(self.server_params) as (read, write):
                         async with ClientSession(read, write) as session:
                             await session.initialize()
-                            
-                            # Get the prompt template
-                            prompts_response = await session.list_prompts()
-                            target_prompt = None
-                            for prompt in prompts_response.prompts:
-                                if prompt.name == prompt_name:
-                                    target_prompt = prompt
-                                    break
+                            prompts = await self.get_prompts()
+                            target_prompt = next((p for p in prompts if p["name"] == prompt_name), None)
                             
                             if target_prompt:
-                                # Get prompt content
-                                prompt_result = await session.get_prompt(target_prompt.name, arguments={})
+                                prompt_result = await session.get_prompt(prompt_name, arguments={})
                                 prompt_content = prompt_result.messages[0].content.text if prompt_result.messages else ""
-                                
-                                # Use the prompt content as system message with formatting instructions
-                                enhanced_system = prompt_content + "\n\nIMPORTANT: Format your response with clear headings, bullet points, and proper spacing for readability. Use markdown formatting with ## for main sections, ### for subsections, and bullet points for lists."
+                                enhanced_system = prompt_content + "\n\nIMPORTANT: Format your response with clear headings, bullet points, and proper spacing for readability."
                                 
                                 selected_model = model or "claude-3-7-sonnet-20250219"
                                 response = self.anthropic.messages.create(
                                     max_tokens=3048,
                                     model=selected_model,
                                     system=enhanced_system,
-                                    messages=[{'role': 'user', 'content': f"Analyze the uploaded documents using this framework.{file_context}"}]
+                                    messages=[{'role': 'user', 'content': "Analyze the uploaded documents using this framework."}]
                                 )
                                 return response.content[0].text if response.content else "No response generated"
                             else:
@@ -125,39 +150,22 @@ class MCPInterface:
                 except Exception as e:
                     return f"Error using prompt: {str(e)}"
             
-            # For document analysis queries, use direct API (faster)
-            if has_files and any(word in query.lower() for word in ['summary', 'summarize', 'about', 'analyze', 'what is', 'overview']):
-                selected_model = model or "claude-3-7-sonnet-20250219"
-                response = self.anthropic.messages.create(
-                    max_tokens=2048,
-                    model=selected_model,
-                    system="You are BroadAxis-AI, an intelligent RFP/RFQ management assistant. Analyze the uploaded documents and provide clear, concise summaries. Format your response with proper headings (##), bullet points, and clear sections for easy reading.",
-                    messages=[{'role': 'user', 'content': enhanced_query}]
-                )
-                return response.content[0].text if response.content else "No response generated"
-            
-            # Use MCP server for tool-based queries
+            # Use fresh connection for tool-based queries with cached tools
             async with stdio_client(self.server_params) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     
-                    tools_response = await session.list_tools()
-                    available_tools = [{
-                        "name": tool.name,
-                        "description": tool.description,
-                        "input_schema": tool.inputSchema
-                    } for tool in tools_response.tools]
+                    available_tools = await self.get_tools()
                     
                     if enabled_tools:
                         available_tools = [tool for tool in available_tools if tool["name"] in enabled_tools]
                     
                     system_prompt = """You are BroadAxis-AI, an intelligent RFP/RFQ management assistant. 
 Use Broadaxis_knowledge_search for company information first, then web_search_tool for external data if needed.
-For uploaded RFP documents, provide analysis and offer Go/No-Go recommendations.
-When users ask about uploaded documents, analyze the content provided in the user message."""
+For uploaded RFP documents, provide analysis and offer Go/No-Go recommendations."""
                     
                     selected_model = model or "claude-3-7-sonnet-20250219"
-                    messages = [{'role': 'user', 'content': enhanced_query}]
+                    messages = [{'role': 'user', 'content': query}]
                     
                     response = self.anthropic.messages.create(
                         max_tokens=4024,
@@ -216,7 +224,6 @@ When users ask about uploaded documents, analyze the content provided in the use
                                     full_response += response.content[0].text
                                     process_query = False
                     
-                    # Add tools used information to response
                     if tools_used:
                         tools_info = "\n\n---\n🔧 **Tools Used:** " + ", ".join(set(tools_used))
                         full_response += tools_info
@@ -306,47 +313,20 @@ async def upload_file(file: UploadFile = File(...)):
 @app.get("/api/tools")
 async def get_available_tools():
     try:
-        async with stdio_client(mcp_interface.server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                tools_response = await session.list_tools()
-                tools = [{"name": tool.name, "description": tool.description} for tool in tools_response.tools]
-                return {"tools": tools, "status": "success"}
+        tools = await mcp_interface.get_tools()
+        return {"tools": tools, "status": "success"}
     except Exception as e:
         print(f"Error fetching tools: {e}")
-        # Fallback to static tools if MCP server fails
-        static_tools = [
-            {"name": "sum", "description": "Add two numbers"},
-            {"name": "Broadaxis_knowledge_search", "description": "Search company knowledge base"},
-            {"name": "web_search_tool", "description": "Search the web using Tavily"},
-            {"name": "generate_pdf_document", "description": "Generate PDF documents"},
-            {"name": "generate_word_document", "description": "Generate Word documents"},
-            {"name": "generate_text_file", "description": "Generate text files"},
-            {"name": "search_papers", "description": "Search academic papers on arXiv"},
-            {"name": "get_forecast", "description": "Get weather forecast"},
-            {"name": "get_alerts", "description": "Get weather alerts"},
-            {"name": "list_generated_files", "description": "List generated files"}
-        ]
-        return {"tools": static_tools, "status": "fallback"}
+        return {"tools": [], "status": "error"}
 
 @app.get("/api/prompts")
 async def get_available_prompts():
     try:
-        async with stdio_client(mcp_interface.server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                prompts_response = await session.list_prompts()
-                prompts = [{"name": prompt.name, "description": prompt.description} for prompt in prompts_response.prompts]
-                return {"prompts": prompts, "status": "success"}
+        prompts = await mcp_interface.get_prompts()
+        return {"prompts": prompts, "status": "success"}
     except Exception as e:
         print(f"Error fetching prompts: {e}")
-        # Fallback to static prompts if MCP server fails
-        static_prompts = [
-            {"name": "Step-2: Executive Summary", "description": "Generate executive summary of RFP documents"},
-            {"name": "Step-3: Go/No-Go Recommendation", "description": "Provide Go/No-Go analysis"},
-            {"name": "Step-4: Generate Proposal", "description": "Generate capability statement"}
-        ]
-        return {"prompts": static_prompts, "status": "fallback"}
+        return {"prompts": [], "status": "error"}
 
 
 
