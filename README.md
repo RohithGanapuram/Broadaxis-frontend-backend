@@ -20,6 +20,13 @@ AI Services (Claude, Pinecone, etc.)
 - Python 3.12+
 - Node.js 18+
 - npm or yarn
+- uv (optional, for faster Python package management)
+
+### Quick Installation
+```bash
+# Install all dependencies at once
+python install_dependencies.py
+```
 
 ### Environment Setup
 1. Create `.env` file in `ba-server/` directory:
@@ -149,28 +156,33 @@ ba-rfpapp/
 
 ## 🔧 Development
 
+### Dependency Management
+- **Consolidated**: Single `requirements.txt` at project root
+- **ba-server**: Uses `pyproject.toml` with uv for faster installs
+- **Frontend**: Standard `package.json` with npm/yarn
+
 ### Backend Development
 ```bash
-cd backend
-# Install dependencies
+# Install dependencies (from project root)
 pip install -r requirements.txt
-# Run with auto-reload
-uvicorn api:app --reload --port 8000
+# Run backend
+cd backend
+python run_backend.py
 ```
 
 ### Frontend Development
 ```bash
 cd frontend
-# Install dependencies
-npm install
-# Run development server
-npm run dev
+npm install  # or yarn install
+npm run dev  # or yarn dev
 ```
 
 ### MCP Server Development
 ```bash
 cd ba-server
-# Install dependencies
+# With uv (recommended)
+uv sync
+# Or with pip
 pip install -e .
 # Test server
 python client.py

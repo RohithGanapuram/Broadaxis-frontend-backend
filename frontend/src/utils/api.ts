@@ -64,7 +64,7 @@ export const apiClient = {
   // Chat endpoints
   async sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
     const response = await api.post('/api/chat', request, {
-      timeout: 30000 // 30 seconds for chat messages
+      timeout: 120000 // 2 minutes for chat messages
     })
     return response.data
   },
@@ -88,7 +88,7 @@ export const apiClient = {
   // Tools and prompts
   async getAvailableTools(): Promise<{ tools: Tool[]; status: string }> {
     try {
-      const response = await api.get('/api/tools', { timeout: 60000 })
+      const response = await api.get('/api/tools', { timeout: 120000 })
       return response.data
     } catch (error) {
       console.error('Failed to get tools:', error)
@@ -112,7 +112,7 @@ export const apiClient = {
 
   async getAvailablePrompts(): Promise<{ prompts: Prompt[]; status: string }> {
     try {
-      const response = await api.get('/api/prompts', { timeout: 60000 })
+      const response = await api.get('/api/prompts', { timeout: 120000 })
       return response.data
     } catch (error) {
       console.error('Failed to get prompts:', error)

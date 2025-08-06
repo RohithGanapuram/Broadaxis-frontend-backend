@@ -12,6 +12,9 @@ import re
 import PyPDF2
 from io import BytesIO
 import mcp.types as types
+import logging
+import traceback
+from datetime import datetime
 try:
     import docx
 except ImportError:
@@ -80,11 +83,54 @@ Instructions: {props.get('instruction', 'No specific instructions provided')}
 """
 
 
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('mcp_server.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger('MCPServer')
+
+# Error handling decorator
+def handle_tool_errors(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            error_msg = f"Error in {func.__name__}: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return json.dumps({
+                "status": "error",
+                "error": error_msg,
+                "timestamp": datetime.now().isoformat()
+            })
+    return wrapper
+
 #Connection to Pinecone
-pinecone_api_key = os.environ.get('PINECONE_API_KEY')
-pc = Pinecone(api_key=pinecone_api_key)
-index = pc.Index("sample3")
-embedder = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+try:
+    pinecone_api_key = os.environ.get('PINECONE_API_KEY')
+    if not pinecone_api_key:
+        logger.warning("PINECONE_API_KEY not found in environment variables")
+        pc = None
+        index = None
+    else:
+        pc = Pinecone(api_key=pinecone_api_key)
+        index = pc.Index("sample3")
+        logger.info("Pinecone connection established")
+except Exception as e:
+    logger.error(f"Failed to initialize Pinecone: {e}")
+    pc = None
+    index = None
+
+try:
+    embedder = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    logger.info("HuggingFace embedder initialized")
+except Exception as e:
+    logger.error(f"Failed to initialize embedder: {e}")
+    embedder = None
 
 def sanitize_filename(name: str) -> str:
     # Remove all non-alphanumeric, dash, underscore characters
@@ -110,148 +156,6 @@ def sum(a: int, b: int) -> int:
 
 
 @mcp.tool()
-def get_alerts(state: str) -> str:
-    """Get weather alerts for a US state.
-
-    Args:
-        state: Two-letter US state code (e.g. CA, NY)
-    """
-    url = f"{NWS_API_BASE}/alerts/active/area/{state}"
-    data = make_nws_request(url)
-
-    if not data or "features" not in data:
-        return "Unable to fetch alerts or no alerts found."
-
-    if not data["features"]:
-        return "No active alerts for this state."
-
-    alerts = [format_alert(feature) for feature in data["features"]]
-    return "\n---\n".join(alerts)
-
-
-@mcp.tool()
-def get_forecast(latitude: float, longitude: float) -> str:
-    """Get weather forecast for a location.
-
-    Args:
-        latitude: Latitude of the location
-        longitude: Longitude of the location
-    """
-    # First get the forecast grid endpoint
-    points_url = f"{NWS_API_BASE}/points/{latitude},{longitude}"
-    points_data = make_nws_request(points_url)
-
-    if not points_data:
-        return "Unable to fetch forecast data for this location."
-
-    # Get the forecast URL from the points response
-    forecast_url = points_data["properties"]["forecast"]
-    forecast_data = make_nws_request(forecast_url)
-
-    if not forecast_data:
-        return "Unable to fetch detailed forecast."
-
-    # Format the periods into a readable forecast
-    periods = forecast_data["properties"]["periods"]
-    forecasts = []
-    for period in periods[:5]:  # Only show next 5 periods
-        forecast = f"""
-{period['name']}:
-Temperature: {period['temperature']}°{period['temperatureUnit']}
-Wind: {period['windSpeed']} {period['windDirection']}
-Forecast: {period['detailedForecast']}
-"""
-        forecasts.append(forecast)
-
-    return "\n---\n".join(forecasts)
-
-@mcp.tool()
-def search_papers(topic: str, max_results: int = 5) -> List[str]:
-    """
-    Search for papers on arXiv based on a topic and store their information.
-    
-    Args:
-        topic: The topic to search for
-        max_results: Maximum number of results to retrieve (default: 5)
-        
-    Returns:
-        List of paper IDs found in the search
-    """
-    
-    # Use arxiv to find the papers 
-
-    # Search for the most relevant articles matching the queried topic
-    search = arxiv.Search(
-        query = topic,
-        max_results = max_results,
-        sort_by = arxiv.SortCriterion.Relevance
-    )
-
-    papers = list(search.results())
-    
-    # Create directory for this topic
-    path = os.path.join(PAPER_DIR, sanitize_filename(topic.lower()))
-    os.makedirs(path, exist_ok=True)
-    
-    file_path = os.path.join(path, "papers_info.json")
-
-    # Try to load existing papers info
-    try:
-        with open(file_path, "r") as json_file:
-            papers_info = json.load(json_file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        papers_info = {}
-
-    # Process each paper and add to papers_info  
-    paper_ids = []
-    for paper in papers:
-        paper_ids.append(paper.get_short_id())
-        paper_info = {
-            'title': paper.title,
-            'authors': [author.name for author in paper.authors],
-            'summary': paper.summary,
-            'pdf_url': paper.pdf_url,
-            'published': str(paper.published.date())
-        }
-        papers_info[paper.get_short_id()] = paper_info
-    
-    # Save updated papers_info to json file
-    with open(file_path, "w") as json_file:
-        json.dump(papers_info, json_file, indent=2)
-    
-    print(f"Results are saved in: {file_path}")
-    
-    return paper_ids
-
-@mcp.tool()
-def extract_info(paper_id: str) -> Union[str, None]:
-    """
-    Search for information about a specific paper across all topic directories.
-    
-    Args:
-        paper_id: The ID of the paper to look for
-        
-    Returns:
-        JSON string with paper information if found, error message if not found
-    """
- 
-    for item in os.listdir(PAPER_DIR):
-        item_path = os.path.join(PAPER_DIR, item)
-        if os.path.isdir(item_path):
-            file_path = os.path.join(item_path, "papers_info.json")
-            if os.path.isfile(file_path):
-                try:
-                    with open(file_path, "r") as json_file:
-                        papers_info = json.load(json_file)
-                        if paper_id in papers_info:
-                            return json.dumps(papers_info[paper_id], indent=2)
-                except (FileNotFoundError, json.JSONDecodeError) as e:
-                    print(f"Error reading {file_path}: {str(e)}")
-                    continue
-    
-    return f"There's no saved information related to paper {paper_id}."
-
-@mcp.tool()
 def Broadaxis_knowledge_search(query: str):
 
     """
@@ -264,18 +168,29 @@ def Broadaxis_knowledge_search(query: str):
     """
     # try:
         # Step 1: Embed the query
-    query_embedding = embedder.embed_documents([query])[0]
-
-        # Step 2: Perform similarity search using Pinecone
-    query_result = index.query(
-        vector=[query_embedding],
-        top_k=5,  # Recommend using more than 1 to allow LLM flexibility
-        include_metadata=True,
-        namespace=""  # Set if needed
-    )
-    documents = [result['metadata']['text'] for result in query_result['matches']]
-
-    return documents
+    if not query or not query.strip():
+        return json.dumps({"error": "Query cannot be empty"})
+    
+    if not embedder:
+        return json.dumps({"error": "Embedder not available"})
+    
+    if not index:
+        return json.dumps({"error": "Pinecone index not available"})
+    
+    try:
+        query_embedding = embedder.embed_documents([query.strip()])[0]
+        query_result = index.query(
+            vector=[query_embedding],
+            top_k=5,
+            include_metadata=True,
+            namespace=""
+        )
+        
+        documents = [result['metadata']['text'] for result in query_result['matches'] if 'metadata' in result]
+        return documents if documents else json.dumps({"message": "No relevant documents found"})
+    except Exception as e:
+        logger.error(f"Knowledge search error: {e}")
+        return json.dumps({"error": f"Search failed: {str(e)}"})
 
     # except Exception as e:
     #     return json.dumps({"error": str(e)})
@@ -298,23 +213,24 @@ def web_search_tool(query: str):
         A JSON string with the top search results.
     """
     try:
-        # Perform the search
-        results = tavily.search(query=query, search_depth="advanced", include_answer=False)
-
-        # Extract and format results
+        if not query or not query.strip():
+            return json.dumps({"error": "Search query cannot be empty"})
+        
+        results = tavily.search(query=query.strip(), search_depth="advanced", include_answer=False)
         formatted = [
             {
-                "title": r.get("title"),
-                "url": r.get("url"),
-                "snippet": r.get("content")
+                "title": r.get("title", "No title"),
+                "url": r.get("url", ""),
+                "snippet": r.get("content", "No content")
             }
             for r in results.get("results", [])
         ]
 
-        return json.dumps({"results": formatted})
+        return json.dumps({"results": formatted, "total_results": len(formatted)})
 
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        logger.error(f"Web search error: {e}")
+        return json.dumps({"error": f"Search failed: {str(e)}"})
     
 @mcp.tool()
 def generate_pdf_document(title: str, content: str, filename: str = None) -> str:
@@ -524,6 +440,23 @@ def generate_text_file(content: str, filename: str = None, file_extension: str =
             "error": str(e)
         })
 
+
+@mcp.prompt(title="Identifying the Documents")
+def Step1_Identifying_documents():
+    """read PDFs from filesystem path, categorize them as RFP/RFI/RFQ-related, fillable forms, or non-fillable documents."""
+    return f"""read the files from the provided filesystems tool path using PDFFiller tool to categorize each uploaded PDF into the following groups:
+
+1. 📘 **Primary Documents** — PDFs that contain RFP, RFQ, or RFI content (e.g., project scope, requirements, evaluation criteria).
+2. 📝 **Fillable Forms** — PDFs with interactive fields intended for user input (e.g., pricing tables, response forms).
+3. 📄 **Non-Fillable Documents** — PDFs that are neither RFP-type nor interactive, such as attachments or informational appendices.
+---
+Once the classification is complete:
+
+📊 **Would you like to proceed to the next step and generate summaries for the relevant documents?**  
+If yes, please upload the files and attach the summary prompt template.
+"""
+
+
 @mcp.prompt(title="Step-2: Executive Summary of Procurement Document")
 def Step2_summarize_documents():
     """Generate a clear, high-value summary of uploaded RFP, RFQ, or RFI documents for executive decision-making."""
@@ -638,6 +571,28 @@ The user has either uploaded an opportunity document or requested a formal propo
 - Maintain professional, confident, and compliant tone.
 
 If this proposal is meant to be saved, offer to generate a PDF or Word version using the appropriate tool.
+
+"""
+
+@mcp.prompt(title="Step-5 : Fill in Missing Information")
+def Step5_fill_missing_information() -> str:
+    return """
+You are BroadAxis-AI, an intelligent assistant designed to fill in missing fields using ppdf filler tool , answer RFP/RFQ questions, and complete response templates **strictly using verified information**.
+ Your task is to **complete the missing sections** on the fillable documents which you have identified previously with reliable information from:
+
+1. Broadaxis_knowledge_search (internal database)
+2. The uploaded document itself
+3. Prior chat context (if available)
+---
+### 🧠 RULES (Strict Compliance)
+
+- ❌ **DO NOT invent or hallucinate** company details, financials, certifications, team names, or client info.
+- ❌ **DO NOT guess** values you cannot verify.
+- 🔐 If the question involves **personal, legal, or confidential information**, **do not fill it**.
+- ✅ Use internal knowledge only when it clearly answers the field.
+---
+### ✅ Final Instruction
+Only fill what you can verify using Broadaxis_knowledge_search and uploaded content. Leave everything else with clear, professional placeholders.
 
 """
 
