@@ -405,7 +405,7 @@ def generate_word_document(title: str, content: str, filename: str = None) -> st
 
 
 @mcp.tool()
-def filesystem_read_file(path: str) -> str:
+def sharepoint_read_file(path: str) -> str:
     """
     Read a file from SharePoint.
     
@@ -435,7 +435,7 @@ def filesystem_read_file(path: str) -> str:
         return json.dumps({"status": "error", "error": str(e)})
 
 @mcp.tool()
-def filesystem_write_file(path: str, content: str) -> str:
+def sharepoint_write_file(path: str, content: str) -> str:
     """
     Write/create a file in SharePoint.
     
@@ -471,7 +471,7 @@ def filesystem_write_file(path: str, content: str) -> str:
         return json.dumps({"status": "error", "error": str(e)})
 
 @mcp.tool()
-def filesystem_list_directory(path: str = "") -> str:
+def sharepoint_list_files(path: str = "") -> str:
     """
     List files and directories in SharePoint folder.
     
@@ -500,7 +500,7 @@ def filesystem_list_directory(path: str = "") -> str:
         return json.dumps({"status": "error", "error": str(e)})
 
 @mcp.tool()
-def filesystem_delete_file(path: str) -> str:
+def sharepoint_delete_file(path: str) -> str:
     """
     Delete a file from SharePoint.
     
@@ -529,7 +529,7 @@ def filesystem_delete_file(path: str) -> str:
         return json.dumps({"status": "error", "error": str(e)})
 
 @mcp.tool()
-def filesystem_search_files(query: str, path: str = "") -> str:
+def sharepoint_search_files(query: str, path: str = "") -> str:
     """
     Search for files in SharePoint by name.
     
@@ -560,7 +560,7 @@ def filesystem_search_files(query: str, path: str = "") -> str:
         return json.dumps({"status": "error", "error": str(e)})
 
 @mcp.tool()
-def pdffiller_extract_text(path: str) -> str:
+def extract_pdf_text(path: str) -> str:
     """
     Extract text content from a PDF file in SharePoint.
     
@@ -597,7 +597,7 @@ def pdffiller_extract_text(path: str) -> str:
         return json.dumps({"status": "error", "error": str(e)})
 
 @mcp.tool()
-def pdffiller_get_form_fields(path: str) -> str:
+def detect_pdf_form_fields(path: str) -> str:
     """
     Get fillable form fields from a PDF file in SharePoint.
     
@@ -643,21 +643,70 @@ def pdffiller_get_form_fields(path: str) -> str:
     except Exception as e:
         return json.dumps({"status": "error", "error": str(e)})
 
+@mcp.tool()
+def get_pdf_metadata(path: str) -> str:
+    """
+    Get metadata from a PDF file in SharePoint.
+    
+    Args:
+        path: SharePoint path to PDF file
+    
+    Returns:
+        JSON string with PDF metadata
+    """
+    try:
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+        from api import SharePointManager  # type: ignore
+        import PyPDF2
+        from io import BytesIO
+        
+        sharepoint_manager = SharePointManager()
+        file_result = sharepoint_manager.get_file_content(path, binary=True)
+        
+        if file_result['status'] != 'success':
+            return json.dumps({"status": "error", "error": file_result['message']})
+        
+        pdf_reader = PyPDF2.PdfReader(BytesIO(file_result['content']))
+        metadata = pdf_reader.metadata
+        
+        return json.dumps({
+            "status": "success",
+            "path": path,
+            "pages": len(pdf_reader.pages),
+            "title": str(metadata.get('/Title', 'Unknown')) if metadata else 'Unknown',
+            "author": str(metadata.get('/Author', 'Unknown')) if metadata else 'Unknown',
+            "subject": str(metadata.get('/Subject', 'Unknown')) if metadata else 'Unknown',
+            "creator": str(metadata.get('/Creator', 'Unknown')) if metadata else 'Unknown',
+            "producer": str(metadata.get('/Producer', 'Unknown')) if metadata else 'Unknown'
+        })
+    except Exception as e:
+        return json.dumps({"status": "error", "error": str(e)})
 
 
 @mcp.prompt(title="Identifying the Documents")
 def Step1_Identifying_documents():
-    """read PDFs from filesystem path, categorize them as RFP/RFI/RFQ-related, fillable forms, or non-fillable documents."""
-    return f"""read the files from the provided filesystems tool path using PDFFiller tool to categorize each uploaded PDF into the following groups:
+    """Browse SharePoint folders to identify and categorize RFP/RFI/RFQ documents from available folders."""
+    return f"""I'll help you identify and categorize documents from your SharePoint folders. Let me start by browsing the available folders to find RFP/RFQ/RFI documents.
 
-1. 📘 **Primary Documents** — PDFs that contain RFP, RFQ, or RFI content (e.g., project scope, requirements, evaluation criteria).
-2. 📝 **Fillable Forms** — PDFs with interactive fields intended for user input (e.g., pricing tables, response forms).
-3. 📄 **Non-Fillable Documents** — PDFs that are neither RFP-type nor interactive, such as attachments or informational appendices.
----
-Once the classification is complete:
+**Step 1: Browse SharePoint Root Directory**
+First, let me check what folders are available in your SharePoint:
 
-📊 **Would you like to proceed to the next step and generate summaries for the relevant documents?**  
-If yes, please upload the files and attach the summary prompt template.
+*[I will use sharepoint_list_files tool to show available folders]*
+
+**Step 2: Select Document Category**
+Once I see the available folders (like RFP, RFQ, RFI, etc.), please tell me which folder you'd like to work with.
+
+**Step 3: Browse Selected Folder**
+I'll then list the subfolders/projects within your chosen category.
+
+**Step 4: Analyze Documents**
+After you select a specific project folder, I'll read and categorize each PDF file into:
+
+1. 📘 **Primary Documents** — PDFs containing RFP, RFQ, or RFI content (project scope, requirements, evaluation criteria)
+2. 📝 **Fillable Forms** — PDFs with interactive fields for user input (pricing tables, response forms)
+3. 📄 **Non-Fillable Documents** — Supporting documents, attachments, or informational appendices
+
+Let me start by checking your SharePoint folder structure...
 """
 
 
@@ -666,7 +715,7 @@ def Step2_summarize_documents():
     """Generate a clear, high-value summary of uploaded RFP, RFQ, or RFI documents for executive decision-making."""
     return f"""
 You are **BroadAxis-AI**, an intelligent assistant that analyzes procurement documents (RFP, RFQ, RFI) to help vendor teams quickly understand the opportunity and make informed pursuit decisions.
-When a user uploads one or more documents, do the following **for each document, one at a time**:
+When analyzing documents from SharePoint folders, do the following **for each document, one at a time**:
 
 ---
 

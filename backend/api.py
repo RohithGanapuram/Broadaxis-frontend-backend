@@ -326,6 +326,14 @@ class MCPInterface:
             return {"response": "Anthropic API not available", "tokens_used": 0}
             
         try:
+            # Check for uploaded documents and include in context
+            document_context = ""
+            if session_files:
+                document_context = "\n\n=== UPLOADED DOCUMENTS ===\n"
+                for file_id, file_data in session_files.items():
+                    document_context += f"\n--- {file_data['filename']} ---\n{file_data['content'][:10000]}\n"  # Limit to 10k chars per doc
+                document_context += "\n=== END DOCUMENTS ===\n\n"
+                query = document_context + query
             # Handle MCP prompt invocations
             if query.startswith('PROMPT:'):
                 prompt_name = query[7:]
@@ -1738,10 +1746,20 @@ async def upload_file(file: UploadFile = File(...)):
                 error_handler.log_error(e, {'filename': file.filename, 'operation': 'text_decode'})
                 raise FileOperationError("Failed to decode text file", {'filename': file.filename})
         
+        # Store document content globally for chat access
+        file_id = f"{file.filename}_{int(time.time())}"
+        session_files[file_id] = {
+            "filename": file.filename,
+            "content": text_content,
+            "size": len(file_content),
+            "upload_time": time.time()
+        }
+        
         return {
             "status": "success",
             "filename": file.filename,
             "size": len(file_content),
+            "file_id": file_id,
             "message": f"File '{file.filename}' uploaded and analyzed. You can now ask questions about it.",
             "analysis": f"Document '{file.filename}' uploaded successfully. You can now ask questions about it."
         }
