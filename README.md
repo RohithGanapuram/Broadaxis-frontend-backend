@@ -20,119 +20,112 @@ AI Services (Claude, Pinecone, etc.)
 - Python 3.12+
 - Node.js 18+
 - npm or yarn
-- uv (optional, for faster Python package management)
 
-### Quick Installation
+### Installation & Setup
+
+1. **Install Python Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Install Frontend Dependencies**
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+3. **Configure Environment Variables**
+   - Ensure `.env` file exists in the root directory with your API keys
+   - Required: `ANTHROPIC_API_KEY`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID`
+
+### Running the Application
+
+**Option 1: Run Services Separately**
+
 ```bash
-# Install all dependencies at once
-python install_dependencies.py
-```
-
-### Environment Setup
-1. Create `.env` file in `ba-server/` directory:
-```env
-ANTHROPIC_API_KEY=your_anthropic_key
-PINECONE_API_KEY=your_pinecone_key
-TAVILY_API_KEY=your_tavily_key
-```
-
-### Option 1: Run Everything at Once
-```bash
-python start_all.py
-```
-
-### Option 2: Run Services Separately
-
-#### Backend (FastAPI)
-```bash
+# Terminal 1 - Backend
 cd backend
-python run_backend.py
-# Access: http://localhost:8000
-# API Docs: http://localhost:8000/docs
-```
+python api.py
 
-#### Frontend (React)
-```bash
+# Terminal 2 - Frontend  
 cd frontend
-npm install
 npm run dev
-# Access: http://localhost:3000
 ```
 
-#### MCP Server (Optional - for testing)
-```bash
-cd ba-server
-python run.py
-# Access: http://localhost:8503
-```
+**Option 2: Access URLs**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
 
 ## 🔧 Key Features
 
 ### 🤖 AI-Powered Analysis
 - **Automatic RFP/RFQ Processing**: Upload documents and get instant analysis
-- **Go/No-Go Recommendations**: AI-driven decision support based on company capabilities
+- **Go/No-Go Recommendations**: AI-driven decision support
 - **Company Knowledge Integration**: Leverages internal knowledge base via Pinecone
+
+### 📧 Email Integration
+- **Microsoft Graph API**: Fetch RFP/RFI/RFQ emails from multiple accounts
+- **Automatic Attachment Download**: PDF and document extraction
+- **SharePoint Integration**: Save attachments to SharePoint automatically
 
 ### 📄 Document Management
 - **Multi-format Support**: PDF, DOCX, DOC, TXT, MD files
 - **Real-time Processing**: Instant text extraction and analysis
-- **Generated Files**: Create professional PDFs, Word docs, and text files
+- **SharePoint Storage**: Generated files automatically saved to SharePoint
 
 ### 🔍 Research Capabilities
 - **Internal Knowledge Search**: Company expertise and past projects
 - **Web Search Integration**: External market research via Tavily
-- **Academic Research**: arXiv paper search and analysis
-
-### 🛠️ Available Tools
-1. **Broadaxis_knowledge_search** - Internal company knowledge
-2. **web_search_tool** - External web search
-3. **generate_pdf_document** - Professional PDF creation
-4. **generate_word_document** - Word document generation
-5. **generate_text_file** - Text file creation
-6. **search_papers** - Academic research
-7. **Weather tools** - Project planning support
 
 ## 📁 Project Structure
 
 ```
 ba-rfpapp/
-├── backend/                 # FastAPI REST API
-│   ├── api.py              # Main API endpoints
-│   └── run_backend.py      # Backend launcher
-├── frontend/               # React TypeScript App
+├── .env                    # Environment variables
+├── requirements.txt        # Python dependencies
+├── backend/               # FastAPI REST API
+│   ├── api.py            # Main API endpoints
+│   └── error_handler.py  # Error handling system
+├── frontend/             # React TypeScript App
 │   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── utils/          # API client & utilities
-│   │   └── types/          # TypeScript definitions
-│   ├── package.json
-│   └── vite.config.ts
-├── ba-server/              # MCP Server & Streamlit
-│   ├── server.py           # Main MCP server
-│   ├── streamlit_ui.py     # Streamlit interface
-│   ├── file_server.py      # File management utilities
-│   └── pyproject.toml      # Python dependencies
-└── start_all.py           # Startup script
+│   │   ├── components/   # React components
+│   │   ├── pages/        # Page components
+│   │   ├── utils/        # API client & utilities
+│   │   └── types/        # TypeScript definitions
+│   └── package.json
+└── ba-server/            # MCP Server
+    └── server.py         # Main MCP server
 ```
 
 ## 🔌 API Endpoints
 
-### Chat & Analysis
+### Core Functionality
+- `POST /api/initialize` - Initialize MCP server (tools & prompts)
 - `POST /api/chat` - Send chat messages
 - `POST /api/upload` - Upload files
-- `POST /api/upload-and-analyze` - Upload and auto-analyze
 - `WS /ws/chat` - WebSocket for real-time chat
 
-### Tools & Configuration
-- `GET /api/tools` - List available MCP tools
-- `GET /api/prompts` - List available prompts
-- `GET /health` - Health check
+### Email & SharePoint
+- `POST /api/fetch-emails` - Fetch RFP/RFI/RFQ emails
+- `GET /api/fetched-emails` - List fetched emails
+- `GET /api/email-attachments/{id}` - Get email attachments
+- `GET /api/files` - List SharePoint files
+- `GET /api/files/{path}` - Browse SharePoint folders
 
-### File Management
-- `GET /api/files` - List generated files
-- `GET /api/files/{filename}` - Download file
-- `DELETE /api/files/{filename}` - Delete file
-- `POST /api/files/cleanup` - Clean up old files
+### System
+- `GET /health` - Health check
+- `GET /api/status` - Connection status
+- `GET /api/tokens` - Token usage statistics
+
+## 🛠️ Available Tools
+
+1. **Broadaxis_knowledge_search** - Internal company knowledge
+2. **web_search_tool** - External web search
+3. **generate_pdf_document** - Professional PDF creation (saved to SharePoint)
+4. **generate_word_document** - Word document generation (saved to SharePoint)
+5. **generate_text_file** - Text file creation (saved to SharePoint)
 
 ## 🎯 Usage Workflow
 
@@ -142,97 +135,103 @@ ba-rfpapp/
 3. Request Go/No-Go recommendation
 4. Generate response documents
 
-### 2. Company Knowledge Search
-1. Ask questions about company capabilities
-2. Search past projects and experience
-3. Get team member information
-4. Access internal processes
+### 2. Email Management
+1. Click "Fetch RFP/RFI/RFQ Emails" button
+2. System automatically searches configured email accounts
+3. Downloads relevant attachments to SharePoint
+4. View and manage fetched emails and attachments
 
 ### 3. Document Generation
 1. Create professional PDFs and Word docs
 2. Generate executive summaries
 3. Build compliance matrices
-4. Export research findings
+4. Files automatically saved to SharePoint for team access
+
+## 🔐 Environment Variables
+
+Required variables in `.env` file:
+
+```env
+# AI Services
+ANTHROPIC_API_KEY=your_anthropic_key
+PINECONE_API_KEY=your_pinecone_key
+TAVILY_API_KEY=your_tavily_key
+
+# Microsoft Graph API
+GRAPH_CLIENT_ID=your_client_id
+GRAPH_CLIENT_SECRET=your_client_secret
+GRAPH_TENANT_ID=your_tenant_id
+
+# Email Accounts
+GRAPH_USER_EMAIL_1=email1@company.com
+GRAPH_USER_EMAIL_2=email2@company.com
+GRAPH_USER_EMAIL_3=email3@company.com
+
+# SharePoint
+SHAREPOINT_SITE_URL=company.sharepoint.com:/sites/project
+SHAREPOINT_FOLDER_PATH=Documents
+```
 
 ## 🔧 Development
 
-### Dependency Management
-- **Consolidated**: Single `requirements.txt` at project root
-- **ba-server**: Uses `pyproject.toml` with uv for faster installs
-- **Frontend**: Standard `package.json` with npm/yarn
-
 ### Backend Development
 ```bash
-# Install dependencies (from project root)
-pip install -r requirements.txt
-# Run backend
 cd backend
-python run_backend.py
+python api.py
 ```
 
 ### Frontend Development
 ```bash
 cd frontend
-npm install  # or yarn install
-npm run dev  # or yarn dev
+npm run dev
 ```
 
-### MCP Server Development
+### MCP Server Testing
 ```bash
 cd ba-server
-# With uv (recommended)
-uv sync
-# Or with pip
-pip install -e .
-# Test server
-python client.py
+python server.py
 ```
 
 ## 🚀 Deployment
 
-### Docker (Coming Soon)
-```bash
-docker-compose up
-```
-
-### Manual Deployment
+### Production Setup
 1. Build React frontend: `npm run build`
 2. Deploy FastAPI with gunicorn
 3. Configure reverse proxy (nginx)
 4. Set up environment variables
-
-## 🔐 Security
-
-- API key management via environment variables
-- CORS configuration for frontend access
-- File upload validation and sanitization
-- Rate limiting on API endpoints
+5. Configure Microsoft Graph API permissions
 
 ## 📊 Monitoring
 
 - Health check endpoint: `/health`
-- Server status in React settings
+- Server status: `/api/status`
 - WebSocket connection monitoring
-- File generation tracking
+- Token usage tracking: `/api/tokens`
 
-## 🤝 Contributing
+## 🔒 Security Features
 
-1. Fork the repository
-2. Create feature branch
-3. Make changes with tests
-4. Submit pull request
+- API key management via environment variables
+- CORS configuration for frontend access
+- File upload validation and sanitization
+- Rate limiting and token management
+- Error handling and logging system
+
+## 🆘 Troubleshooting
+
+### Common Issues
+1. **Email fetching fails**: Check Microsoft Graph API credentials
+2. **SharePoint access denied**: Verify site permissions
+3. **MCP server offline**: Check Python dependencies
+4. **Frontend build errors**: Run `npm install` in frontend directory
+
+### Logs
+- Backend logs: Console output
+- MCP server logs: `ba-server/mcp_server.log`
+- Frontend logs: Browser console
 
 ## 📝 License
 
 Proprietary - BroadAxis Internal Use Only
-
-## 🆘 Support
-
-For issues and questions:
-1. Check API documentation: `http://localhost:8000/docs`
-2. Review server logs
-3. Test MCP server connection
-4. Verify environment variables
 
 ---
 

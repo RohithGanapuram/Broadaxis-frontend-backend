@@ -23,12 +23,21 @@ const Settings: React.FC = () => {
     loadSettings()
   }, [])
 
-  const loadSettings = () => {
+  const loadSettings = async () => {
     const savedSettings = localStorage.getItem('broadaxis-settings')
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings))
     }
-    setServerStatus('connected') // Static status
+    
+    // Initialize MCP server and check status
+    try {
+      setServerStatus('checking')
+      const result = await apiClient.initializeMCP()
+      setServerStatus(result.status === 'success' ? 'connected' : 'error')
+    } catch (error) {
+      console.error('Failed to initialize MCP:', error)
+      setServerStatus('error')
+    }
   }
 
   const handleModelChange = (model: string) => {

@@ -1,86 +1,31 @@
 #server
 from mcp.server.fastmcp import FastMCP
-from pydantic import BaseModel, Field
-from mcp.server.fastmcp.prompts import base
-from typing import TypedDict
-import arxiv
 import json
 import os
+import sys
 from typing import List
-from typing import Union
 import re
-import PyPDF2
-from io import BytesIO
-import mcp.types as types
 import logging
 import traceback
 from datetime import datetime
-try:
-    import docx
-except ImportError:
-    docx = None
 import tempfile
-import base64
-from pathlib import Path
-from mcp import ClientSession, StdioServerParameters
-from mcp.server.models import InitializationOptions
-import mcp.server.stdio
-from mcp.server import NotificationOptions, Server
-from mcp.server.models import InitializationOptions
-import mcp
-from pydantic import BaseModel
-from typing import Any, Sequence, List, Union
-import httpx
 from langchain_huggingface import HuggingFaceEmbeddings
 from pinecone import Pinecone
 from tavily import TavilyClient
 from dotenv import load_dotenv
-load_dotenv()
+# Load environment variables from parent directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 # File generation imports
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.lib import colors
-from fpdf import FPDF
-import markdown
-from jinja2 import Template
 import uuid
 import datetime
 from docx import Document
-from docx.shared import Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+import PyPDF2
+from io import BytesIO
 
-
-#constants
-NWS_API_BASE = "https://api.weather.gov"
-USER_AGENT = "weather-app/1.0"
-
-#Helper functions
-def make_nws_request(url: str) -> dict[str, Any] | None:
-    """Make a request to the NWS API with proper error handling."""
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept": "application/geo+json"
-    }
-    try:
-        with httpx.Client() as client:
-            response = client.get(url, headers=headers, timeout=30.0)
-            response.raise_for_status()
-            return response.json()
-    except Exception:
-        return None
-        
-def format_alert(feature: dict) -> str:
-    """Format an alert feature into a readable string."""
-    props = feature["properties"]
-    return f"""
-Event: {props.get('event', 'Unknown')}
-Area: {props.get('areaDesc', 'Unknown')}
-Severity: {props.get('severity', 'Unknown')}
-Description: {props.get('description', 'No description available')}
-Instructions: {props.get('instruction', 'No specific instructions provided')}
-"""
 
 
 # Setup logging
@@ -137,12 +82,6 @@ def sanitize_filename(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9-_]', '_', name)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PAPER_DIR = os.path.join(BASE_DIR, "papers")
-GENERATED_FILES_DIR = os.path.join(BASE_DIR, "generated_files")
-
-# Ensure directories exist
-os.makedirs(PAPER_DIR, exist_ok=True)
-os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
 
 #create an MCP server
@@ -235,7 +174,7 @@ def web_search_tool(query: str):
 @mcp.tool()
 def generate_pdf_document(title: str, content: str, filename: str = None) -> str:
     """
-    Generate a PDF document with the provided title and content.
+    Generate and create a PDF document from text content. Use this tool when the user asks to create, generate, or make a PDF file.
 
     Args:
         title: The title of the document
@@ -243,21 +182,27 @@ def generate_pdf_document(title: str, content: str, filename: str = None) -> str
         filename: Optional custom filename (without extension)
 
     Returns:
-        JSON string with file information including download path
+        JSON string with file generation status
     """
+    logger.info(f"Starting PDF generation: {title}")
+    temp_file_path = None
     try:
         # Generate unique filename if not provided
         if not filename:
             filename = f"document_{uuid.uuid4().hex[:8]}"
 
         # Ensure filename doesn't have extension
-        filename = filename.replace('.pdf', '')
+        filename = sanitize_filename(filename.replace('.pdf', ''))
 
-        # Create full file path
-        file_path = os.path.join(GENERATED_FILES_DIR, f"{filename}.pdf")
-
+        # Create output directory if it doesn't exist
+        output_dir = os.path.join(BASE_DIR, "generated_files")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Create file path
+        temp_file_path = os.path.join(output_dir, f"{filename}.pdf")
+        
         # Create PDF document
-        doc = SimpleDocTemplate(file_path, pagesize=letter)
+        doc = SimpleDocTemplate(temp_file_path, pagesize=letter)
         styles = getSampleStyleSheet()
         story = []
 
@@ -267,22 +212,23 @@ def generate_pdf_document(title: str, content: str, filename: str = None) -> str
             parent=styles['Heading1'],
             fontSize=18,
             spaceAfter=30,
-            alignment=1  # Center alignment
+            alignment=1
         )
         story.append(Paragraph(title, title_style))
         story.append(Spacer(1, 20))
 
-        # Process content (convert markdown to HTML-like formatting for reportlab)
+        # Process content - simplified
         content_lines = content.split('\n')
         for line in content_lines:
-            if line.strip():
-                # Handle basic markdown formatting
+            line = line.strip()
+            if line:
+                # Escape special characters for ReportLab
+                line = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                
                 if line.startswith('# '):
                     story.append(Paragraph(line[2:], styles['Heading1']))
                 elif line.startswith('## '):
                     story.append(Paragraph(line[3:], styles['Heading2']))
-                elif line.startswith('### '):
-                    story.append(Paragraph(line[4:], styles['Heading3']))
                 elif line.startswith('- ') or line.startswith('* '):
                     story.append(Paragraph(f"• {line[2:]}", styles['Normal']))
                 else:
@@ -291,31 +237,73 @@ def generate_pdf_document(title: str, content: str, filename: str = None) -> str
 
         # Build PDF
         doc.build(story)
-
-        # Get file info
-        file_size = os.path.getsize(file_path)
-
+        
+        # Get file size
+        file_size = os.path.getsize(temp_file_path)
+        
+        # Upload to SharePoint
+        try:
+            sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+            from api import SharePointManager  # type: ignore
+            
+            with open(temp_file_path, 'rb') as f:
+                file_content = f.read()
+            
+            sharepoint_manager = SharePointManager()
+            sharepoint_folder = f"Generated_Documents/{datetime.datetime.now().strftime('%Y-%m')}"
+            
+            logger.info(f"Attempting SharePoint upload: {filename}.pdf to {sharepoint_folder}")
+            upload_result = sharepoint_manager.upload_file_to_sharepoint(
+                file_content, f"{filename}.pdf", sharepoint_folder
+            )
+            logger.info(f"SharePoint upload result: {upload_result}")
+            
+            if upload_result['status'] == 'success':
+                os.unlink(temp_file_path)  # Only delete if SharePoint upload succeeds
+                return json.dumps({
+                    "status": "success",
+                    "filename": f"{filename}.pdf",
+                    "sharepoint_path": sharepoint_folder,
+                    "file_size": file_size,
+                    "created_at": datetime.datetime.now().isoformat(),
+                    "type": "pdf",
+                    "message": "PDF generated and saved to SharePoint"
+                })
+            else:
+                logger.warning(f"SharePoint upload failed: {upload_result.get('message', 'Unknown error')}")
+        except Exception as e:
+            logger.warning(f"SharePoint upload failed: {e}")
+        
+        # Return success with local file path (SharePoint failed)
         return json.dumps({
             "status": "success",
             "filename": f"{filename}.pdf",
-            "file_path": file_path,
+            "file_path": temp_file_path,
             "file_size": file_size,
-            "download_url": f"/download/{filename}.pdf",
             "created_at": datetime.datetime.now().isoformat(),
-            "type": "pdf"
+            "type": "pdf",
+            "message": "PDF generated locally (SharePoint unavailable)"
         })
 
     except Exception as e:
+        logger.error(f"PDF generation failed: {str(e)}")
+        # Clean up on error
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
         return json.dumps({
             "status": "error",
-            "error": str(e)
+            "error": str(e),
+            "message": "Failed to generate PDF document"
         })
 
 
 @mcp.tool()
 def generate_word_document(title: str, content: str, filename: str = None) -> str:
     """
-    Generate a Word document with the provided title and content.
+    Generate a Word document and save it to SharePoint.
 
     Args:
         title: The title of the document
@@ -323,7 +311,7 @@ def generate_word_document(title: str, content: str, filename: str = None) -> st
         filename: Optional custom filename (without extension)
 
     Returns:
-        JSON string with file information including download path
+        JSON string with SharePoint upload status and file information
     """
     try:
         # Generate unique filename if not provided
@@ -333,9 +321,9 @@ def generate_word_document(title: str, content: str, filename: str = None) -> st
         # Ensure filename doesn't have extension
         filename = filename.replace('.docx', '').replace('.doc', '')
 
-        # Create full file path
-        file_path = os.path.join(GENERATED_FILES_DIR, f"{filename}.docx")
-
+        # Create temporary file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
+        
         # Create Word document
         doc = Document()
 
@@ -346,7 +334,7 @@ def generate_word_document(title: str, content: str, filename: str = None) -> st
         # Add some space after title
         doc.add_paragraph()
 
-        # Process content (handle basic markdown formatting)
+        # Process content
         content_lines = content.split('\n')
         for line in content_lines:
             line = line.strip()
@@ -358,32 +346,55 @@ def generate_word_document(title: str, content: str, filename: str = None) -> st
                 elif line.startswith('### '):
                     doc.add_heading(line[4:], level=3)
                 elif line.startswith('- ') or line.startswith('* '):
-                    # Add bullet point
                     doc.add_paragraph(line[2:], style='List Bullet')
                 elif line.startswith('1. ') or line.startswith('2. ') or line.startswith('3. '):
-                    # Add numbered list
                     doc.add_paragraph(line[3:], style='List Number')
                 else:
-                    # Regular paragraph
                     doc.add_paragraph(line)
             else:
-                # Add empty paragraph for spacing
                 doc.add_paragraph()
 
-        # Save document
-        doc.save(file_path)
-
-        # Get file info
-        file_size = os.path.getsize(file_path)
-
+        # Save to temp file
+        doc.save(temp_file.name)
+        
+        # Read file content for SharePoint upload
+        with open(temp_file.name, 'rb') as f:
+            file_content = f.read()
+        
+        os.unlink(temp_file.name)
+        
+        # Upload to SharePoint
+        try:
+            sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+            from api import SharePointManager  # type: ignore
+            
+            sharepoint_manager = SharePointManager()
+            sharepoint_folder = f"Generated_Documents/{datetime.datetime.now().strftime('%Y-%m')}"
+            
+            upload_result = sharepoint_manager.upload_file_to_sharepoint(
+                file_content, f"{filename}.docx", sharepoint_folder
+            )
+            
+            if upload_result['status'] == 'success':
+                return json.dumps({
+                    "status": "success",
+                    "filename": f"{filename}.docx",
+                    "sharepoint_path": sharepoint_folder,
+                    "file_size": len(file_content),
+                    "created_at": datetime.datetime.now().isoformat(),
+                    "type": "docx",
+                    "message": "Word document generated and saved to SharePoint"
+                })
+        except Exception as e:
+            logger.warning(f"SharePoint upload failed: {e}")
+        
         return json.dumps({
             "status": "success",
             "filename": f"{filename}.docx",
-            "file_path": file_path,
-            "file_size": file_size,
-            "download_url": f"/download/{filename}.docx",
+            "file_size": len(file_content),
             "created_at": datetime.datetime.now().isoformat(),
-            "type": "docx"
+            "type": "docx",
+            "message": "Word document generated locally (SharePoint unavailable)"
         })
 
     except Exception as e:
@@ -394,51 +405,244 @@ def generate_word_document(title: str, content: str, filename: str = None) -> st
 
 
 @mcp.tool()
-def generate_text_file(content: str, filename: str = None, file_extension: str = "txt") -> str:
+def filesystem_read_file(path: str) -> str:
     """
-    Generate a text file with the provided content.
-
+    Read a file from SharePoint.
+    
     Args:
-        content: The content to write to the file
-        filename: Optional custom filename (without extension)
-        file_extension: File extension (txt, md, csv, json, etc.)
-
+        path: SharePoint file path (e.g., "Documents/file.txt")
+    
     Returns:
-        JSON string with file information including download path
+        JSON string with file content or error
     """
     try:
-        # Generate unique filename if not provided
-        if not filename:
-            filename = f"file_{uuid.uuid4().hex[:8]}"
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+        from api import SharePointManager  # type: ignore
+        
+        sharepoint_manager = SharePointManager()
+        result = sharepoint_manager.get_file_content(path)
+        
+        if result['status'] == 'success':
+            return json.dumps({
+                "status": "success",
+                "content": result['content'],
+                "path": path,
+                "size": len(result['content'])
+            })
+        else:
+            return json.dumps({"status": "error", "error": result['message']})
+    except Exception as e:
+        return json.dumps({"status": "error", "error": str(e)})
 
-        # Clean filename and ensure no extension
-        filename = filename.split('.')[0]
+@mcp.tool()
+def filesystem_write_file(path: str, content: str) -> str:
+    """
+    Write/create a file in SharePoint.
+    
+    Args:
+        path: SharePoint file path (e.g., "Documents/file.txt")
+        content: File content to write
+    
+    Returns:
+        JSON string with operation status
+    """
+    try:
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+        from api import SharePointManager  # type: ignore
+        
+        sharepoint_manager = SharePointManager()
+        folder_path = '/'.join(path.split('/')[:-1]) if '/' in path else ''
+        filename = path.split('/')[-1]
+        
+        result = sharepoint_manager.upload_file_to_sharepoint(
+            content.encode('utf-8'), filename, folder_path
+        )
+        
+        if result['status'] == 'success':
+            return json.dumps({
+                "status": "success",
+                "path": path,
+                "size": len(content.encode('utf-8')),
+                "message": "File written successfully"
+            })
+        else:
+            return json.dumps({"status": "error", "error": result['message']})
+    except Exception as e:
+        return json.dumps({"status": "error", "error": str(e)})
 
-        # Create full file path
-        file_path = os.path.join(GENERATED_FILES_DIR, f"{filename}.{file_extension}")
+@mcp.tool()
+def filesystem_list_directory(path: str = "") -> str:
+    """
+    List files and directories in SharePoint folder.
+    
+    Args:
+        path: SharePoint folder path (empty for root)
+    
+    Returns:
+        JSON string with directory listing
+    """
+    try:
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+        from api import SharePointManager  # type: ignore
+        
+        sharepoint_manager = SharePointManager()
+        result = sharepoint_manager.list_files(path)
+        
+        if result['status'] == 'success':
+            return json.dumps({
+                "status": "success",
+                "path": path,
+                "items": result['files']
+            })
+        else:
+            return json.dumps({"status": "error", "error": result['message']})
+    except Exception as e:
+        return json.dumps({"status": "error", "error": str(e)})
 
-        # Write content to file
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(content)
+@mcp.tool()
+def filesystem_delete_file(path: str) -> str:
+    """
+    Delete a file from SharePoint.
+    
+    Args:
+        path: SharePoint file path to delete
+    
+    Returns:
+        JSON string with operation status
+    """
+    try:
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+        from api import SharePointManager  # type: ignore
+        
+        sharepoint_manager = SharePointManager()
+        result = sharepoint_manager.delete_file(path)
+        
+        if result['status'] == 'success':
+            return json.dumps({
+                "status": "success",
+                "path": path,
+                "message": "File deleted successfully"
+            })
+        else:
+            return json.dumps({"status": "error", "error": result['message']})
+    except Exception as e:
+        return json.dumps({"status": "error", "error": str(e)})
 
-        # Get file info
-        file_size = os.path.getsize(file_path)
+@mcp.tool()
+def filesystem_search_files(query: str, path: str = "") -> str:
+    """
+    Search for files in SharePoint by name.
+    
+    Args:
+        query: Search query (filename pattern)
+        path: SharePoint folder path to search in
+    
+    Returns:
+        JSON string with search results
+    """
+    try:
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+        from api import SharePointManager  # type: ignore
+        
+        sharepoint_manager = SharePointManager()
+        result = sharepoint_manager.search_files(query, path)
+        
+        if result['status'] == 'success':
+            return json.dumps({
+                "status": "success",
+                "query": query,
+                "path": path,
+                "results": result['files']
+            })
+        else:
+            return json.dumps({"status": "error", "error": result['message']})
+    except Exception as e:
+        return json.dumps({"status": "error", "error": str(e)})
 
+@mcp.tool()
+def pdffiller_extract_text(path: str) -> str:
+    """
+    Extract text content from a PDF file in SharePoint.
+    
+    Args:
+        path: SharePoint path to PDF file
+    
+    Returns:
+        JSON string with extracted text
+    """
+    try:
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+        from api import SharePointManager  # type: ignore
+        import PyPDF2
+        from io import BytesIO
+        
+        sharepoint_manager = SharePointManager()
+        file_result = sharepoint_manager.get_file_content(path, binary=True)
+        
+        if file_result['status'] != 'success':
+            return json.dumps({"status": "error", "error": file_result['message']})
+        
+        pdf_reader = PyPDF2.PdfReader(BytesIO(file_result['content']))
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        
         return json.dumps({
             "status": "success",
-            "filename": f"{filename}.{file_extension}",
-            "file_path": file_path,
-            "file_size": file_size,
-            "download_url": f"/download/{filename}.{file_extension}",
-            "created_at": datetime.datetime.now().isoformat(),
-            "type": file_extension
+            "path": path,
+            "text": text.strip(),
+            "pages": len(pdf_reader.pages)
         })
-
     except Exception as e:
+        return json.dumps({"status": "error", "error": str(e)})
+
+@mcp.tool()
+def pdffiller_get_form_fields(path: str) -> str:
+    """
+    Get fillable form fields from a PDF file in SharePoint.
+    
+    Args:
+        path: SharePoint path to PDF file
+    
+    Returns:
+        JSON string with form fields information
+    """
+    try:
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+        from api import SharePointManager  # type: ignore
+        import PyPDF2
+        from io import BytesIO
+        
+        sharepoint_manager = SharePointManager()
+        file_result = sharepoint_manager.get_file_content(path, binary=True)
+        
+        if file_result['status'] != 'success':
+            return json.dumps({"status": "error", "error": file_result['message']})
+        
+        pdf_reader = PyPDF2.PdfReader(BytesIO(file_result['content']))
+        fields = []
+        
+        if '/AcroForm' in pdf_reader.trailer['/Root']:
+            form = pdf_reader.trailer['/Root']['/AcroForm']
+            if '/Fields' in form:
+                for field in form['/Fields']:
+                    field_obj = field.get_object()
+                    field_name = field_obj.get('/T', 'Unknown')
+                    field_type = field_obj.get('/FT', 'Unknown')
+                    fields.append({
+                        "name": str(field_name),
+                        "type": str(field_type)
+                    })
+        
         return json.dumps({
-            "status": "error",
-            "error": str(e)
+            "status": "success",
+            "path": path,
+            "has_form_fields": len(fields) > 0,
+            "fields": fields
         })
+    except Exception as e:
+        return json.dumps({"status": "error", "error": str(e)})
+
 
 
 @mcp.prompt(title="Identifying the Documents")

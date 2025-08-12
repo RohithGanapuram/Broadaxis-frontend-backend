@@ -72,3 +72,41 @@ export interface GeneratedFile {
   modified_at: string
   type: string
 }
+
+export interface EmailAttachment {
+  filename: string
+  file_path?: string
+  file_size?: number
+  download_date: string
+  type: 'file' | 'link'
+  url?: string
+  domain?: string
+  email_subject?: string
+  email_sender?: string
+  email_date?: string
+  sharepoint_path?: string
+}
+
+export interface FetchedEmail {
+  email_id: string
+  sender: string
+  subject: string
+  date: string
+  account: string
+  attachments: EmailAttachment[]
+  has_rfp_keywords: boolean
+}
+
+export interface EmailFetchRequest {
+  email_accounts?: string[]
+  use_real_email?: boolean
+  use_graph_api?: boolean
+}
+
+export interface EmailFetchResponse {
+  status: string
+  message: string
+  emails_found: number
+  attachments_downloaded: number
+  fetched_emails: FetchedEmail[]
+}

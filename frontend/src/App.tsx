@@ -35,16 +35,13 @@ const AppContent: React.FC = () => {
         setIsConnected(true)
  
         toast.loading('Loading tools and prompts...', { id: 'app-init' })
-        const [toolsResponse, promptsResponse] = await Promise.all([
-          apiClient.getAvailableTools(),
-          apiClient.getAvailablePrompts()
-        ])
+        const initResponse = await apiClient.initializeMCP()
  
-        setTools(toolsResponse.tools)
-        setPrompts(promptsResponse.prompts)
+        setTools(initResponse.tools)
+        setPrompts(initResponse.prompts)
         setConnectionStatus('connected')
         setIsInitialized(true)
-        toast.success(`Ready! ${toolsResponse.tools.length} tools, ${promptsResponse.prompts.length} prompts loaded`, { id: 'app-init' })
+        toast.success(`Ready! ${initResponse.tools.length} tools, ${initResponse.prompts.length} prompts loaded`, { id: 'app-init' })
  
       } catch (error) {
         console.error('Failed to initialize app:', error)

@@ -1,7 +1,7 @@
 import axios from 'axios'
-import { ChatRequest, ChatResponse, FileInfo, Tool, Prompt, UploadResponse, GeneratedFile } from '../types'
+import { ChatRequest, ChatResponse, FileInfo, Tool, Prompt, UploadResponse, GeneratedFile, EmailFetchRequest, EmailFetchResponse } from '../types'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'
 
 // Create axios instance with default config
 const api = axios.create({
@@ -85,14 +85,13 @@ export const apiClient = {
 
 
 
-  // Tools and prompts
-  async getAvailableTools(): Promise<{ tools: Tool[]; status: string }> {
+  // Initialize MCP server (single call for tools and prompts)
+  async initializeMCP(): Promise<{ tools: Tool[]; prompts: Prompt[]; status: string }> {
     try {
-      const response = await api.get('/api/tools', { timeout: 120000 })
+      const response = await api.post('/api/initialize', {}, { timeout: 120000 })
       return response.data
     } catch (error) {
-      console.error('Failed to get tools:', error)
-      // Return fallback tools
+      console.error('Failed to initialize MCP:', error)
       return {
         tools: [
           { name: "sum", description: "Add two numbers", input_schema: {} },
@@ -105,19 +104,6 @@ export const apiClient = {
           { name: "get_forecast", description: "Get weather forecast", input_schema: {} },
           { name: "get_alerts", description: "Get weather alerts", input_schema: {} }
         ],
-        status: "fallback"
-      }
-    }
-  },
-
-  async getAvailablePrompts(): Promise<{ prompts: Prompt[]; status: string }> {
-    try {
-      const response = await api.get('/api/prompts', { timeout: 120000 })
-      return response.data
-    } catch (error) {
-      console.error('Failed to get prompts:', error)
-      // Return fallback prompts
-      return {
         prompts: [
           { name: "Step-2: Executive Summary", description: "Generate executive summary of RFP documents", arguments: [] },
           { name: "Step-3: Go/No-Go Recommendation", description: "Provide Go/No-Go analysis", arguments: [] },
@@ -125,6 +111,27 @@ export const apiClient = {
         ],
         status: "fallback"
       }
+    }
+  },
+
+  // Tools and prompts (legacy endpoints - now use cached data)
+  async getAvailableTools(): Promise<{ tools: Tool[]; status: string }> {
+    try {
+      const response = await api.get('/api/tools')
+      return response.data
+    } catch (error) {
+      console.error('Failed to get tools:', error)
+      return { tools: [], status: "error" }
+    }
+  },
+
+  async getAvailablePrompts(): Promise<{ prompts: Prompt[]; status: string }> {
+    try {
+      const response = await api.get('/api/prompts')
+      return response.data
+    } catch (error) {
+      console.error('Failed to get prompts:', error)
+      return { prompts: [], status: "error" }
     }
   },
 
@@ -145,7 +152,65 @@ export const apiClient = {
     }
   },
 
+// Email fetching endpoints
+  async fetchEmails(emailAccounts: string[] = [], useRealEmail: boolean = true, useGraphApi: boolean = true): Promise<EmailFetchResponse> {
+    try {
+      const response = await api.post('/api/fetch-emails', {
+        email_accounts: emailAccounts,
+        use_real_email: useRealEmail,
+        use_graph_api: useGraphApi
+      }, { timeout: 30000 }) // Reduced to 30 seconds
+      return response.data
+    } catch (error) {
+      console.error('Failed to fetch emails:', error)
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Email fetch timeout - please check your Microsoft Graph API configuration')
+      }
+      throw error
+    }
+  },
 
+  async getFetchedEmails(): Promise<{ emails: any[]; total_count: number; total_files: number }> {
+    try {
+      const response = await api.get('/api/fetched-emails', { timeout: 15000 })
+      return response.data
+    } catch (error) {
+      console.error('Failed to get fetched emails:', error)
+      return {
+        emails: [],
+        total_count: 0,
+        total_files: 0
+      }
+    }
+  },
+
+  async getEmailAttachments(emailId: number): Promise<{ email_id: number; attachments: any[] }> {
+    try {
+      const response = await api.get(`/api/email-attachments/${emailId}`, { timeout: 15000 })
+      return response.data
+    } catch (error) {
+      console.error('Failed to get email attachments:', error)
+      return {
+        email_id: emailId,
+        attachments: []
+      }
+    }
+  },
+
+  // Test Microsoft Graph API authentication
+  async testGraphAuth(): Promise<{ status: string; message: string; step?: string }> {
+    try {
+      const response = await api.get('/api/test-graph-auth', { timeout: 15000 })
+      return response.data
+    } catch (error) {
+      console.error('Failed to test Graph API auth:', error)
+      return {
+        status: 'error',
+        message: 'Failed to test Microsoft Graph API authentication',
+        step: 'network_error'
+      }
+    }
+  },
 
 
 }

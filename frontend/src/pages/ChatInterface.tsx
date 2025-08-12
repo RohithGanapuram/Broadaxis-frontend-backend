@@ -37,12 +37,21 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     // Set connection status and tools from global state
     setWsConnected(isConnected)
-    setSettings(prev => ({
-      ...prev,
-      enabledTools: availableTools
-        .filter(tool => !tool.name.includes('generate_'))
-        .map(tool => tool.name)
-    }))
+    
+    // Load saved tool preferences or enable all tools by default
+    const savedTools = localStorage.getItem('broadaxis-enabled-tools')
+    if (savedTools && availableTools.length > 0) {
+      const parsedTools = JSON.parse(savedTools)
+      // Only use saved tools if they exist in current available tools
+      const validTools = parsedTools.filter((toolName: string) => 
+        availableTools.some(tool => tool.name === toolName)
+      )
+      setSettings(prev => ({ ...prev, enabledTools: validTools }))
+    } else if (availableTools.length > 0) {
+      // Enable all tools by default
+      const allToolNames = availableTools.map(tool => tool.name)
+      setSettings(prev => ({ ...prev, enabledTools: allToolNames }))
+    }
 
     // Add event handlers to global WebSocket
     globalWebSocket.addMessageHandler(handleWebSocketMessage)
@@ -178,12 +187,19 @@ const ChatInterface: React.FC = () => {
   }
 
   const toggleTool = (toolName: string) => {
-    setSettings(prev => ({
-      ...prev,
-      enabledTools: prev.enabledTools.includes(toolName)
+    setSettings(prev => {
+      const newEnabledTools = prev.enabledTools.includes(toolName)
         ? prev.enabledTools.filter(t => t !== toolName)
         : [...prev.enabledTools, toolName]
-    }))
+      
+      // Save to localStorage
+      localStorage.setItem('broadaxis-enabled-tools', JSON.stringify(newEnabledTools))
+      
+      return {
+        ...prev,
+        enabledTools: newEnabledTools
+      }
+    })
   }
 
 
@@ -492,13 +508,20 @@ const ChatInterface: React.FC = () => {
                     </div>
                     <div className="flex space-x-2 mb-3">
                       <button
-                        onClick={() => setSettings(prev => ({ ...prev, enabledTools: availableTools.map(tool => tool.name) }))}
+                        onClick={() => {
+                          const allToolNames = availableTools.map(tool => tool.name)
+                          setSettings(prev => ({ ...prev, enabledTools: allToolNames }))
+                          localStorage.setItem('broadaxis-enabled-tools', JSON.stringify(allToolNames))
+                        }}
                         className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                       >
                         Enable All
                       </button>
                       <button
-                        onClick={() => setSettings(prev => ({ ...prev, enabledTools: [] }))}
+                        onClick={() => {
+                          setSettings(prev => ({ ...prev, enabledTools: [] }))
+                          localStorage.setItem('broadaxis-enabled-tools', JSON.stringify([]))
+                        }}
                         className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
                       >
                         Disable All

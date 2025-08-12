@@ -54,3 +54,302 @@
 2025-08-06 15:38:32,143 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
 2025-08-06 15:38:35,693 - MCPServer - INFO - HuggingFace embedder initialized
 2025-08-06 15:38:35,763 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-06 16:02:12,128 - MCPServer - INFO - Pinecone connection established
+2025-08-06 16:02:23,932 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-06 16:02:23,932 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-06 16:02:26,652 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-06 16:02:26,700 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-06 16:02:26,700 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-07 09:01:16,926 - MCPServer - INFO - Pinecone connection established
+2025-08-07 09:02:16,623 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 09:02:16,624 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-07 09:02:22,009 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-07 09:02:22,076 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-07 09:02:22,080 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-07 09:03:25,773 - MCPServer - INFO - Pinecone connection established
+2025-08-07 09:03:36,371 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 09:03:36,372 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-07 09:03:40,992 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-07 09:03:44,103 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-07 09:03:44,115 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-07 09:06:01,693 - MCPServer - INFO - Pinecone connection established
+2025-08-07 09:06:14,499 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 09:06:14,500 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-07 09:06:18,619 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-07 09:06:21,364 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-07 09:06:23,055 - mcp.server.lowlevel.server - INFO - Warning: FutureWarning: `encoder_attention_mask` is deprecated and will be removed in version 4.55.0 for `BertSdpaSelfAttention.forward`.
+2025-08-07 09:06:23,057 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-07 09:13:45,824 - MCPServer - INFO - Pinecone connection established
+2025-08-07 09:14:01,356 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 09:14:01,357 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-07 09:14:04,831 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-07 09:14:09,056 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-07 09:14:13,655 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-07 09:14:44,056 - MCPServer - INFO - Pinecone connection established
+2025-08-07 09:14:56,193 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 09:14:56,194 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-07 09:14:59,870 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-07 09:15:02,416 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-07 09:15:06,314 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-07 09:28:55,501 - MCPServer - INFO - Pinecone connection established
+2025-08-07 09:29:16,536 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 09:29:16,536 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-07 09:29:20,851 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-07 09:29:23,271 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-07 09:29:24,862 - mcp.server.lowlevel.server - INFO - Warning: FutureWarning: `encoder_attention_mask` is deprecated and will be removed in version 4.55.0 for `BertSdpaSelfAttention.forward`.
+2025-08-07 09:29:24,913 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-07 09:30:16,221 - MCPServer - INFO - Pinecone connection established
+2025-08-07 09:30:28,786 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 09:30:28,786 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-07 09:30:31,816 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-07 09:30:33,837 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-07 09:30:34,785 - mcp.server.lowlevel.server - INFO - Warning: FutureWarning: `encoder_attention_mask` is deprecated and will be removed in version 4.55.0 for `BertSdpaSelfAttention.forward`.
+2025-08-07 09:30:34,791 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-07 09:30:37,040 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-07 09:30:37,139 - mcp.server.lowlevel.server - INFO - Warning: FutureWarning: `encoder_attention_mask` is deprecated and will be removed in version 4.55.0 for `BertSdpaSelfAttention.forward`.
+2025-08-07 09:30:38,943 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-07 09:30:39,014 - mcp.server.lowlevel.server - INFO - Warning: FutureWarning: `encoder_attention_mask` is deprecated and will be removed in version 4.55.0 for `BertSdpaSelfAttention.forward`.
+2025-08-07 09:30:42,329 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 10:39:25,263 - MCPServer - INFO - Pinecone connection established
+2025-08-12 10:40:08,237 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 10:40:08,237 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 10:40:11,376 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 10:40:11,420 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 10:40:11,420 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 10:40:44,396 - MCPServer - INFO - Pinecone connection established
+2025-08-12 10:40:56,270 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 10:40:56,271 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 10:40:59,007 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 10:41:01,615 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 10:41:01,626 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 10:51:42,874 - MCPServer - INFO - Pinecone connection established
+2025-08-12 10:52:20,480 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 10:52:20,481 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 10:52:25,055 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 10:52:25,141 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 10:52:25,148 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 10:52:57,121 - MCPServer - INFO - Pinecone connection established
+2025-08-12 10:53:06,191 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 10:53:06,191 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 10:53:09,900 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 10:53:20,764 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 10:53:20,764 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 10:53:36,685 - MCPServer - INFO - Pinecone connection established
+2025-08-12 10:53:46,072 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 10:53:46,072 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 10:53:49,051 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 10:53:51,452 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 10:53:53,119 - mcp.server.lowlevel.server - INFO - Warning: FutureWarning: `encoder_attention_mask` is deprecated and will be removed in version 4.55.0 for `BertSdpaSelfAttention.forward`.
+2025-08-12 10:53:53,119 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 10:54:28,861 - MCPServer - INFO - Pinecone connection established
+2025-08-12 10:54:42,118 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 10:54:42,119 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 10:54:45,891 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 10:54:48,188 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 10:54:50,478 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:03:55,034 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:04:07,209 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:04:07,209 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:04:09,647 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:04:11,929 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:04:13,800 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:04:24,616 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:04:32,217 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:08:10,700 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:08:23,467 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:08:23,467 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:08:27,195 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:08:32,625 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:08:34,972 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:08:46,404 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:08:53,757 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:09:02,308 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:09:14,361 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:17:10,838 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:17:21,925 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:17:21,925 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:17:24,765 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:17:24,834 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:17:24,834 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 11:18:59,185 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:19:10,794 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:19:10,796 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:19:13,292 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:19:13,654 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:19:13,654 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 11:21:56,989 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:22:05,616 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:22:05,617 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:22:09,050 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:22:09,104 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:22:09,106 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 11:27:02,970 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:27:13,327 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:27:13,327 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:27:15,805 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:27:19,414 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:27:22,173 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:27:32,399 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:27:39,312 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:31:20,515 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:31:32,255 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:31:32,255 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:31:35,525 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:31:38,403 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:31:45,457 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:31:56,819 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:32:06,993 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:32:15,657 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:34:10,206 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:34:18,975 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:34:18,975 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:34:21,543 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:34:24,344 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:34:27,697 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:34:38,981 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:34:48,134 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:34:55,635 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:36:46,871 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:36:56,410 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:36:56,410 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:36:58,950 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:36:59,006 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:36:59,006 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 11:38:15,786 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:38:23,609 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:38:23,609 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:38:25,722 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:38:28,318 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:38:30,556 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:38:40,926 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:38:53,889 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:39:05,163 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 11:56:11,764 - MCPServer - INFO - Pinecone connection established
+2025-08-12 11:56:25,029 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 11:56:25,029 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 11:56:27,935 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 11:56:28,002 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 11:56:28,005 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 12:01:28,227 - MCPServer - INFO - Pinecone connection established
+2025-08-12 12:01:42,828 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 12:01:42,828 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 12:01:45,758 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 12:01:45,805 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 12:01:45,805 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 12:02:23,383 - MCPServer - INFO - Pinecone connection established
+2025-08-12 12:02:31,468 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 12:02:31,468 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 12:02:33,713 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 12:02:36,486 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 12:02:38,687 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 12:08:04,639 - MCPServer - INFO - Pinecone connection established
+2025-08-12 12:08:16,410 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 12:08:16,410 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 12:08:19,680 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 12:08:19,727 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 12:08:19,727 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 12:09:00,836 - MCPServer - INFO - Pinecone connection established
+2025-08-12 12:09:09,173 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 12:09:09,173 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 12:09:11,696 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 12:09:14,707 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 12:09:16,609 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 12:09:28,379 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 12:09:28,379 - MCPServer - INFO - Starting PDF generation: Iron Man: The Armored Avenger
+2025-08-12 12:09:28,431 - MCPServer - INFO - PDF created successfully, size: 3892 bytes
+2025-08-12 12:09:28,431 - MCPServer - ERROR - PDF generation failed: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\rohka\\AppData\\Local\\Temp\\tmpwm53jlxz.pdf'
+2025-08-12 12:09:35,631 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 12:09:35,631 - MCPServer - INFO - Starting PDF generation: Iron Man: The Armored Avenger
+2025-08-12 12:09:35,669 - MCPServer - INFO - PDF created successfully, size: 3892 bytes
+2025-08-12 12:09:35,669 - MCPServer - ERROR - PDF generation failed: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\rohka\\AppData\\Local\\Temp\\tmpo2mv6wd8.pdf'
+2025-08-12 12:09:45,766 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 12:09:45,766 - MCPServer - INFO - Starting PDF generation: Iron Man
+2025-08-12 12:09:45,794 - MCPServer - INFO - PDF created successfully, size: 2944 bytes
+2025-08-12 12:09:45,794 - MCPServer - ERROR - PDF generation failed: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\rohka\\AppData\\Local\\Temp\\tmp_764o7i2.pdf'
+2025-08-12 12:09:53,361 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 12:09:53,409 - MCPServer - INFO - Starting PDF generation: Iron Man Overview
+2025-08-12 12:09:53,569 - MCPServer - INFO - PDF created successfully, size: 2582 bytes
+2025-08-12 12:09:53,603 - MCPServer - ERROR - PDF generation failed: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\rohka\\AppData\\Local\\Temp\\tmpcm0qf5gf.pdf'
+2025-08-12 13:07:08,539 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:07:46,544 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:07:46,544 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:07:50,161 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:07:50,209 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 13:07:50,222 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 13:08:51,701 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:09:03,407 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:09:03,407 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:09:06,936 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:09:09,914 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:09:12,538 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 13:09:59,655 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:10:07,389 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:10:07,389 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:10:09,954 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:10:12,564 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:10:16,362 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 13:10:30,321 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:10:30,322 - MCPServer - INFO - Starting PDF generation: Wonder Woman: The Iconic DC Superhero
+2025-08-12 13:11:04,470 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:11:13,890 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:11:13,890 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:11:17,574 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:11:19,806 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:11:22,403 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 13:11:24,252 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:11:32,424 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:11:35,642 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:14:47,876 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:14:56,470 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:14:56,470 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:14:59,331 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:15:17,284 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:15:24,822 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:15:24,822 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:15:27,736 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:15:47,208 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:15:53,926 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:15:53,926 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:15:57,581 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:17:11,801 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:17:21,527 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:17:21,527 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:17:24,399 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:18:45,840 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:18:52,844 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:18:52,844 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:18:55,825 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:18:58,116 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:18:58,124 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 13:19:27,779 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:19:34,547 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:19:34,547 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:19:37,721 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:43:19,527 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:43:32,483 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:43:32,483 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:43:35,462 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:43:37,759 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:43:40,741 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 13:43:52,383 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:43:52,383 - MCPServer - INFO - Starting PDF generation: Spider-Man: The Amazing Web-Slinger
+2025-08-12 13:43:53,614 - MCPServer - INFO - Attempting SharePoint upload: document_9ac2a14d.pdf to Generated_Documents/2025-08
+2025-08-12 13:43:55,364 - MCPServer - INFO - SharePoint upload result: {'status': 'error', 'message': "'charmap' codec can't encode character '\\U0001f4e4' in position 0: character maps to <undefined>"}
+2025-08-12 13:43:55,364 - MCPServer - WARNING - SharePoint upload failed: 'charmap' codec can't encode character '\U0001f4e4' in position 0: character maps to <undefined>
+2025-08-12 13:45:26,610 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:45:36,087 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:45:36,087 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:45:39,433 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:45:39,488 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 13:45:39,490 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-12 13:46:02,663 - MCPServer - INFO - Pinecone connection established
+2025-08-12 13:46:13,024 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-12 13:46:13,024 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-08-12 13:46:15,773 - MCPServer - INFO - HuggingFace embedder initialized
+2025-08-12 13:46:18,397 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:46:21,298 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-12 13:46:31,873 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-12 13:46:31,874 - MCPServer - INFO - Starting PDF generation: Superman: The Man of Steel
+2025-08-12 13:46:33,251 - MCPServer - INFO - Attempting SharePoint upload: Superman_Profile.pdf to Generated_Documents/2025-08
+2025-08-12 13:46:36,042 - MCPServer - INFO - SharePoint upload result: {'status': 'error', 'message': "'charmap' codec can't encode character '\\u2705' in position 0: character maps to <undefined>"}
+2025-08-12 13:46:36,042 - MCPServer - WARNING - SharePoint upload failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
