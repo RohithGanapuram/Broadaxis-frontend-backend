@@ -130,9 +130,9 @@ class EmailFetchResponse(BaseModel):
 
 class TokenManager:
     def __init__(self):
-        self.MAX_TOKENS_PER_REQUEST = 8000
-        self.MAX_TOKENS_PER_SESSION = 50000
-        self.MAX_TOKENS_PER_DAY = 200000
+        self.MAX_TOKENS_PER_REQUEST = 50000
+        self.MAX_TOKENS_PER_SESSION = 200000
+        self.MAX_TOKENS_PER_DAY = 300000
         self.session_usage = defaultdict(int)
         self.daily_usage = defaultdict(int)
         self.daily_reset = defaultdict(lambda: datetime.now().date())
@@ -326,14 +326,7 @@ class MCPInterface:
             return {"response": "Anthropic API not available", "tokens_used": 0}
             
         try:
-            # Check for uploaded documents and include in context
-            document_context = ""
-            if session_files:
-                document_context = "\n\n=== UPLOADED DOCUMENTS ===\n"
-                for file_id, file_data in session_files.items():
-                    document_context += f"\n--- {file_data['filename']} ---\n{file_data['content'][:10000]}\n"  # Limit to 10k chars per doc
-                document_context += "\n=== END DOCUMENTS ===\n\n"
-                query = document_context + query
+
             # Handle MCP prompt invocations
             if query.startswith('PROMPT:'):
                 prompt_name = query[7:]
@@ -386,12 +379,29 @@ class MCPInterface:
                     
                     available_tools = await self.get_tools()
                     
+                    # Smart tool selection based on query type
+                    needs_broadaxis_search = any(keyword in query.lower() for keyword in [
+                        'broadaxis', 'company', 'our', 'we', 'us', 'experience', 'capability', 'past project', 
+                        'rfp', 'rfi', 'rfq', 'proposal', 'bid', 'contract', 'client', 'portfolio'
+                    ])
+                    
+                    needs_web_search = any(keyword in query.lower() for keyword in [
+                        'market', 'industry', 'competitor', 'trend', 'research', 'latest', 'current', 
+                        'news', 'technology', 'standard', 'regulation', 'compliance'
+                    ])
+                    
+                    # Filter tools based on query context
                     if enabled_tools:
                         available_tools = [tool for tool in available_tools if tool["name"] in enabled_tools]
+                    elif needs_broadaxis_search and not needs_web_search:
+                        available_tools = [tool for tool in available_tools if tool["name"] == "Broadaxis_knowledge_search"]
+                    elif needs_web_search and not needs_broadaxis_search:
+                        available_tools = [tool for tool in available_tools if tool["name"] == "web_search_tool"]
+                    elif not needs_broadaxis_search and not needs_web_search:
+                        # Basic conversation - no tools needed
+                        available_tools = []
                     
-                    system_prompt = """You are BroadAxis-AI, an intelligent RFP/RFQ management assistant. 
-Use Broadaxis_knowledge_search for company information first, then web_search_tool for external data if needed.
-For uploaded RFP documents, provide analysis and offer Go/No-Go recommendations."""
+                    system_prompt = "I'm BroadAxis AI. For company questions, I search our knowledge base first. For market research, I use web search. I provide direct answers for general conversation."
                     
                     selected_model = model or "claude-3-7-sonnet-20250219"
                     messages = [{'role': 'user', 'content': query}]
@@ -1602,6 +1612,9 @@ def load_real_emails_from_file():
 # Load real emails on startup
 real_fetched_emails = load_real_emails_from_file()
 
+# Session file storage
+session_files = {}
+
 async def run_mcp_query(query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default") -> Dict:
     return await mcp_interface.process_query_with_anthropic(query, enabled_tools, model, session_id)
 
@@ -1701,19 +1714,26 @@ async def chat_endpoint(request: ChatRequest):
         error_handler.log_error(e, {'query_length': len(request.query), 'enabled_tools': request.enabled_tools})
         raise ExternalAPIError("Failed to process chat request", {'original_error': str(e)})
 
-# Store uploaded files per session
-session_files = {}
-
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), session_id: str = "default"):
+    """Upload and process PDF files using MCP tool"""
     if not file.filename:
         raise ValidationError("No file provided")
+    
+    # Handle null session_id from frontend
+    if session_id == "null" or not session_id:
+        session_id = "default"
     
     # Validate file type
     allowed_extensions = {'.pdf', '.txt', '.md', '.docx', '.doc'}
     file_ext = os.path.splitext(file.filename.lower())[1]
     if file_ext not in allowed_extensions:
         raise ValidationError(f"File type {file_ext} not supported. Allowed: {', '.join(allowed_extensions)}")
+    
+    # Check session file limit
+    session_key = f"session_{session_id}"
+    if session_key in session_files and len(session_files[session_key]) >= 3:
+        raise ValidationError("Maximum 3 files per session")
     
     try:
         file_content = await file.read()
@@ -1724,45 +1744,38 @@ async def upload_file(file: UploadFile = File(...)):
         if len(file_content) > 50 * 1024 * 1024:  # 50MB limit
             raise ValidationError("File size exceeds 50MB limit")
         
-        # Store file content for chat analysis
-        text_content = ""
-        if file.filename.lower().endswith('.pdf'):
-            try:
-                import PyPDF2
-                from io import BytesIO
-                pdf_reader = PyPDF2.PdfReader(BytesIO(file_content))
-                text_content = "\n".join([page.extract_text() for page in pdf_reader.pages])
+        # Use MCP tool to process the document
+        async with stdio_client(mcp_interface.server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
                 
-                if not text_content.strip():
-                    raise FileOperationError("PDF appears to be empty or contains no extractable text")
-                    
-            except Exception as e:
-                error_handler.log_error(e, {'filename': file.filename, 'operation': 'pdf_extraction'})
-                raise FileOperationError("Failed to extract text from PDF", {'filename': file.filename})
-        else:
-            try:
-                text_content = file_content.decode('utf-8', errors='ignore')
-            except Exception as e:
-                error_handler.log_error(e, {'filename': file.filename, 'operation': 'text_decode'})
-                raise FileOperationError("Failed to decode text file", {'filename': file.filename})
-        
-        # Store document content globally for chat access
-        file_id = f"{file.filename}_{int(time.time())}"
-        session_files[file_id] = {
-            "filename": file.filename,
-            "content": text_content,
-            "size": len(file_content),
-            "upload_time": time.time()
-        }
-        
-        return {
-            "status": "success",
-            "filename": file.filename,
-            "size": len(file_content),
-            "file_id": file_id,
-            "message": f"File '{file.filename}' uploaded and analyzed. You can now ask questions about it.",
-            "analysis": f"Document '{file.filename}' uploaded successfully. You can now ask questions about it."
-        }
+                # Call document processing tool
+                result = await session.call_tool(
+                    "process_uploaded_document",
+                    arguments={
+                        "file_content": base64.b64encode(file_content).decode('utf-8'),
+                        "filename": file.filename,
+                        "session_id": session_id
+                    }
+                )
+                
+                # Store file info in session
+                if session_key not in session_files:
+                    session_files[session_key] = []
+                
+                session_files[session_key].append({
+                    "filename": file.filename,
+                    "size": len(file_content),
+                    "upload_time": datetime.now().isoformat()
+                })
+                
+                return {
+                    "status": "success",
+                    "filename": file.filename,
+                    "size": len(file_content),
+                    "files_in_session": len(session_files[session_key]),
+                    "message": result.content[0].text if result.content else "Document processed successfully"
+                }
         
     except BroadAxisError:
         raise
@@ -1770,7 +1783,91 @@ async def upload_file(file: UploadFile = File(...)):
         error_handler.log_error(e, {'filename': file.filename, 'operation': 'file_upload'})
         raise FileOperationError("Failed to process uploaded file", {'filename': file.filename})
 
+@app.get("/api/files/{session_id}")
+async def get_session_files(session_id: str):
+    """Get all files for a session"""
+    # Handle null session_id from frontend
+    if session_id == "null" or not session_id:
+        session_id = "default"
+    
+    session_key = f"session_{session_id}"
+    files = session_files.get(session_key, [])
+    
+    return {
+        "files": files,
+        "total_files": len(files),
+        "status": "success"
+    }
 
+@app.delete("/api/files/{session_id}")
+async def clear_session_files(session_id: str):
+    """Clear all files for a session and cleanup vectors"""
+    # Handle null session_id from frontend
+    if session_id == "null" or not session_id:
+        session_id = "default"
+    
+    session_key = f"session_{session_id}"
+    
+    if session_key in session_files:
+        # Use MCP tool to cleanup vectors
+        try:
+            async with stdio_client(mcp_interface.server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    
+                    await session.call_tool(
+                        "cleanup_session_vectors",
+                        arguments={"session_id": session_id}
+                    )
+        except Exception as e:
+            print(f"Error cleaning up vectors: {e}")
+        
+        # Clear from memory
+        del session_files[session_key]
+    
+    return {"status": "success", "message": "Session files cleared"}
+
+@app.post("/api/chat/document")
+async def chat_with_document(request: ChatRequest, session_id: str = "default"):
+    """Chat with uploaded documents using MCP tool"""
+    if not request.query or not request.query.strip():
+        raise ValidationError("Query cannot be empty")
+    
+    # Handle null session_id from frontend
+    if session_id == "null" or not session_id:
+        session_id = "default"
+    
+    session_key = f"session_{session_id}"
+    if session_key not in session_files or not session_files[session_key]:
+        raise ValidationError("No documents uploaded for this session")
+    
+    try:
+        # Use MCP tool to query documents
+        async with stdio_client(mcp_interface.server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                
+                result = await session.call_tool(
+                    "query_uploaded_documents",
+                    arguments={
+                        "query": request.query,
+                        "session_id": session_id
+                    }
+                )
+                
+                usage = token_manager.get_usage(session_id)
+                return ChatResponse(
+                    response=result.content[0].text if result.content else "No response generated",
+                    status="success",
+                    tokens_used=0,
+                    tokens_remaining=usage["session_limit"] - usage["session_used"]
+                )
+        
+    except BroadAxisError:
+        raise
+    except Exception as e:
+        error_handler.log_error(e, {'query_length': len(request.query), 'session_id': session_id})
+        raise ExternalAPIError("Failed to process document chat request", {'original_error': str(e)})
 
 @app.post("/api/initialize")
 async def initialize_mcp():
@@ -2273,8 +2370,10 @@ async def websocket_chat(websocket: WebSocket):
 
     except WebSocketDisconnect:
         error_handler.logger.info(f"WebSocket disconnected: {session_id}")
+
     except Exception as e:
         error_handler.log_error(e, {'session_id': session_id, 'operation': 'websocket_connection'})
+
     finally:
         manager.disconnect(websocket)
 

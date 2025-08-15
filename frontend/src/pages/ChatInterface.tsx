@@ -114,8 +114,15 @@ const ChatInterface: React.FC = () => {
     setIsLoading(true)
 
     try {
-      if (globalWebSocket.getConnectionStatus()) {
-        // Use WebSocket for real-time communication
+      // Use hybrid document chat if files are uploaded
+      if (uploadedFiles.length > 0) {
+        const response = await apiClient.chatWithDocument(inputMessage, currentSessionId)
+        setMessages(prev => prev.map(msg => 
+          msg.isLoading ? { ...msg, content: response.response, isLoading: false } : msg
+        ))
+        setIsLoading(false)
+      } else if (globalWebSocket.getConnectionStatus()) {
+        // Use WebSocket for regular chat
         globalWebSocket.sendMessage({
           query: inputMessage,
           enabled_tools: settings.enabledTools,
@@ -147,24 +154,24 @@ const ChatInterface: React.FC = () => {
     
     for (const file of files) {
       try {
-        toast.loading(`Uploading ${file.name}...`, { id: file.name })
+        toast.loading(`Processing ${file.name}...`, { id: file.name })
         
-        const fileInfo = await apiClient.uploadFile(file)
+        const fileInfo = await apiClient.uploadFile(file, currentSessionId)
         setUploadedFiles(prev => [...prev, fileInfo])
         
         // Add upload confirmation to chat
         const uploadMessage: ChatMessage = {
           id: Date.now().toString(),
           type: 'assistant',
-          content: fileInfo.message || `Document '${file.name}' uploaded successfully. You can now ask questions about it!`,
+          content: fileInfo.message || `Document '${file.name}' processed and ready for intelligent Q&A! 🧠`,
           timestamp: new Date()
         }
         addMessage(uploadMessage)
         
-        toast.success(`${file.name} uploaded`, { id: file.name })
+        toast.success(`${file.name} ready for Q&A`, { id: file.name })
       } catch (error) {
         console.error('Upload error:', error)
-        toast.error(`Failed to upload ${file.name}`, { id: file.name })
+        toast.error(`Failed to process ${file.name}`, { id: file.name })
       }
     }
   }
@@ -210,7 +217,15 @@ const ChatInterface: React.FC = () => {
       <div className="w-64 bg-white/70 backdrop-blur-md border-r border-blue-200/50 flex flex-col shadow-xl">
         <div className="p-3 border-b border-blue-200/50">
           <button 
-            onClick={() => {
+            onClick={async () => {
+              // Clear current session files if any
+              if (uploadedFiles.length > 0) {
+                try {
+                  await apiClient.clearSession(currentSessionId)
+                } catch (error) {
+                  console.error('Failed to clear session:', error)
+                }
+              }
               createNewSession()
               setUploadedFiles([])
               setInputMessage('')

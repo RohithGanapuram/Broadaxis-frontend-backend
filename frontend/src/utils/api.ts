@@ -70,16 +70,45 @@ export const apiClient = {
   },
 
   // File upload endpoints
-  async uploadFile(file: File): Promise<FileInfo> {
+  async uploadFile(file: File, sessionId: string = 'default'): Promise<FileInfo> {
     const formData = new FormData()
     formData.append('file', file)
     
-    const response = await api.post('/api/upload', formData, {
+    const response = await api.post(`/api/upload?session_id=${sessionId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
       timeout: 60000 // 60 seconds for file upload
     })
+    return response.data
+  },
+
+  // Document chat with hybrid retrieval
+  async chatWithDocument(query: string, sessionId: string = 'default', filename?: string): Promise<ChatResponse> {
+    const response = await api.post('/api/chat/document', {
+      query,
+      enabled_tools: [],
+      model: 'claude-3-haiku-20240307'
+    }, {
+      params: { session_id: sessionId, filename },
+      timeout: 60000
+    })
+    return response.data
+  },
+
+  // Session file management
+  async getSessionFiles(sessionId: string): Promise<{ files: FileInfo[]; total_chunks?: number }> {
+    try {
+      const response = await api.get(`/api/files/${sessionId}`)
+      return response.data
+    } catch (error) {
+      console.error('Failed to get session files:', error)
+      return { files: [] }
+    }
+  },
+
+  async clearSession(sessionId: string): Promise<{ message: string }> {
+    const response = await api.delete(`/api/files/${sessionId}`)
     return response.data
   },
 
@@ -161,7 +190,7 @@ export const apiClient = {
         use_graph_api: useGraphApi
       }, { timeout: 30000 }) // Reduced to 30 seconds
       return response.data
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch emails:', error)
       if (error.code === 'ECONNABORTED') {
         throw new Error('Email fetch timeout - please check your Microsoft Graph API configuration')

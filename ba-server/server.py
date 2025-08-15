@@ -9,7 +9,7 @@ import logging
 import traceback
 from datetime import datetime
 import tempfile
-from langchain_huggingface import HuggingFaceEmbeddings
+
 from pinecone import Pinecone
 from tavily import TavilyClient
 from dotenv import load_dotenv
@@ -25,6 +25,7 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import PyPDF2
 from io import BytesIO
+from openai import OpenAI
 
 
 
@@ -54,6 +55,9 @@ def handle_tool_errors(func):
             })
     return wrapper
 
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+EMBED_MODEL = "text-embedding-3-small"  # 1536-dim
 #Connection to Pinecone
 try:
     pinecone_api_key = os.environ.get('PINECONE_API_KEY')
@@ -63,19 +67,60 @@ try:
         index = None
     else:
         pc = Pinecone(api_key=pinecone_api_key)
-        index = pc.Index("sample3")
-        logger.info("Pinecone connection established")
+        index = pc.Index("final-index")
+        
+        # Test the connection and check index stats
+        try:
+            stats = index.describe_index_stats()
+            logger.info(f"Pinecone connection established. Index stats: {stats}")
+            
+            # Check if broadaxis-index namespace exists
+            namespaces = stats.get('namespaces', {})
+            if 'broadaxis-index' in namespaces:
+                vector_count = namespaces['broadaxis-index'].get('vector_count', 0)
+                logger.info(f"Found {vector_count} vectors in 'broadaxis-index' namespace")
+            else:
+                logger.warning("'broadaxis-index' namespace not found. Available namespaces: " + str(list(namespaces.keys())))
+                
+        except Exception as stats_error:
+            logger.warning(f"Could not get index stats: {stats_error}")
+            
 except Exception as e:
     logger.error(f"Failed to initialize Pinecone: {e}")
     pc = None
     index = None
 
-try:
-    embedder = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    logger.info("HuggingFace embedder initialized")
-except Exception as e:
-    logger.error(f"Failed to initialize embedder: {e}")
-    embedder = None
+def _embed_text(text: str):
+    """Return a single OpenAI embedding vector for the given text."""
+    try:
+        # Ensure text is not empty and clean it
+        if not text or not text.strip():
+            raise ValueError("Text cannot be empty")
+        
+        clean_text = text.strip()
+        logger.info(f"Embedding text of length: {len(clean_text)}")
+        
+        # Enhance query for better semantic matching
+        enhanced_query = clean_text
+        if any(word in clean_text.lower() for word in ["job", "duties", "responsibilities", "role"]):
+            enhanced_query = f"Job responsibilities and duties: {clean_text}"
+        elif any(word in clean_text.lower() for word in ["service", "capability", "expertise", "what does"]):
+            enhanced_query = f"Company services and capabilities: {clean_text}"
+        
+        # Create high-quality embedding
+        resp = client.embeddings.create(
+            model=EMBED_MODEL, 
+            input=[enhanced_query]
+            # dimensions parameter not needed - uses model default (3072)
+        )
+        embedding = resp.data[0].embedding
+        
+        logger.info(f"Generated embedding with dimension: {len(embedding)}")
+        return embedding  # list[float], length 1536
+        
+    except Exception as e:
+        logger.error(f"Embedding error: {e}")
+        raise
 
 def sanitize_filename(name: str) -> str:
     # Remove all non-alphanumeric, dash, underscore characters
@@ -96,45 +141,88 @@ def sum(a: int, b: int) -> int:
 
 @mcp.tool()
 def Broadaxis_knowledge_search(query: str):
-
     """
-    Retrieves the most relevant company's(Broadaxus) information from the internal knowledge base in response to an company related query.
+    Retrieves the most relevant company's (Broadaxis) information from the internal knowledge base.
 
-    This tool performs semantic search over a RAG-powered database containing details about the Broadaxis's background, team, projects, responsibilities, and domain expertise. It is designed to support tasks such as retreiving the knowledge regarding the company, surfacing domain-specific experience.
-
-    Args:
-        query: A natural language request related to the company’s past work, expertise, or capabilities (e.g., "What are the team's responsibilities?").
+    Semantic search over Pinecone using OpenAI embeddings.
     """
-    # try:
-        # Step 1: Embed the query
     if not query or not query.strip():
         return json.dumps({"error": "Query cannot be empty"})
-    
-    if not embedder:
-        return json.dumps({"error": "Embedder not available"})
-    
+
+    # Make sure we have an index
     if not index:
         return json.dumps({"error": "Pinecone index not available"})
-    
+
     try:
-        query_embedding = embedder.embed_documents([query.strip()])[0]
+        logger.info(f"Searching for: {query.strip()}")
+        
+        # Step 1: Embed the query with OpenAI
+        query_embedding = _embed_text(query.strip())
+        logger.info(f"Query embedding dimension: {len(query_embedding)}")
+
+        # Step 2: Query Pinecone with optimized parameters
         query_result = index.query(
-            vector=[query_embedding],
-            top_k=5,
+            vector=query_embedding,
+            top_k=3,  # Fewer, higher quality results
             include_metadata=True,
-            namespace=""
+            namespace="broadaxis-index",
+            filter={}  # Can add filters if needed
         )
         
-        documents = [result['metadata']['text'] for result in query_result['matches'] if 'metadata' in result]
-        return documents if documents else json.dumps({"message": "No relevant documents found"})
+        logger.info(f"Pinecone query result type: {type(query_result)}")
+        logger.info(f"Raw query result: {query_result}")
+
+        # Step 3: Extract matches properly
+        matches = []
+        if hasattr(query_result, 'matches'):
+            matches = query_result.matches
+        elif isinstance(query_result, dict) and 'matches' in query_result:
+            matches = query_result['matches']
+        
+        logger.info(f"Found {len(matches)} matches")
+
+        # Step 4: Extract and return clean text content for LLM
+        documents = []
+        for i, match in enumerate(matches):
+            try:
+                # Get metadata
+                metadata = {}
+                if hasattr(match, 'metadata'):
+                    metadata = match.metadata or {}
+                elif isinstance(match, dict) and 'metadata' in match:
+                    metadata = match['metadata'] or {}
+                
+                # Get score for logging
+                score = 0.0
+                if hasattr(match, 'score'):
+                    score = match.score
+                elif isinstance(match, dict) and 'score' in match:
+                    score = match['score']
+                
+                # Get text content
+                text_content = metadata.get('text', '')
+                source = metadata.get('source', 'Unknown')
+                
+                if text_content:
+                    # Clean text for LLM consumption
+                    clean_text = text_content.replace('\uf0b7', '•').replace('\u2022', '•')
+                    documents.append(clean_text)
+                    logger.info(f"Match {i+1}: score={score:.4f}, source={source}, text_len={len(text_content)}")
+                
+            except Exception as match_error:
+                logger.error(f"Error processing match {i}: {match_error}")
+                continue
+
+        if documents:
+            # Return clean text content separated by double newlines
+            return "\n\n".join(documents)
+        else:
+            return "No relevant information found in the BroadAxis knowledge base."
+
     except Exception as e:
         logger.error(f"Knowledge search error: {e}")
-        return json.dumps({"error": f"Search failed: {str(e)}"})
-
-    # except Exception as e:
-    #     return json.dumps({"error": str(e)})
-
-# Initialize client (use env variable or hardcode the API key if preferred)
+        logger.error(f"Error traceback: {traceback.format_exc()}")
+        return f"Error searching BroadAxis knowledge base: {str(e)}"
 
 os.environ["TAVILY_API_KEY"] = "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"
 tavily = TavilyClient()  # or TavilyClient(api_key="your_key")
@@ -680,6 +768,184 @@ def get_pdf_metadata(path: str) -> str:
             "producer": str(metadata.get('/Producer', 'Unknown')) if metadata else 'Unknown'
         })
     except Exception as e:
+        return json.dumps({"status": "error", "error": str(e)})
+
+@mcp.tool()
+def process_uploaded_document(file_content: str, filename: str, session_id: str) -> str:
+    """
+    Process uploaded document by extracting text, creating chunks, and storing in Pinecone.
+    
+    Args:
+        file_content: Base64 encoded file content
+        filename: Name of the uploaded file
+        session_id: Session identifier for namespace isolation
+    
+    Returns:
+        JSON string with processing status
+    """
+    try:
+        import base64
+        
+        # Decode file content
+        file_bytes = base64.b64decode(file_content)
+        
+        # Extract text based on file type
+        file_ext = os.path.splitext(filename.lower())[1]
+        
+        if file_ext == '.pdf':
+            pdf_reader = PyPDF2.PdfReader(BytesIO(file_bytes))
+            text = "\n".join([page.extract_text() for page in pdf_reader.pages])
+        elif file_ext == '.txt':
+            text = file_bytes.decode('utf-8', errors='ignore')
+        elif file_ext == '.md':
+            text = file_bytes.decode('utf-8', errors='ignore')
+        elif file_ext in ['.docx']:
+            from docx import Document
+            doc = Document(BytesIO(file_bytes))
+            text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+        else:
+            text = file_bytes.decode('utf-8', errors='ignore')
+        
+        if not text.strip():
+            return json.dumps({"status": "error", "error": "No text content found in document"})
+        
+        # Create chunks (1200 chars with 200 overlap)
+        chunks = []
+        chunk_size = 1200
+        overlap = 200
+        
+        if len(text) <= chunk_size:
+            chunks.append(text.strip())
+        else:
+            for i in range(0, len(text), chunk_size - overlap):
+                chunk = text[i:i + chunk_size].strip()
+                if chunk:
+                    chunks.append(chunk)
+        
+        # Create embeddings
+        embeddings = []
+        for chunk in chunks:
+            embedding = _embed_text(chunk)
+            embeddings.append(embedding)
+        
+        # Store in Pinecone using session-based namespace
+        if index and embeddings:
+            namespace = f"session_{session_id}"
+            vectors = []
+            
+            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+                vector_id = f"{filename}_{i}"
+                vectors.append({
+                    "id": vector_id,
+                    "values": embedding,
+                    "metadata": {
+                        "text": chunk,
+                        "filename": filename,
+                        "chunk_index": i,
+                        "session_id": session_id
+                    }
+                })
+            
+            # Upsert vectors
+            index.upsert(vectors=vectors, namespace=namespace)
+            
+            return json.dumps({
+                "status": "success",
+                "filename": filename,
+                "chunks_created": len(chunks),
+                "namespace": namespace,
+                "message": f"Document processed and stored with {len(chunks)} chunks"
+            })
+        else:
+            return json.dumps({"status": "error", "error": "Pinecone index not available"})
+            
+    except Exception as e:
+        logger.error(f"Document processing error: {e}")
+        return json.dumps({"status": "error", "error": str(e)})
+
+@mcp.tool()
+def query_uploaded_documents(query: str, session_id: str) -> str:
+    """
+    Query uploaded documents using vector similarity search.
+    
+    Args:
+        query: Search query
+        session_id: Session identifier to search within
+    
+    Returns:
+        JSON string with relevant document chunks
+    """
+    try:
+        if not query.strip():
+            return json.dumps({"status": "error", "error": "Query cannot be empty"})
+        
+        if not index:
+            return json.dumps({"status": "error", "error": "Pinecone index not available"})
+        
+        # Create query embedding
+        query_embedding = _embed_text(query.strip())
+        
+        # Search in session namespace
+        namespace = f"session_{session_id}"
+        
+        search_result = index.query(
+            vector=query_embedding,
+            top_k=5,
+            include_metadata=True,
+            namespace=namespace
+        )
+        
+        # Extract relevant chunks
+        relevant_chunks = []
+        for match in search_result.matches:
+            if match.score > 0.5:  # Only include relevant matches
+                relevant_chunks.append({
+                    "text": match.metadata["text"],
+                    "filename": match.metadata["filename"],
+                    "score": match.score,
+                    "chunk_index": match.metadata["chunk_index"]
+                })
+        
+        if relevant_chunks:
+            # Return formatted context for AI processing
+            context = "\n\n".join([f"From {chunk['filename']}:\n{chunk['text']}" for chunk in relevant_chunks])
+            return f"Based on your uploaded documents:\n\n{context}\n\nQuery: {query}"
+        else:
+            return "No relevant information found in your uploaded documents for this query."
+            
+    except Exception as e:
+        logger.error(f"Document query error: {e}")
+        return json.dumps({"status": "error", "error": str(e)})
+
+@mcp.tool()
+def cleanup_session_vectors(session_id: str) -> str:
+    """
+    Clean up all vectors for a specific session from Pinecone.
+    
+    Args:
+        session_id: Session identifier to clean up
+    
+    Returns:
+        JSON string with cleanup status
+    """
+    try:
+        if not index:
+            return json.dumps({"status": "error", "error": "Pinecone index not available"})
+        
+        namespace = f"session_{session_id}"
+        
+        # Delete all vectors in the session namespace
+        index.delete(delete_all=True, namespace=namespace)
+        
+        return json.dumps({
+            "status": "success",
+            "session_id": session_id,
+            "namespace": namespace,
+            "message": "Session vectors cleaned up successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Cleanup error: {e}")
         return json.dumps({"status": "error", "error": str(e)})
 
 
