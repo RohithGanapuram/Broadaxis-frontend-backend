@@ -69,7 +69,14 @@ const ChatInterface: React.FC = () => {
   const handleWebSocketMessage = (data: any) => {
     if (data.type === 'response') {
       setMessages(prev => prev.map(msg => 
-        msg.isLoading ? { ...msg, content: data.message, isLoading: false } : msg
+        msg.isLoading ? { 
+          ...msg, 
+          content: data.message, 
+          isLoading: false,
+          tokens_used: data.tokens_used,
+          tokens_remaining: data.tokens_remaining,
+          usage: data.usage
+        } : msg
       ))
       setIsLoading(false)
     } else if (data.type === 'status') {
@@ -116,9 +123,16 @@ const ChatInterface: React.FC = () => {
     try {
       // Use hybrid document chat if files are uploaded
       if (uploadedFiles.length > 0) {
-        const response = await apiClient.chatWithDocument(inputMessage, currentSessionId)
+        const response = await apiClient.chatWithDocument(inputMessage, currentSessionId || 'default')
         setMessages(prev => prev.map(msg => 
-          msg.isLoading ? { ...msg, content: response.response, isLoading: false } : msg
+          msg.isLoading ? { 
+            ...msg, 
+            content: response.response, 
+            isLoading: false,
+            tokens_used: response.tokens_used,
+            tokens_remaining: response.tokens_remaining,
+            usage: response.usage
+          } : msg
         ))
         setIsLoading(false)
       } else if (globalWebSocket.getConnectionStatus()) {
@@ -156,7 +170,7 @@ const ChatInterface: React.FC = () => {
       try {
         toast.loading(`Processing ${file.name}...`, { id: file.name })
         
-        const fileInfo = await apiClient.uploadFile(file, currentSessionId)
+        const fileInfo = await apiClient.uploadFile(file, currentSessionId || 'default')
         setUploadedFiles(prev => [...prev, fileInfo])
         
         // Add upload confirmation to chat
@@ -221,7 +235,7 @@ const ChatInterface: React.FC = () => {
               // Clear current session files if any
               if (uploadedFiles.length > 0) {
                 try {
-                  await apiClient.clearSession(currentSessionId)
+                  await apiClient.clearSession(currentSessionId || 'default')
                 } catch (error) {
                   console.error('Failed to clear session:', error)
                 }
@@ -369,9 +383,29 @@ const ChatInterface: React.FC = () => {
                       <span>Processing...</span>
                     </div>
                   ) : (
-                    <ReactMarkdown className="prose prose-sm max-w-none">
-                      {message.content}
-                    </ReactMarkdown>
+                    <>
+                      <ReactMarkdown className="prose prose-sm max-w-none">
+                        {message.content}
+                      </ReactMarkdown>
+                      {message.type === 'assistant' && message.tokens_used && (
+                        <div className="mt-3 pt-3 border-t border-blue-200/30">
+                          <div className="flex items-center justify-between text-xs text-blue-600">
+                            <div className="flex items-center space-x-4">
+                              <span>🔢 Tokens used: {message.tokens_used.toLocaleString()}</span>
+                              {message.tokens_remaining && (
+                                <span>📊 Remaining: {message.tokens_remaining.toLocaleString()}</span>
+                              )}
+                            </div>
+                            {message.usage && (
+                              <div className="flex items-center space-x-2">
+                                <span>Session: {message.usage.session_used.toLocaleString()}/{message.usage.session_limit.toLocaleString()}</span>
+                                <span>Daily: {message.usage.daily_used.toLocaleString()}/{message.usage.daily_limit.toLocaleString()}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

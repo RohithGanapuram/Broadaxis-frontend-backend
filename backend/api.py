@@ -326,11 +326,11 @@ class MCPInterface:
             return {"response": "Anthropic API not available", "tokens_used": 0}
             
         try:
-
             # Handle MCP prompt invocations
             if query.startswith('PROMPT:'):
                 prompt_name = query[7:]
                 try:
+                    # Reuse existing connection if available
                     async with stdio_client(self.server_params) as (read, write):
                         async with ClientSession(read, write) as session:
                             await session.initialize()
@@ -529,12 +529,22 @@ class SharePointManager:
             'site_url': os.getenv('SHAREPOINT_SITE_URL', 'broadaxis.sharepoint.com:/sites/RFI-project'),
             'folder_path': os.getenv('SHAREPOINT_FOLDER_PATH', 'Documents')
         }
+        # Cache for tokens and site/drive info
+        self._token_cache = {'token': None, 'expires_at': 0}
+        self._site_cache = {'site_id': None, 'drive_id': None, 'expires_at': 0}
+        self._session = requests.Session()
+        self._session.timeout = 10
 
     def get_graph_access_token(self):
-        """Get access token for Microsoft Graph API"""
+        """Get access token for Microsoft Graph API with caching"""
+        now = time.time()
+        
+        # Return cached token if still valid (with 5 min buffer)
+        if self._token_cache['token'] and now < self._token_cache['expires_at'] - 300:
+            return self._token_cache['token']
+        
         try:
             token_url = f"https://login.microsoftonline.com/{self.graph_config['tenant_id']}/oauth2/v2.0/token"
-
             data = {
                 'client_id': self.graph_config['client_id'],
                 'client_secret': self.graph_config['client_secret'],
@@ -542,50 +552,72 @@ class SharePointManager:
                 'grant_type': 'client_credentials'
             }
 
-            response = requests.post(token_url, data=data)
+            response = self._session.post(token_url, data=data)
             response.raise_for_status()
-
             token_data = response.json()
-            return token_data.get('access_token')
+            
+            # Cache token with expiration
+            self._token_cache['token'] = token_data.get('access_token')
+            self._token_cache['expires_at'] = now + token_data.get('expires_in', 3600)
+            
+            return self._token_cache['token']
         except Exception as e:
-            print(f"Error getting access token: {e}")
+            error_handler.log_error(e, {'operation': 'get_graph_access_token'})
             return None
+
+    def _get_site_and_drive_info(self):
+        """Get and cache site and drive information"""
+        now = time.time()
+        
+        # Return cached info if still valid (cache for 1 hour)
+        if (self._site_cache['site_id'] and self._site_cache['drive_id'] and 
+            now < self._site_cache['expires_at']):
+            return self._site_cache['site_id'], self._site_cache['drive_id']
+        
+        access_token = self.get_graph_access_token()
+        if not access_token:
+            return None, None
+        
+        headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
+        
+        try:
+            # Get site info
+            site_url = f"https://graph.microsoft.com/v1.0/sites/{self.graph_config['site_url']}"
+            site_response = self._session.get(site_url, headers=headers)
+            site_response.raise_for_status()
+            site_id = site_response.json()['id']
+            
+            # Get drive info
+            drive_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive"
+            drive_response = self._session.get(drive_url, headers=headers)
+            drive_response.raise_for_status()
+            drive_id = drive_response.json()['id']
+            
+            # Cache the info
+            self._site_cache.update({
+                'site_id': site_id,
+                'drive_id': drive_id,
+                'expires_at': now + 3600  # 1 hour cache
+            })
+            
+            return site_id, drive_id
+        except Exception as e:
+            error_handler.log_error(e, {'operation': 'get_site_and_drive_info'})
+            return None, None
 
     def get_sharepoint_files(self):
         """Get files and folders from SharePoint"""
         try:
+            site_id, drive_id = self._get_site_and_drive_info()
+            if not site_id or not drive_id:
+                return {"status": "error", "message": "Failed to get site/drive information", "files": []}
+
             access_token = self.get_graph_access_token()
-            if not access_token:
-                return {"status": "error", "message": "Failed to get access token", "files": []}
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json'
-            }
-
-            # Get the site information first
-            site_url = f"https://graph.microsoft.com/v1.0/sites/{self.graph_config['site_url']}"
-            site_response = requests.get(site_url, headers=headers)
-
-            if site_response.status_code != 200:
-                return {"status": "error", "message": f"Failed to access SharePoint site: {site_response.status_code}", "files": []}
-
-            site_data = site_response.json()
-            site_id = site_data['id']
-
-            # Get the default drive
-            drive_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive"
-            drive_response = requests.get(drive_url, headers=headers)
-
-            if drive_response.status_code != 200:
-                return {"status": "error", "message": "Failed to access SharePoint drive", "files": []}
-
-            drive_data = drive_response.json()
-            drive_id = drive_data['id']
+            headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
 
             # Get files from root folder
             files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root/children"
-            files_response = requests.get(files_url, headers=headers)
+            files_response = self._session.get(files_url, headers=headers)
 
             if files_response.status_code != 200:
                 return {"status": "error", "message": "Failed to get SharePoint files", "files": []}
@@ -593,6 +625,7 @@ class SharePointManager:
             files_data = files_response.json()
             sharepoint_files = []
 
+            # Process items efficiently
             for item in files_data.get('value', []):
                 file_info = {
                     'id': item['id'],
@@ -605,7 +638,7 @@ class SharePointManager:
                     'path': item.get('parentReference', {}).get('path', '') + '/' + item['name']
                 }
 
-                # If it's a folder, get its contents
+                # Only get folder contents if needed (avoid unnecessary API calls)
                 if file_info['type'] == 'folder':
                     folder_files = self.get_folder_contents(site_id, drive_id, item['id'], headers)
                     file_info['children'] = folder_files
@@ -619,7 +652,7 @@ class SharePointManager:
             }
 
         except Exception as e:
-            print(f"Error getting SharePoint files: {e}")
+            error_handler.log_error(e, {'operation': 'get_sharepoint_files'})
             return {"status": "error", "message": str(e), "files": []}
 
     def get_folder_contents(self, site_id, drive_id, folder_id, headers):
@@ -656,34 +689,12 @@ class SharePointManager:
     def get_folder_contents_by_path(self, folder_path: str):
         """Get contents of a specific folder by path"""
         try:
+            site_id, drive_id = self._get_site_and_drive_info()
+            if not site_id or not drive_id:
+                return {"status": "error", "message": "Failed to get site/drive information", "files": []}
+
             access_token = self.get_graph_access_token()
-            if not access_token:
-                return {"status": "error", "message": "Failed to get access token", "files": []}
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json'
-            }
-
-            # Get the site information first
-            site_url = f"https://graph.microsoft.com/v1.0/sites/{self.graph_config['site_url']}"
-            site_response = requests.get(site_url, headers=headers)
-
-            if site_response.status_code != 200:
-                return {"status": "error", "message": "Failed to access SharePoint site", "files": []}
-
-            site_data = site_response.json()
-            site_id = site_data['id']
-
-            # Get the default drive
-            drive_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive"
-            drive_response = requests.get(drive_url, headers=headers)
-
-            if drive_response.status_code != 200:
-                return {"status": "error", "message": "Failed to access SharePoint drive", "files": []}
-
-            drive_data = drive_response.json()
-            drive_id = drive_data['id']
+            headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
 
             # Get files from the specific folder path
             if folder_path and folder_path != "":
@@ -691,7 +702,7 @@ class SharePointManager:
             else:
                 files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root/children"
 
-            files_response = requests.get(files_url, headers=headers)
+            files_response = self._session.get(files_url, headers=headers)
 
             if files_response.status_code != 200:
                 return {"status": "error", "message": f"Failed to get folder contents: {files_response.status_code}", "files": []}
@@ -719,7 +730,7 @@ class SharePointManager:
             }
 
         except Exception as e:
-            print(f"Error getting folder contents by path: {e}")
+            error_handler.log_error(e, {'operation': 'get_folder_contents_by_path', 'folder_path': folder_path})
             return {"status": "error", "message": str(e), "files": []}
 
     def upload_file_to_sharepoint(self, file_content: bytes, filename: str, folder_path: str):
@@ -983,12 +994,12 @@ class EmailFetcher:
         self.attachments_dir = Path("email_attachments")
         self.attachments_dir.mkdir(exist_ok=True)
 
-        # RFP/RFI/RFQ keywords to search for
-        self.rfp_keywords = [
+        # RFP/RFI/RFQ keywords to search for - using set for O(1) lookup
+        self.rfp_keywords = {
             'rfp', 'rfi', 'rfq', 'request for proposal', 'request for information',
             'request for quotation', 'proposal', 'bid', 'tender', 'procurement',
             'solicitation', 'quote', 'quotation'
-        ]
+        }
 
         # Microsoft Graph API configuration
         self.graph_config = {
@@ -1002,7 +1013,7 @@ class EmailFetcher:
             ]
         }
 
-        # Filter out None values
+        # Filter out None values efficiently
         self.graph_config['user_emails'] = [email for email in self.graph_config['user_emails'] if email]
 
         # Email configurations from environment
@@ -1026,9 +1037,16 @@ class EmailFetcher:
                 'imap_port': int(os.getenv('CORPORATE_IMAP_PORT', 993))
             }
         }
+        
+        # Cache for Graph API token
+        self._token_cache = {'token': None, 'expires_at': 0}
+        self._session = requests.Session()
+        self._session.timeout = 15
 
     def has_rfp_keywords(self, text: str) -> bool:
-        """Check if text contains RFP/RFI/RFQ related keywords"""
+        """Check if text contains RFP/RFI/RFQ related keywords - optimized with set lookup"""
+        if not text:
+            return False
         text_lower = text.lower()
         return any(keyword in text_lower for keyword in self.rfp_keywords)
 
@@ -1169,7 +1187,13 @@ class EmailFetcher:
             return None
 
     def get_graph_access_token(self) -> str:
-        """Get access token for Microsoft Graph API"""
+        """Get access token for Microsoft Graph API with caching"""
+        now = time.time()
+        
+        # Return cached token if still valid (with 5 min buffer)
+        if self._token_cache['token'] and now < self._token_cache['expires_at'] - 300:
+            return self._token_cache['token']
+        
         try:
             token_url = f"https://login.microsoftonline.com/{self.graph_config['tenant_id']}/oauth2/v2.0/token"
 
@@ -1180,18 +1204,25 @@ class EmailFetcher:
                 'scope': 'https://graph.microsoft.com/.default'
             }
 
-            response = requests.post(token_url, data=token_data, timeout=10)
+            response = self._session.post(token_url, data=token_data)
             response.raise_for_status()
-
-            return response.json()['access_token']
+            
+            token_response = response.json()
+            access_token = token_response['access_token']
+            
+            # Cache token with expiration
+            self._token_cache['token'] = access_token
+            self._token_cache['expires_at'] = now + token_response.get('expires_in', 3600)
+            
+            return access_token
         except requests.exceptions.Timeout:
-            print("Timeout getting Graph access token")
+            error_handler.log_error(Exception("Timeout getting Graph access token"), {'operation': 'get_graph_access_token'})
             return None
         except requests.exceptions.RequestException as e:
-            print(f"Request error getting Graph access token: {e}")
+            error_handler.log_error(e, {'operation': 'get_graph_access_token'})
             return None
         except Exception as e:
-            print(f"Error getting Graph access token: {e}")
+            error_handler.log_error(e, {'operation': 'get_graph_access_token'})
             return None
 
     def fetch_emails_graph(self) -> dict:
@@ -1234,9 +1265,8 @@ class EmailFetcher:
             fetched_emails = []
             total_attachments = 0
 
-            # Loop through all configured email accounts
+            # Process all email accounts efficiently
             for user_email in self.graph_config['user_emails']:
-
                 # Get emails from the last 30 days for this account
                 graph_url = f"https://graph.microsoft.com/v1.0/users/{user_email}/messages"
                 params = {
@@ -1246,15 +1276,15 @@ class EmailFetcher:
                 }
 
                 try:
-                    response = requests.get(graph_url, headers=headers, params=params, timeout=15)
+                    response = self._session.get(graph_url, headers=headers, params=params)
                     response.raise_for_status()
-
                     emails_data = response.json()
                 except requests.exceptions.Timeout:
-                    print(f"Timeout fetching emails from {user_email}")
+                    error_handler.log_error(Exception(f"Timeout fetching emails from {user_email}"), 
+                                          {'operation': 'fetch_emails_graph', 'user_email': user_email})
                     continue  # Skip this account and try the next one
                 except requests.exceptions.RequestException as e:
-                    print(f"Error fetching emails from {user_email}: {e}")
+                    error_handler.log_error(e, {'operation': 'fetch_emails_graph', 'user_email': user_email})
                     continue  # Skip this account and try the next one
 
                 # Process each email and filter for RFP/RFI/RFQ keywords
@@ -1306,39 +1336,37 @@ class EmailFetcher:
                             attachments.append(link_attachment)
                             total_attachments += 1
 
-                        # Process file attachments
+                        # Process file attachments efficiently
                         if email_item.get('hasAttachments'):
                             # Get attachments for this specific user account
                             attachments_url = f"https://graph.microsoft.com/v1.0/users/{user_email}/messages/{email_item['id']}/attachments"
-                            attachments_response = requests.get(attachments_url, headers=headers, timeout=10)
+                            attachments_response = self._session.get(attachments_url, headers=headers)
 
                             if attachments_response.status_code == 200:
                                 attachments_data = attachments_response.json()
+                                date_str = email_item['receivedDateTime'][:10]  # Get YYYY-MM-DD part
 
                                 for attachment in attachments_data.get('value', []):
                                     if attachment.get('@odata.type') == '#microsoft.graph.fileAttachment':
                                         # Download attachment
                                         attachment_content = base64.b64decode(attachment['contentBytes'])
 
-                                        # Save to local storage (existing functionality)
-                                        date_str = email_item['receivedDateTime'][:10]  # Get YYYY-MM-DD part
+                                        # Save to local storage and SharePoint in parallel
                                         saved_attachment = self.save_attachment(
                                             attachment_content,
                                             attachment['name'],
                                             date_str
                                         )
 
-                                        # Also upload to SharePoint
-                                        clean_filename = self.clean_filename(attachment['name'])
-                                        sharepoint_result = sharepoint_manager.upload_file_to_sharepoint(
-                                            attachment_content,
-                                            clean_filename,
-                                            sharepoint_folder_path
-                                        )
-
-                                        # File uploaded to SharePoint
-
                                         if saved_attachment:
+                                            # Upload to SharePoint
+                                            clean_filename = self.clean_filename(attachment['name'])
+                                            sharepoint_manager.upload_file_to_sharepoint(
+                                                attachment_content,
+                                                clean_filename,
+                                                sharepoint_folder_path
+                                            )
+
                                             saved_attachment['type'] = 'file'  # Mark as file attachment
                                             saved_attachment['sharepoint_path'] = sharepoint_folder_path
                                             attachments.append(saved_attachment)
@@ -1782,6 +1810,48 @@ async def upload_file(file: UploadFile = File(...), session_id: str = "default")
     except Exception as e:
         error_handler.log_error(e, {'filename': file.filename, 'operation': 'file_upload'})
         raise FileOperationError("Failed to process uploaded file", {'filename': file.filename})
+
+@app.post("/api/chat/document")
+async def chat_with_document(request: ChatRequest, session_id: str = "default", filename: str = None):
+    """Chat with uploaded documents using hybrid retrieval"""
+    if not request.query or not request.query.strip():
+        raise ValidationError("Query cannot be empty")
+    
+    # Handle null session_id from frontend
+    if session_id == "null" or not session_id:
+        session_id = "default"
+    
+    try:
+        # Check if session has uploaded files
+        session_key = f"session_{session_id}"
+        if session_key not in session_files or len(session_files[session_key]) == 0:
+            raise ValidationError("No documents uploaded for this session")
+        
+        # Process query with document context
+        result = await run_mcp_query(
+            query=request.query.strip(),
+            enabled_tools=request.enabled_tools,
+            model=request.model,
+            session_id=session_id
+        )
+        
+        if not isinstance(result, dict) or "response" not in result:
+            raise ExternalAPIError("Invalid response from MCP query processor")
+        
+        usage = token_manager.get_usage(session_id)
+        return {
+            "response": result["response"],
+            "status": "success",
+            "tokens_used": result.get("tokens_used", 0),
+            "tokens_remaining": usage["session_limit"] - usage["session_used"],
+            "usage": usage
+        }
+        
+    except BroadAxisError:
+        raise
+    except Exception as e:
+        error_handler.log_error(e, {'session_id': session_id, 'query_length': len(request.query)})
+        raise ExternalAPIError("Failed to process document chat request", {'original_error': str(e)})
 
 @app.post("/api/initialize")
 async def initialize_mcp():

@@ -963,3 +963,227 @@
 2025-08-18 10:02:51,464 - MCPServer - INFO - Match 2: score=0.7078, source=infoDoc.pdf, text_len=33
 2025-08-18 10:02:51,464 - MCPServer - INFO - Match 3: score=0.6961, source=infoDoc.pdf, text_len=1871
 2025-08-18 10:02:51,471 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 13:58:39,718 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 13:58:39,719 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 13:58:39,771 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 13:58:39,773 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-19 14:00:06,724 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 14:00:06,727 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 14:00:09,544 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:00:13,185 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 14:01:28,161 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 14:01:28,163 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 14:01:30,480 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:01:34,712 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 14:01:37,990 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:01:43,534 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:01:46,928 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:01:50,728 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:01:54,830 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:01:58,563 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:02:02,317 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:02:05,601 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:06:33,761 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 14:06:33,762 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 14:06:37,195 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:06:40,592 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 14:06:43,084 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:10:02,432 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 14:10:02,433 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 14:10:04,857 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:10:07,830 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 14:10:10,448 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:10:14,496 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:10:17,769 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:10:22,098 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:10:26,232 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:10:30,112 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:10:34,208 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:12:55,561 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 14:12:55,562 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 14:12:55,599 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 14:12:55,601 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-19 14:39:37,441 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 14:39:37,446 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 14:39:37,507 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 14:39:37,509 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-19 14:43:13,158 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 14:43:13,158 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 14:43:13,210 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 14:43:13,212 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-19 14:48:15,540 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 14:48:15,541 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 14:48:15,578 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-19 14:48:15,580 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-19 14:48:46,149 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-19 14:48:46,150 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-19 14:48:51,100 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-19 14:48:51,102 - MCPServer - INFO - Searching for: What is BroadAxis and what do they do
+2025-08-19 14:48:51,102 - MCPServer - INFO - Embedding text of length: 37
+2025-08-19 14:48:52,658 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-08-19 14:48:52,664 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-08-19 14:48:52,664 - MCPServer - INFO - Query embedding dimension: 1536
+2025-08-19 14:48:52,967 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
+2025-08-19 14:48:52,968 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_service_0_34fb671c6c7c',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Who We Are – BroadAxis, Inc.  \n'
+                                   'BroadAxis, Inc. is a Texas -based, '
+                                   'minority -owned IT services and consulting '
+                                   'company with over six years of \n'
+                                   'experience delivering innovative '
+                                   'technology solutions. Headquartered in '
+                                   'Plano, Texas, we serve a wide range \n'
+                                   'of clients across industries including '
+                                   'government, healthcare, finance, '
+                                   'education, retail, and energy.  \n'
+                                   'Our mission is to empower businesses by '
+                                   'providing tailored, cutting -edge IT '
+                                   'services that drive digital \n'
+                                   'transformation, operational efficiency, '
+                                   "and long -term growth . Whether it's "
+                                   'modernizing legacy systems, \n'
+                                   'building intelligent cloud '
+                                   'infrastructures, or staffing specialized '
+                                   'talent for mission -critical roles, '
+                                   'BroadAxis is \n'
+                                   'built to solve complex challenges.  \n'
+                                   'We take pride in our client -centric '
+                                   'approach, where every enga gement is '
+                                   'guided by a focus on quality, speed, \n'
+                                   'transparency, and measurable results.'},
+              'score': 0.674302816,
+              'values': []},
+             {'id': 'infoDoc.pdf_chunk_21_a406360672e0',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Why BroadAxis?  \n'
+                                   'We combine technical excellence, rapid '
+                                   'implementation, and continuous support to '
+                                   'deliver cloud and security \n'
+                                   'solutions that protect what matters '
+                                   'most.  \n'
+                                   'Business Intelligence & Data Warehousing '
+                                   'Expertise  \n'
+                                   'BroadAxis, Inc. offers end -to-end '
+                                   'Business Intelligence (BI) and data '
+                                   'integration services designed to empower \n'
+                                   'decision -makers with real -time, '
+                                   'actionable insights. As a Texas -based MBE '
+                                   'HUB -certified firm with extensive \n'
+                                   'experience across public, non -profit, and '
+                                   'commercial sectors, we combine the right '
+                                   'talent, tools, and \n'
+                                   'processes to deliver secure, scalable, and '
+                                   'user -centric BI solutions.  \n'
+                                   'Project Understanding & Capabilities  \n'
+                                   'We provide full lifecycle BI solution s '
+                                   'that:  \n'
+                                   '\uf0b7 Ingest, transform, model, and '
+                                   'visualize data from diverse sources  \n'
+                                   '\uf0b7 Ensure data quality, scalability, '
+                                   'and security  \n'
+                                   '\uf0b7 Deliver executive dashboards, '
+                                   'operational KPIs, and ad -hoc reporting  \n'
+                                   '\uf0b7 Support data governance, access '
+                                   'controls, and user enablement  \n'
+                                   'Key Deliverables Include:  \n'
+                                   '\uf0b7 Centralized enterprise data '
+                                   'warehouse (on -prem, cloud, or hybrid)  \n'
+                                   '\uf0b7 Metadata -driven ETL/ELT pipelines '
+                                   'with robust error handling and audit logs'},
+              'score': 0.661577582,
+              'values': []},
+             {'id': 'infoDoc.pdf_chunk_0_81e9a643bb5c',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Who We Are – BroadAxis, Inc.  \n'
+                                   'BroadAxis, Inc. is a Texas -based, '
+                                   'minority -owned IT services and consulting '
+                                   'company with over six years of \n'
+                                   'experience delivering innovative '
+                                   'technology solutions. Headquartered in '
+                                   'Plano, Texas, we serve a wide range \n'
+                                   'of clients across industries including '
+                                   'government, healthcare, finance, '
+                                   'education, retail, and energy.  \n'
+                                   'Our mission is to empower businesses by '
+                                   'providing tailored, cutting -edge IT '
+                                   'services that drive digital \n'
+                                   'transformation, operational efficiency, '
+                                   "and long -term growth . Whether it's "
+                                   'modernizing legacy systems, \n'
+                                   'building intelligent cloud '
+                                   'infrastructures, or staffing specialized '
+                                   'talent for mission -critical roles, '
+                                   'BroadAxis is \n'
+                                   'built to solve complex challenges.  \n'
+                                   'We take pride in our client -centric '
+                                   'approach, where every enga gement is '
+                                   'guided by a focus on quality, speed, \n'
+                                   'transparency, and measurable results.  \n'
+                                   'Key Highlights:  \n'
+                                   '\uf0b7 6+ years of IT delivery '
+                                   'excellence  \n'
+                                   '\uf0b7 Certified Minority Business '
+                                   'Enterprise (MBE) and GSA vendor  \n'
+                                   '\uf0b7 Trusted partner for state agencies '
+                                   'under the Texas DIR ITSAC  contract  \n'
+                                   '\uf0b7 Strong portfolio across public, '
+                                   'private, and nonprofit sectors'},
+              'score': 0.631910861,
+              'values': []}],
+ 'namespace': 'broadaxis-index',
+ 'usage': {'read_units': 1}}
+2025-08-19 14:48:52,971 - MCPServer - INFO - Found 3 matches
+2025-08-19 14:48:52,971 - MCPServer - INFO - Match 1: score=0.6743, source=infoDoc.pdf, text_len=871
+2025-08-19 14:48:52,972 - MCPServer - INFO - Match 2: score=0.6616, source=infoDoc.pdf, text_len=1151
+2025-08-19 14:48:52,972 - MCPServer - INFO - Match 3: score=0.6319, source=infoDoc.pdf, text_len=1134
+2025-08-19 14:48:52,975 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
