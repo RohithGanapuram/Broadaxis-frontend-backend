@@ -480,7 +480,8 @@ const ChatInterface: React.FC = () => {
                           <button
                             key={index}
                             onClick={() => {
-                              const promptMessage = `Please use the "${prompt.name}" prompt template to analyze the uploaded documents.`
+                              // Create a more descriptive message that shows the prompt template is being used
+                              const promptMessage = prompt.description
                               setInputMessage(promptMessage)
                               setTimeout(() => {
                                 if (globalWebSocket.getConnectionStatus()) {
@@ -502,7 +503,7 @@ const ChatInterface: React.FC = () => {
                                   setIsLoading(true)
                                   
                                   globalWebSocket.sendMessage({
-                                    query: `PROMPT:${prompt.name}`,
+                                    query: prompt.description,
                                     enabled_tools: settings.enabledTools,
                                     model: settings.model
                                   })

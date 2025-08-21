@@ -322,50 +322,6 @@ class MCPInterface:
             return {"response": "Anthropic API not available", "tokens_used": 0}
             
         try:
-            # Handle MCP prompt invocations
-            if query.startswith('PROMPT:'):
-                prompt_name = query[7:]
-                try:
-                    # Reuse existing connection if available
-                    async with stdio_client(self.server_params) as (read, write):
-                        async with ClientSession(read, write) as session:
-                            await session.initialize()
-                            prompts = await self.get_prompts()
-                            target_prompt = next((p for p in prompts if p["name"] == prompt_name), None)
-                            
-                            if target_prompt:
-                                prompt_result = await session.get_prompt(prompt_name, arguments={})
-                                prompt_content = prompt_result.messages[0].content.text if prompt_result.messages else ""
-                                enhanced_system = prompt_content + "\n\nIMPORTANT: Format your response with clear headings, bullet points, and proper spacing for readability."
-                                
-                                selected_model = model or "claude-3-7-sonnet-20250219"
-                                
-                                # Token management for prompts
-                                estimated_tokens = token_manager.count_tokens(enhanced_system + "Analyze the uploaded documents using this framework.")
-                                limit_check = token_manager.check_limits(session_id, estimated_tokens)
-                                
-                                if not limit_check["allowed"]:
-                                    return {"response": f"Token limit exceeded: {limit_check['reason']}", "tokens_used": 0}
-                                
-                                response = self.anthropic.messages.create(
-                                    max_tokens=min(3048, limit_check.get("session_remaining", 3048)),
-                                    model=selected_model,
-                                    system=enhanced_system,
-                                    messages=[{'role': 'user', 'content': "Analyze the uploaded documents using this framework."}]
-                                )
-                                
-                                tokens_used = response.usage.input_tokens + response.usage.output_tokens if hasattr(response, 'usage') else estimated_tokens
-                                token_manager.add_usage(session_id, tokens_used)
-                                
-                                return {
-                                    "response": response.content[0].text if response.content else "No response generated",
-                                    "tokens_used": tokens_used
-                                }
-                            else:
-                                return {"response": f"Prompt '{prompt_name}' not found", "tokens_used": 0}
-                except Exception as e:
-                    return {"response": f"Error using prompt: {str(e)}", "tokens_used": 0}
-            
             # Use fresh connection for tool-based queries with cached tools
             self._connection_status = "connecting"
             async with stdio_client(self.server_params) as (read, write):
