@@ -22,11 +22,7 @@ export interface FileInfo {
   analysis?: string
 }
 
-export interface ChatRequest {
-  query: string
-  enabled_tools: string[]
-  model: string
-}
+
 
 export interface ChatResponse {
   response: string

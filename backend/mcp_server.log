@@ -274,3 +274,257 @@
 2025-08-21 14:18:26,392 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
 2025-08-21 14:18:26,403 - MCPServer - INFO - Tavily client initialized successfully
 2025-08-21 14:18:26,431 - mcp.server.lowlevel.server - INFO - Processing request of type GetPromptRequest
+2025-08-21 14:29:45,664 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-21 14:29:45,665 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 14:29:45,677 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 14:29:45,709 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 14:29:45,711 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 14:56:15,488 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-21 14:56:15,489 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 14:56:15,500 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 14:56:15,537 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 14:56:15,540 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 14:56:47,595 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-21 14:56:47,596 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 14:56:47,606 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 14:56:50,628 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 14:56:50,632 - MCPServer - INFO - Searching for: network engineer job duties responsibilities Broadaxis
+2025-08-21 14:56:50,632 - MCPServer - INFO - Embedding text of length: 54
+2025-08-21 14:56:52,199 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-08-21 14:56:52,202 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-08-21 14:56:52,203 - MCPServer - INFO - Query embedding dimension: 1536
+2025-08-21 14:56:52,546 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
+2025-08-21 14:56:52,548 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_experience_46_e33da0b8c53e',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Detailed Job Duties:  \n'
+                                   '\uf0b7 Design, configure, and maintain '
+                                   'secure network infrastructure including '
+                                   'Cisco switches, ASA firewalls, \n'
+                                   'routers, and Nexus devices across '
+                                   'on-premises and cloud environments.  \n'
+                                   '\uf0b7 Monitor and troubleshoot network '
+                                   'performance to ensure uptime, reliability, '
+                                   'and optimal system \n'
+                                   "function across BroadAxis's client and "
+                                   'internal infrastructure.  \n'
+                                   '\uf0b7 Lead and manage network upgrade '
+                                   'projects, from planning and d ocumentation '
+                                   'to implementation \n'
+                                   'and testing phases.  \n'
+                                   '\uf0b7 Architect and support LAN/WAN/VLAN '
+                                   'solutions, implementing protocols such as '
+                                   'BGP, OSPF, EIGRP, \n'
+                                   'and IPsec for secure and scalable '
+                                   'connectivity.  \n'
+                                   '\uf0b7 Administer Microsoft Servers '
+                                   '(2016/2019), Active Directory, Gr oup '
+                                   'Policy, DNS, DHCP, VPN, and SSL \n'
+                                   'certificate configurations for enterprise '
+                                   '-wide systems.  \n'
+                                   '\uf0b7 Provide VMware and virtual '
+                                   'infrastructure support including ESXi and '
+                                   'Dell EMC VxRail management, \n'
+                                   'ensuring high availability and disaster '
+                                   'recovery readiness.  \n'
+                                   '\uf0b7 Utilize  tools like NetApp '
+                                   'SnapMirror, Azure, and Office 365 to '
+                                   'manage backups, replication, and \n'
+                                   'hybrid cloud environments.  \n'
+                                   '\uf0b7 Create and maintain detailed '
+                                   'documentation including network diagrams, '
+                                   'configuration records, and \n'
+                                   'policy manuals to support operations and a '
+                                   'udits.  \n'
+                                   '\uf0b7 Implement and maintain Barracuda, '
+                                   'Meraki, and SonicWall firewalls, as well '
+                                   'as spam filters and \n'
+                                   'endpoint security systems (e.g., '
+                                   'CrowdStrike, McAfee).  \n'
+                                   '\uf0b7 Provide Tier -3 technical support '
+                                   'for complex network, server, and endpoint '
+                                   'issues across data cente rs'},
+              'score': 0.71155,
+              'values': []},
+             {'id': 'infoDoc.pdf_job_45_e8224df25e07',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Position Title:  Network Engineer'},
+              'score': 0.707784534,
+              'values': []},
+             {'id': 'infoDoc.pdf_chunk_26_469953939b19',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Position Title:  Network Engineer  \n'
+                                   'Detailed Job Duties:  \n'
+                                   '\uf0b7 Design, configure, and maintain '
+                                   'secure network infrastructure including '
+                                   'Cisco switches, ASA firewalls, \n'
+                                   'routers, and Nexus devices across '
+                                   'on-premises and cloud environments.  \n'
+                                   '\uf0b7 Monitor and troubleshoot network '
+                                   'performance to ensure uptime, reliability, '
+                                   'and optimal system \n'
+                                   "function across BroadAxis's client and "
+                                   'internal infrastructure.  \n'
+                                   '\uf0b7 Lead and manage network upgrade '
+                                   'projects, from planning and d ocumentation '
+                                   'to implementation \n'
+                                   'and testing phases.  \n'
+                                   '\uf0b7 Architect and support LAN/WAN/VLAN '
+                                   'solutions, implementing protocols such as '
+                                   'BGP, OSPF, EIGRP, \n'
+                                   'and IPsec for secure and scalable '
+                                   'connectivity.  \n'
+                                   '\uf0b7 Administer Microsoft Servers '
+                                   '(2016/2019), Active Directory, Gr oup '
+                                   'Policy, DNS, DHCP, VPN, and SSL \n'
+                                   'certificate configurations for enterprise '
+                                   '-wide systems.  \n'
+                                   '\uf0b7 Provide VMware and virtual '
+                                   'infrastructure support including ESXi and '
+                                   'Dell EMC VxRail management, \n'
+                                   'ensuring high availability and disaster '
+                                   'recovery readiness.  \n'
+                                   '\uf0b7 Utilize  tools like NetApp '
+                                   'SnapMirror, Azure, and Office 365 to '
+                                   'manage backups, replication, and \n'
+                                   'hybrid cloud environments.  \n'
+                                   '\uf0b7 Create and maintain detailed '
+                                   'documentation including network diagrams, '
+                                   'configuration records, and \n'
+                                   'policy manuals to support operations and a '
+                                   'udits.  \n'
+                                   '\uf0b7 Implement and maintain Barracuda, '
+                                   'Meraki, and SonicWall firewalls, as well '
+                                   'as spam filters and \n'
+                                   'endpoint security systems (e.g., '
+                                   'CrowdStrike, McAfee).  \n'
+                                   '\uf0b7 Provide Tier -3 technical support '
+                                   'for complex network, server, and endpoint '
+                                   'issues across data cente rs \n'
+                                   'and remote sites.  \n'
+                                   '\uf0b7 Lead collaboration with '
+                                   'cybersecurity and infrastructure teams to '
+                                   'assess vulnerabilities, improve \n'
+                                   'policies, and ensure compliance with '
+                                   'federal or enterprise -level security '
+                                   'requirements.  \n'
+                                   '\uf0b7 Conduct ongoing capacity planning '
+                                   'and performance  tuning to support growing '
+                                   'user demands and \n'
+                                   'new infrastructure rollouts.'},
+              'score': 0.696129262,
+              'values': []},
+             {'id': 'infoDoc.pdf_chunk_41_34062017690d',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'compliance metrics.  \n'
+                                   '\uf0b7 Utilize CRM tools, documentation '
+                                   'platforms (e.g., Confluence), and project '
+                                   'management tool s (e.g., \n'
+                                   'JIRA) to manage tasks, user stories, and '
+                                   'updates.  \n'
+                                   'Position Title:  Network Engineer  \n'
+                                   'Detailed Job Duties:  \n'
+                                   '\uf0b7 Design, configure, and maintain '
+                                   'secure network infrastructure including '
+                                   'Cisco switches, ASA firewalls, \n'
+                                   'routers, and Nexus devices across '
+                                   'on-premises and cloud environments.  \n'
+                                   '\uf0b7 Monitor and troubleshoot network '
+                                   'performance to ensure uptime, reliability, '
+                                   'and optimal system \n'
+                                   "function across BroadAxis's client and "
+                                   'internal infrastructure.  \n'
+                                   '\uf0b7 Lead and manage network upgrade '
+                                   'projects, from planning and d ocumentation '
+                                   'to implementation \n'
+                                   'and testing phases.  \n'
+                                   '\uf0b7 Architect and support LAN/WAN/VLAN '
+                                   'solutions, implementing protocols such as '
+                                   'BGP, OSPF, EIGRP, \n'
+                                   'and IPsec for secure and scalable '
+                                   'connectivity.  \n'
+                                   '\uf0b7 Administer Microsoft Servers '
+                                   '(2016/2019), Active Directory, Gr oup '
+                                   'Policy, DNS, DHCP, VPN, and SSL \n'
+                                   'certificate configurations for enterprise '
+                                   '-wide systems.  \n'
+                                   '\uf0b7 Provide VMware and virtual '
+                                   'infrastructure support including ESXi and '
+                                   'Dell EMC VxRail management, \n'
+                                   'ensuring high availability and disaster '
+                                   'recovery readiness.'},
+              'score': 0.69580245,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_34_0a9670c03edf',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Detailed Job Duties:  \n'
+                                   '\uf0b7 Oversee HR operations for '
+                                   'BroadAxis, especially for state contracts '
+                                   'like Texas DIR ITSAC, ensuring \n'
+                                   'compliance with internal standards and '
+                                   'external client requirements.  \n'
+                                   '\uf0b7 Manage the end -to-end recruitment '
+                                   'cycle, including sourcing, screening, '
+                                   'interviewing, and \n'
+                                   'onboarding of candidates across IT, '
+                                   'corporate, legal, and engineering '
+                                   'roles.  \n'
+                                   '\uf0b7 Lead diversity hiring initiatives '
+                                   'and executive searches from Director to C '
+                                   '-suite, utilizing tools like \n'
+                                   'Workday, SuccessFactors, Phenom, Tal eo, '
+                                   'Greenhouse, and AI -powered platforms.  \n'
+                                   '\uf0b7 Maintain and analyze key HR metrics '
+                                   'such as time -to-fill, cost -per-hire, '
+                                   'quality of hire, source \n'
+                                   'efficiency, and diversity goals, '
+                                   'delivering regular performance '
+                                   'dashboards.  \n'
+                                   '\uf0b7 Serve as the point of contact for '
+                                   'client -facing HR functions, ensuring '
+                                   'contractual compliance, \n'
+                                   'satisfaction, and delivery of HR services '
+                                   'under frameworks like DIR ITSAC.  \n'
+                                   '\uf0b7 Facilitate seamless onboarding '
+                                   'experiences, employee documentation, and '
+                                   'policy compliance for all \n'
+                                   'new hires and consultants.  \n'
+                                   '\uf0b7 Support employee relations by '
+                                   'addressing escalations, fostering '
+                                   'engagement, and ensuring regulatory \n'
+                                   'adherence.  \n'
+                                   '\uf0b7 Implement HR process improvements '
+                                   'through automation projects, including '
+                                   'resume parsing, \n'
+                                   'chatbot pre -screening (e.g., "Skye"), and '
+                                   'RPA tools for of fer management.  \n'
+                                   '\uf0b7 Lead talent branding initiatives '
+                                   'and create TA content for internal portals '
+                                   'and external campaigns, \n'
+                                   'including award submissions (e.g., GPTW, '
+                                   'SHRM).'},
+              'score': 0.578123689,
+              'values': []}],
+ 'namespace': 'broadaxis-index',
+ 'usage': {'read_units': 1}}
+2025-08-21 14:56:52,549 - MCPServer - INFO - Found 5 matches
+2025-08-21 14:56:52,549 - MCPServer - INFO - Match 1: score=0.7116, source=infoDoc.pdf, text_len=1496
+2025-08-21 14:56:52,549 - MCPServer - INFO - Match 2: score=0.7078, source=infoDoc.pdf, text_len=33
+2025-08-21 14:56:52,549 - MCPServer - INFO - Match 3: score=0.6961, source=infoDoc.pdf, text_len=1871
+2025-08-21 14:56:52,550 - MCPServer - INFO - Match 4: score=0.6958, source=infoDoc.pdf, text_len=1164
+2025-08-21 14:56:52,550 - MCPServer - INFO - Match 5: score=0.5781, source=infoDoc.pdf, text_len=1481
+2025-08-21 14:56:52,553 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest

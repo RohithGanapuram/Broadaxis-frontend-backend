@@ -91,11 +91,7 @@ class ChatRequest(BaseModel):
     enabled_tools: List[str] = []
     model: str = "claude-3-7-sonnet-20250219"
 
-class ChatResponse(BaseModel):
-    response: str
-    status: str = "success"
-    tokens_used: int = 0
-    tokens_remaining: int = 0
+
 
 class EmailFetchRequest(BaseModel):
     email_accounts: List[str] = []  # Optional: specific accounts to fetch from
@@ -1711,37 +1707,6 @@ def get_token_limits():
         "status": "success"
     }
 
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
-    """Process chat queries through the MCP server."""
-    if not request.query or not request.query.strip():
-        raise ValidationError("Query cannot be empty")
-    
-    try:
-        session_id = f"api_{int(time.time())}_{hash(request.query) % 10000}"
-        result = await run_mcp_query(
-            query=request.query.strip(),
-            enabled_tools=request.enabled_tools,
-            model=request.model,
-            session_id=session_id
-        )
-        
-        if not isinstance(result, dict) or "response" not in result:
-            raise ExternalAPIError("Invalid response from MCP query processor")
-        
-        usage = token_manager.get_usage(session_id)
-        return ChatResponse(
-            response=result["response"],
-            status="success",
-            tokens_used=result.get("tokens_used", 0),
-            tokens_remaining=usage["session_limit"] - usage["session_used"]
-        )
-    except BroadAxisError:
-        raise
-    except Exception as e:
-        error_handler.log_error(e, {'query_length': len(request.query), 'enabled_tools': request.enabled_tools})
-        raise ExternalAPIError("Failed to process chat request", {'original_error': str(e)})
-
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), session_id: str = "default"):
     """Upload and process PDF files using MCP tool"""
@@ -1876,43 +1841,7 @@ async def initialize_mcp():
             "error_message": "Failed to initialize MCP server"
         }
 
-@app.get("/api/tools")
-async def get_available_tools():
-    try:
-        tools = await mcp_interface.get_tools()
-        return {
-            "tools": tools, 
-            "status": "success",
-            "connection_status": mcp_interface._connection_status
-        }
-    except BroadAxisError:
-        raise
-    except Exception as e:
-        error_handler.log_error(e, {'operation': 'get_available_tools'})
-        return {
-            "tools": [], 
-            "status": "error",
-            "connection_status": "offline",
-            "error_message": "Failed to fetch tools from server"
-        }
 
-@app.get("/api/prompts")
-async def get_available_prompts():
-    try:
-        prompts = await mcp_interface.get_prompts()
-        return {
-            "prompts": prompts, 
-            "status": "success",
-            "connection_status": mcp_interface._connection_status
-        }
-    except Exception as e:
-        error_handler.log_error(e, {'operation': 'get_available_prompts'})
-        return {
-            "prompts": [], 
-            "status": "error",
-            "connection_status": "offline",
-            "error_message": "Failed to fetch prompts from server"
-        }
 
 
 @app.get("/api/test-graph-auth")

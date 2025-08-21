@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { ChatRequest, ChatResponse, FileInfo, Tool, Prompt, UploadResponse, GeneratedFile, EmailFetchRequest, EmailFetchResponse } from '../types'
+import { ChatResponse, FileInfo, Tool, Prompt, UploadResponse, GeneratedFile, EmailFetchRequest, EmailFetchResponse } from '../types'
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'
 
@@ -61,13 +61,7 @@ export const apiClient = {
     }
   },
 
-  // Chat endpoints
-  async sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
-    const response = await api.post('/api/chat', request, {
-      timeout: 120000 // 2 minutes for chat messages
-    })
-    return response.data
-  },
+
 
   // File upload endpoints
   async uploadFile(file: File, sessionId: string = 'default'): Promise<FileInfo> {
@@ -145,26 +139,7 @@ export const apiClient = {
     }
   },
 
-  // Tools and prompts (legacy endpoints - now use cached data)
-  async getAvailableTools(): Promise<{ tools: Tool[]; status: string }> {
-    try {
-      const response = await api.get('/api/tools')
-      return response.data
-    } catch (error) {
-      console.error('Failed to get tools:', error)
-      return { tools: [], status: "error" }
-    }
-  },
 
-  async getAvailablePrompts(): Promise<{ prompts: Prompt[]; status: string }> {
-    try {
-      const response = await api.get('/api/prompts')
-      return response.data
-    } catch (error) {
-      console.error('Failed to get prompts:', error)
-      return { prompts: [], status: "error" }
-    }
-  },
 
 
 
