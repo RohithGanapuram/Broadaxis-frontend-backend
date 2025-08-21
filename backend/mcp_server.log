@@ -1,1189 +1,276 @@
-2025-08-14 09:40:09,526 - MCPServer - INFO - Pinecone connection established
-2025-08-14 09:40:09,571 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 09:40:09,574 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 09:41:12,494 - MCPServer - INFO - Pinecone connection established
-2025-08-14 09:41:12,549 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 09:41:12,551 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 10:18:16,940 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:03:09,639 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-14 10:18:16,942 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 10:18:16,993 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 10:18:16,995 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 10:18:47,947 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:03:09,639 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:03:09,659 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:03:09,696 - mcp.server.lowlevel.server - INFO - Processing request of type GetPromptRequest
+2025-08-21 13:03:12,399 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:03:13,670 - MCPServer - INFO - Listing files from SharePoint: root
+2025-08-21 13:03:14,902 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:05:33,249 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-14 10:18:47,949 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 10:18:51,555 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-14 10:18:51,556 - MCPServer - INFO - Searching for: project coordinator job duties responsibilities
-2025-08-14 10:18:51,556 - MCPServer - INFO - Embedding text of length: 47
-2025-08-14 10:18:52,425 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 10:18:52,432 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 10:18:52,433 - MCPServer - INFO - Query embedding dimension: 1536
-2025-08-14 10:18:52,793 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
-2025-08-14 10:18:52,795 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_job_27_abdf9bbda69a',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Position Title:  Project Coordinator'},
-              'score': 0.775683284,
-              'values': []},
-             {'id': 'infoDoc.pdf_chunk_20_006c6d2a83be',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Position Title:  Project Coordinator  \n'
-                                   'Detailed Job Duties:  \n'
-                                   '\uf0b7 Collaborate with cross -functional '
-                                   'teams to define project vision, '
-                                   'objectives, and roadmaps aligned \n'
-                                   'with business goals.  \n'
-                                   '\uf0b7 Coordinate Agile ceremonies '
-                                   'including sprint planning, daily stand '
-                                   '-ups, and retrospectives to ensure \n'
-                                   'timely progress and issue resolution.  \n'
-                                   '\uf0b7 Develop and manage detailed project '
-                                   'documentation including proposals, '
-                                   'roadmaps, BRDs, and user \n'
-                                   'stories with clearly defined acceptance '
-                                   'criteria.  \n'
-                                   '\uf0b7 Track and manage project tasks '
-                                   'using tools like JIRA, Azure DevOps, and '
-                                   'Microsoft Project, ensuring \n'
-                                   'milestones are delivered on time.  \n'
-                                   '\uf0b7 Interface wi th stakeholders and '
-                                   'subject matter experts to gather, '
-                                   'validate, and refine business \n'
-                                   'requirements through gap analysis (As -Is '
-                                   'vs To -Be). \n'
-                                   '\uf0b7 Facilitate communication among '
-                                   'development teams, product managers, QA '
-                                   'teams, and business \n'
-                                   'stakeholders, ensuring clear understanding '
-                                   'and alignment.  \n'
-                                   '\uf0b7 Lead UAT (User Acceptance Testing), '
-                                   'define test cases, coordinate issue '
-                                   'resolution, and document \n'
-                                   'system defects and corrective actions.  \n'
-                                   '\uf0b7 Integrate and manage cloud -based '
-                                   'infrastructure (primarily AWS) for '
-                                   'scalable and secure \n'
-                                   'deployments in coordination with '
-                                   'DevOps.  \n'
-                                   '\uf0b7 Conduct training sessions and '
-                                   'develop user guides for end -user '
-                                   'enablement and smoother system \n'
-                                   'adoption.  \n'
-                                   '\uf0b7 Actively participate in AI -based '
-                                   'product development for internal CPA '
-                                   '-focused platforms, driving \n'
-                                   'automation of boo kkeeping and '
-                                   'reconciliation processes.  \n'
-                                   '\uf0b7 Ensure system security, data '
-                                   'compliance (SOC2, encryption), and '
-                                   'continuous improvement using Agile \n'
-                                   'principles.  \n'
-                                   '\uf0b7 Contribute to overall client '
-                                   'satisfaction and retention through '
-                                   'delivery excellence, timely reporting, \n'
-                                   'and stakeholder engagement.'},
-              'score': 0.649211228,
-              'values': []},
-             {'id': 'infoDoc.pdf_chunk_30_c8dad838a038',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'quality and efficiency.  \n'
-                                   '\uf0b7 Establish clear technical roadmaps '
-                                   'based on client needs, ensuring alignment '
-                                   'with project execution \n'
-                                   'and delivery milestones.  \n'
-                                   '\uf0b7 Supervise company budgets , '
-                                   'financial planning, and resource '
-                                   'allocation to maintain cost -effective \n'
-                                   'operations.  \n'
-                                   '\uf0b7 Recruit, interview, and evaluate '
-                                   'candidates on behalf of clients, playing a '
-                                   'hands -on role in talent \n'
-                                   'acquisition and consulting engagements.  \n'
-                                   '\uf0b7 Deliver comprehensive onboardin g '
-                                   'and SDLC training to new consultants and '
-                                   'delivery team members.  \n'
-                                   '\uf0b7 Conduct stakeholder meetings for '
-                                   'requirement gathering and roadmap '
-                                   'definition.  \n'
-                                   '\uf0b7 Manage cross -functional teams and '
-                                   'ensure collaborative execution across '
-                                   'product, consulting, and \n'
-                                   'technical trac ks. \n'
-                                   '\uf0b7 Engage with clients such as '
-                                   'American Petroleum Institute, America250, '
-                                   'Texas HHSC, TEA, TWC, DPS, \n'
-                                   'and others for business expansion and '
-                                   'service continuity.  \n'
-                                   'Position Title:  Project Coordinator  \n'
-                                   'Detailed Job Duties:  \n'
-                                   '\uf0b7 Collaborate with cross -functional '
-                                   'teams to define project vision, '
-                                   'objectives, and roadmaps aligned \n'
-                                   'with business goals.  \n'
-                                   '\uf0b7 Coordinate Agile ceremonies '
-                                   'including sprint planning, daily stand '
-                                   '-ups, and retrospectives to ensure'},
-              'score': 0.613011062,
-              'values': []}],
- 'namespace': 'broadaxis-index',
- 'usage': {'read_units': 1}}
-2025-08-14 10:18:52,796 - MCPServer - INFO - Found 3 matches
-2025-08-14 10:18:52,796 - MCPServer - INFO - Match 1: score=0.7757, source=infoDoc.pdf, text_len=36
-2025-08-14 10:18:52,796 - MCPServer - INFO - Match 2: score=0.6492, source=infoDoc.pdf, text_len=1728
-2025-08-14 10:18:52,797 - MCPServer - INFO - Match 3: score=0.6130, source=infoDoc.pdf, text_len=1176
-2025-08-14 10:18:52,801 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 10:39:36,880 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:05:33,249 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:05:33,259 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:05:33,291 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:05:33,292 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 13:05:43,443 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-14 10:39:36,881 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 10:39:36,924 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 10:39:36,926 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 10:41:46,593 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:05:43,443 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:05:43,457 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:05:43,487 - mcp.server.lowlevel.server - INFO - Processing request of type GetPromptRequest
+2025-08-21 13:05:43,490 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:05:46,219 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:05:47,461 - MCPServer - INFO - Listing files from SharePoint: root
+2025-08-21 13:08:02,122 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-14 10:41:46,593 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 10:41:46,631 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 10:41:46,633 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 10:47:11,846 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_1755184707818': {'vector_count': 3}},
- 'total_vector_count': 229,
- 'vector_type': 'dense'}
-2025-08-14 10:47:11,847 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 10:47:11,882 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 10:47:11,883 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 11:17:08,560 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:08:02,123 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:08:02,132 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:08:02,166 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:08:02,169 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 13:08:15,157 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-14 11:17:08,565 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 11:17:08,612 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 11:17:08,614 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 11:18:48,745 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'14-Special_Requirements': {'vector_count': 2},
-                'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 228,
- 'vector_type': 'dense'}
-2025-08-14 11:18:48,745 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 11:18:48,784 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 11:18:48,786 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 11:22:10,253 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'14-Special_Requirements': {'vector_count': 2},
-                'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 228,
- 'vector_type': 'dense'}
-2025-08-14 11:22:10,253 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 11:22:10,321 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 11:22:10,323 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 11:34:37,797 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'14-Special_Requirements': {'vector_count': 2},
-                '5-General_Requirements_for_Proposals': {'vector_count': 1},
-                'broadaxis-index': {'vector_count': 226},
-                'test': {'vector_count': 1}},
- 'total_vector_count': 230,
- 'vector_type': 'dense'}
-2025-08-14 11:34:37,803 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 11:34:37,989 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 11:34:37,997 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 11:44:50,512 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:08:15,158 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:08:15,175 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:08:15,207 - mcp.server.lowlevel.server - INFO - Processing request of type GetPromptRequest
+2025-08-21 13:08:20,471 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-14 11:44:50,513 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 11:44:50,548 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 11:44:50,550 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 12:01:34,192 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'14-Special_Requirements': {'vector_count': 2},
-                '15-Specifications': {'vector_count': 56},
-                'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 284,
- 'vector_type': 'dense'}
-2025-08-14 12:01:34,193 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 12:01:34,235 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 12:01:34,237 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 13:18:52,858 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'14-Special_Requirements': {'vector_count': 2},
-                '15-Specifications': {'vector_count': 56},
-                '5-General_Requirements_for_Proposals': {'vector_count': 32},
-                'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 316,
- 'vector_type': 'dense'}
-2025-08-14 13:18:52,859 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 13:18:52,905 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 13:18:52,907 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 13:21:14,778 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'14-Special_Requirements': {'vector_count': 2},
-                '14_Special_Requirements': {'vector_count': 2},
-                '15-Specifications': {'vector_count': 56},
-                '5-General_Requirements_for_Proposals': {'vector_count': 32},
-                'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 318,
- 'vector_type': 'dense'}
-2025-08-14 13:21:14,779 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 13:21:14,838 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 13:21:14,841 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 13:22:47,997 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'14-Special_Requirements': {'vector_count': 2},
-                '14_Special_Requirements': {'vector_count': 2},
-                '15-Specifications': {'vector_count': 56},
-                '5-General_Requirements_for_Proposals': {'vector_count': 32},
-                '5_General_Requirements_for_Proposals': {'vector_count': 32},
-                'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 350,
- 'vector_type': 'dense'}
-2025-08-14 13:22:47,998 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 13:22:48,047 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 13:22:48,051 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 14:04:09,290 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:08:20,472 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:08:20,493 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:08:23,124 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:08:24,650 - MCPServer - INFO - Listing files from SharePoint: root
+2025-08-21 13:08:26,122 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:08:29,750 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:08:29,751 - MCPServer - INFO - Listing files from SharePoint: RFP
+2025-08-21 13:08:33,684 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:08:33,685 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-21 13:08:38,692 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:08:38,693 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/14-Special Requirements.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:08:44,810 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:08:44,810 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/15-Specifications.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:09:37,696 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:09:37,697 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:13:20,850 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-14 14:04:09,291 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 14:04:09,442 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 14:04:09,449 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 14:04:31,182 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:13:20,850 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:13:20,862 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:13:20,888 - mcp.server.lowlevel.server - INFO - Processing request of type GetPromptRequest
+2025-08-21 13:13:25,520 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-14 14:04:31,182 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 14:04:31,236 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-14 14:04:31,841 - MCPServer - INFO - Embedding text of length: 1198
-2025-08-14 14:04:34,026 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:34,032 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:34,032 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:04:35,347 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:35,348 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:35,349 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:35,831 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:35,833 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:35,833 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:36,154 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:36,156 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:36,156 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:36,436 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:36,438 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:36,439 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:04:37,378 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:37,380 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:37,380 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:04:37,977 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:37,978 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:37,979 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:04:38,268 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:38,272 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:38,272 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:38,604 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:38,608 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:38,608 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:38,820 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:38,822 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:38,822 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:39,091 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:39,094 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:39,094 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:39,429 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:39,430 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:39,430 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:04:39,593 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:39,595 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:39,595 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:39,923 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:39,932 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:39,933 - MCPServer - INFO - Embedding text of length: 1198
-2025-08-14 14:04:40,202 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:40,204 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:40,204 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:04:40,456 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:40,457 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:40,459 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:40,685 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:40,686 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:40,686 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:40,870 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:40,872 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:40,872 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:04:41,178 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:41,180 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:41,180 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:41,385 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:41,387 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:41,387 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:41,638 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:41,640 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:41,640 - MCPServer - INFO - Embedding text of length: 1197
-2025-08-14 14:04:41,902 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:41,904 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:41,904 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:04:42,389 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:42,391 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:42,391 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:42,816 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:42,818 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:42,818 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:43,093 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:43,094 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:43,094 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:43,287 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:43,290 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:43,290 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:04:43,488 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:43,490 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:43,490 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:04:43,831 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:43,833 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:43,833 - MCPServer - INFO - Embedding text of length: 673
-2025-08-14 14:04:43,970 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:04:43,972 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:04:44,874 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 14:36:54,463 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 255,
- 'vector_type': 'dense'}
-2025-08-14 14:36:54,475 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 14:36:54,608 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-14 14:36:55,078 - MCPServer - INFO - Embedding text of length: 1198
-2025-08-14 14:36:55,878 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:55,881 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:55,881 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:36:56,184 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:56,188 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:56,188 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:36:56,556 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:56,560 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:56,560 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:36:56,900 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:56,905 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:56,906 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:36:57,177 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:57,182 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:57,182 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:36:57,716 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:57,719 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:57,738 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:36:57,997 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:57,998 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:57,999 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:36:58,180 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:58,181 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:58,181 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:36:58,500 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:58,502 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:58,502 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:36:58,785 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:36:58,787 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:36:58,787 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:00,016 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:00,019 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:00,020 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:00,413 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:00,415 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:00,415 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:37:00,658 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:00,660 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:00,660 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:01,023 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:01,027 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:01,028 - MCPServer - INFO - Embedding text of length: 1198
-2025-08-14 14:37:01,330 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:01,336 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:01,337 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:37:01,552 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:01,557 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:01,558 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:02,017 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:02,022 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:02,022 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:02,217 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:02,218 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:02,218 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:37:02,461 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:02,462 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:02,462 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:02,844 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:02,847 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:02,848 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:02,994 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:02,997 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:02,997 - MCPServer - INFO - Embedding text of length: 1197
-2025-08-14 14:37:03,177 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:03,183 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:03,184 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:37:03,608 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:03,610 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:03,610 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:03,820 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:03,824 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:03,825 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:04,064 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:04,066 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:04,066 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:04,255 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:04,256 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:04,257 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 14:37:04,422 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:04,425 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:04,425 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 14:37:04,721 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:04,722 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:04,723 - MCPServer - INFO - Embedding text of length: 673
-2025-08-14 14:37:04,914 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 14:37:04,916 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 14:37:05,944 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 15:00:55,146 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 255,
- 'vector_type': 'dense'}
-2025-08-14 15:00:55,146 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 15:00:55,206 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 15:00:55,208 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-14 15:03:16,080 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 255,
- 'vector_type': 'dense'}
-2025-08-14 15:03:16,082 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 15:03:16,152 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-14 15:03:16,877 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 15:03:17,755 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:17,759 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:17,759 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:18,106 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:18,107 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:18,107 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:18,338 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:18,340 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:18,340 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:18,657 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:18,659 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:18,659 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:18,905 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:18,907 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:18,907 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 15:03:19,118 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:19,120 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:19,121 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 15:03:19,317 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:19,319 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:19,319 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:19,567 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:19,570 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:19,570 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:19,813 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:19,816 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:19,816 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:19,991 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:19,992 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:19,992 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:20,210 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:20,212 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:20,212 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:20,444 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:20,445 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:20,446 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:20,719 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:20,720 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:20,721 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:21,551 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:21,553 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:21,554 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:21,862 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:21,863 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:21,863 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:21,979 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:21,981 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:21,982 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:22,150 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:22,154 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:22,154 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:22,352 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:22,354 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:22,354 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:22,540 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:22,541 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:22,541 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 15:03:22,735 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:22,738 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:22,739 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:22,994 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:22,995 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:22,995 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:23,251 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:23,256 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:23,268 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:23,675 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:23,676 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:23,677 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:24,034 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:24,036 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:24,037 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:24,570 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:24,571 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:24,572 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 15:03:24,807 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:24,808 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:24,808 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:25,055 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:25,056 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:25,057 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 15:03:25,234 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:25,236 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:25,236 - MCPServer - INFO - Embedding text of length: 1200
-2025-08-14 15:03:25,510 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:25,514 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:25,514 - MCPServer - INFO - Embedding text of length: 1199
-2025-08-14 15:03:25,837 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:25,838 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:25,838 - MCPServer - INFO - Embedding text of length: 619
-2025-08-14 15:03:26,043 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:26,044 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:26,596 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 15:03:50,840 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_default': {'vector_count': 31},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 286,
- 'vector_type': 'dense'}
-2025-08-14 15:03:50,840 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 15:03:50,881 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-14 15:03:50,881 - MCPServer - INFO - Embedding text of length: 39
-2025-08-14 15:03:52,494 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:03:52,497 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:03:52,636 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-14 15:04:40,478 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_default': {'vector_count': 31},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 286,
- 'vector_type': 'dense'}
-2025-08-14 15:04:40,479 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-14 15:04:40,572 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-14 15:04:40,573 - MCPServer - INFO - Embedding text of length: 39
-2025-08-14 15:04:41,876 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-14 15:04:41,879 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-14 15:04:42,012 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-15 11:13:32,795 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_default': {'vector_count': 31},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 286,
- 'vector_type': 'dense'}
-2025-08-15 11:13:32,800 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-15 11:13:32,860 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-15 11:13:32,863 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-15 11:17:44,553 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_default': {'vector_count': 31},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 286,
- 'vector_type': 'dense'}
-2025-08-15 11:17:44,559 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-15 11:17:47,221 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-15 11:17:47,224 - MCPServer - INFO - Searching for: What is Broadaxis company information overview
-2025-08-15 11:17:47,224 - MCPServer - INFO - Embedding text of length: 46
-2025-08-15 11:17:49,415 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-15 11:17:49,420 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-15 11:17:49,420 - MCPServer - INFO - Query embedding dimension: 1536
-2025-08-15 11:17:49,547 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
-2025-08-15 11:17:49,550 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_service_0_34fb671c6c7c',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Who We Are – BroadAxis, Inc.  \n'
-                                   'BroadAxis, Inc. is a Texas -based, '
-                                   'minority -owned IT services and consulting '
-                                   'company with over six years of \n'
-                                   'experience delivering innovative '
-                                   'technology solutions. Headquartered in '
-                                   'Plano, Texas, we serve a wide range \n'
-                                   'of clients across industries including '
-                                   'government, healthcare, finance, '
-                                   'education, retail, and energy.  \n'
-                                   'Our mission is to empower businesses by '
-                                   'providing tailored, cutting -edge IT '
-                                   'services that drive digital \n'
-                                   'transformation, operational efficiency, '
-                                   "and long -term growth . Whether it's "
-                                   'modernizing legacy systems, \n'
-                                   'building intelligent cloud '
-                                   'infrastructures, or staffing specialized '
-                                   'talent for mission -critical roles, '
-                                   'BroadAxis is \n'
-                                   'built to solve complex challenges.  \n'
-                                   'We take pride in our client -centric '
-                                   'approach, where every enga gement is '
-                                   'guided by a focus on quality, speed, \n'
-                                   'transparency, and measurable results.'},
-              'score': 0.679152608,
-              'values': []},
-             {'id': 'infoDoc.pdf_chunk_21_a406360672e0',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Why BroadAxis?  \n'
-                                   'We combine technical excellence, rapid '
-                                   'implementation, and continuous support to '
-                                   'deliver cloud and security \n'
-                                   'solutions that protect what matters '
-                                   'most.  \n'
-                                   'Business Intelligence & Data Warehousing '
-                                   'Expertise  \n'
-                                   'BroadAxis, Inc. offers end -to-end '
-                                   'Business Intelligence (BI) and data '
-                                   'integration services designed to empower \n'
-                                   'decision -makers with real -time, '
-                                   'actionable insights. As a Texas -based MBE '
-                                   'HUB -certified firm with extensive \n'
-                                   'experience across public, non -profit, and '
-                                   'commercial sectors, we combine the right '
-                                   'talent, tools, and \n'
-                                   'processes to deliver secure, scalable, and '
-                                   'user -centric BI solutions.  \n'
-                                   'Project Understanding & Capabilities  \n'
-                                   'We provide full lifecycle BI solution s '
-                                   'that:  \n'
-                                   '\uf0b7 Ingest, transform, model, and '
-                                   'visualize data from diverse sources  \n'
-                                   '\uf0b7 Ensure data quality, scalability, '
-                                   'and security  \n'
-                                   '\uf0b7 Deliver executive dashboards, '
-                                   'operational KPIs, and ad -hoc reporting  \n'
-                                   '\uf0b7 Support data governance, access '
-                                   'controls, and user enablement  \n'
-                                   'Key Deliverables Include:  \n'
-                                   '\uf0b7 Centralized enterprise data '
-                                   'warehouse (on -prem, cloud, or hybrid)  \n'
-                                   '\uf0b7 Metadata -driven ETL/ELT pipelines '
-                                   'with robust error handling and audit logs'},
-              'score': 0.667122185,
-              'values': []},
-             {'id': 'infoDoc.pdf_chunk_0_81e9a643bb5c',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Who We Are – BroadAxis, Inc.  \n'
-                                   'BroadAxis, Inc. is a Texas -based, '
-                                   'minority -owned IT services and consulting '
-                                   'company with over six years of \n'
-                                   'experience delivering innovative '
-                                   'technology solutions. Headquartered in '
-                                   'Plano, Texas, we serve a wide range \n'
-                                   'of clients across industries including '
-                                   'government, healthcare, finance, '
-                                   'education, retail, and energy.  \n'
-                                   'Our mission is to empower businesses by '
-                                   'providing tailored, cutting -edge IT '
-                                   'services that drive digital \n'
-                                   'transformation, operational efficiency, '
-                                   "and long -term growth . Whether it's "
-                                   'modernizing legacy systems, \n'
-                                   'building intelligent cloud '
-                                   'infrastructures, or staffing specialized '
-                                   'talent for mission -critical roles, '
-                                   'BroadAxis is \n'
-                                   'built to solve complex challenges.  \n'
-                                   'We take pride in our client -centric '
-                                   'approach, where every enga gement is '
-                                   'guided by a focus on quality, speed, \n'
-                                   'transparency, and measurable results.  \n'
-                                   'Key Highlights:  \n'
-                                   '\uf0b7 6+ years of IT delivery '
-                                   'excellence  \n'
-                                   '\uf0b7 Certified Minority Business '
-                                   'Enterprise (MBE) and GSA vendor  \n'
-                                   '\uf0b7 Trusted partner for state agencies '
-                                   'under the Texas DIR ITSAC  contract  \n'
-                                   '\uf0b7 Strong portfolio across public, '
-                                   'private, and nonprofit sectors'},
-              'score': 0.648014963,
-              'values': []}],
- 'namespace': 'broadaxis-index',
- 'usage': {'read_units': 1}}
-2025-08-15 11:17:49,552 - MCPServer - INFO - Found 3 matches
-2025-08-15 11:17:49,552 - MCPServer - INFO - Match 1: score=0.6792, source=infoDoc.pdf, text_len=871
-2025-08-15 11:17:49,552 - MCPServer - INFO - Match 2: score=0.6671, source=infoDoc.pdf, text_len=1151
-2025-08-15 11:17:49,553 - MCPServer - INFO - Match 3: score=0.6480, source=infoDoc.pdf, text_len=1134
-2025-08-15 11:17:49,557 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-15 11:18:48,272 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_default': {'vector_count': 31},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 286,
- 'vector_type': 'dense'}
-2025-08-15 11:18:48,272 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-15 11:18:49,955 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-15 11:18:53,177 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-15 11:44:39,395 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_default': {'vector_count': 31},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 286,
- 'vector_type': 'dense'}
-2025-08-15 11:44:39,396 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-15 11:44:41,594 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-15 11:44:45,304 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-15 11:45:12,749 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_default': {'vector_count': 31},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 286,
- 'vector_type': 'dense'}
-2025-08-15 11:45:12,749 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-15 11:45:14,893 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-15 11:45:17,166 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-15 11:45:55,080 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_default': {'vector_count': 31},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 286,
- 'vector_type': 'dense'}
-2025-08-15 11:45:55,080 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-15 11:45:58,682 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-15 11:46:01,755 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-15 11:48:10,286 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226},
-                'session_default': {'vector_count': 31},
-                'session_null': {'vector_count': 29}},
- 'total_vector_count': 286,
- 'vector_type': 'dense'}
-2025-08-15 11:48:10,287 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-15 11:48:12,634 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-15 11:48:15,737 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-18 10:00:47,525 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:13:25,520 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:13:25,528 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:13:32,986 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-18 10:00:47,526 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-18 10:00:47,573 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-18 10:00:47,575 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-18 10:01:11,643 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:13:32,987 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:13:33,035 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:13:33,113 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:13:33,114 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 13:13:36,121 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:13:37,208 - MCPServer - INFO - Listing files from SharePoint: root
+2025-08-21 13:13:38,359 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:13:43,124 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:13:43,126 - MCPServer - INFO - Listing files from SharePoint: RFP
+2025-08-21 13:13:49,131 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:13:49,132 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-21 13:13:55,096 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:13:55,097 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:14:02,501 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:14:02,502 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/14-Special Requirements.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:14:54,878 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:14:54,879 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/15-Specifications.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:25:37,082 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-18 10:01:11,643 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-18 10:01:14,273 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-18 10:01:16,652 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-18 10:02:47,181 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:25:37,085 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:25:37,101 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:25:37,130 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:25:37,132 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 13:27:48,828 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-18 10:02:47,181 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-18 10:02:49,497 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-18 10:02:49,498 - MCPServer - INFO - Searching for: network engineer job duties responsibilities Broadaxis
-2025-08-18 10:02:49,498 - MCPServer - INFO - Embedding text of length: 54
-2025-08-18 10:02:51,324 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-18 10:02:51,329 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-18 10:02:51,329 - MCPServer - INFO - Query embedding dimension: 1536
-2025-08-18 10:02:51,458 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
-2025-08-18 10:02:51,462 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_experience_46_e33da0b8c53e',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Detailed Job Duties:  \n'
-                                   '\uf0b7 Design, configure, and maintain '
-                                   'secure network infrastructure including '
-                                   'Cisco switches, ASA firewalls, \n'
-                                   'routers, and Nexus devices across '
-                                   'on-premises and cloud environments.  \n'
-                                   '\uf0b7 Monitor and troubleshoot network '
-                                   'performance to ensure uptime, reliability, '
-                                   'and optimal system \n'
-                                   "function across BroadAxis's client and "
-                                   'internal infrastructure.  \n'
-                                   '\uf0b7 Lead and manage network upgrade '
-                                   'projects, from planning and d ocumentation '
-                                   'to implementation \n'
-                                   'and testing phases.  \n'
-                                   '\uf0b7 Architect and support LAN/WAN/VLAN '
-                                   'solutions, implementing protocols such as '
-                                   'BGP, OSPF, EIGRP, \n'
-                                   'and IPsec for secure and scalable '
-                                   'connectivity.  \n'
-                                   '\uf0b7 Administer Microsoft Servers '
-                                   '(2016/2019), Active Directory, Gr oup '
-                                   'Policy, DNS, DHCP, VPN, and SSL \n'
-                                   'certificate configurations for enterprise '
-                                   '-wide systems.  \n'
-                                   '\uf0b7 Provide VMware and virtual '
-                                   'infrastructure support including ESXi and '
-                                   'Dell EMC VxRail management, \n'
-                                   'ensuring high availability and disaster '
-                                   'recovery readiness.  \n'
-                                   '\uf0b7 Utilize  tools like NetApp '
-                                   'SnapMirror, Azure, and Office 365 to '
-                                   'manage backups, replication, and \n'
-                                   'hybrid cloud environments.  \n'
-                                   '\uf0b7 Create and maintain detailed '
-                                   'documentation including network diagrams, '
-                                   'configuration records, and \n'
-                                   'policy manuals to support operations and a '
-                                   'udits.  \n'
-                                   '\uf0b7 Implement and maintain Barracuda, '
-                                   'Meraki, and SonicWall firewalls, as well '
-                                   'as spam filters and \n'
-                                   'endpoint security systems (e.g., '
-                                   'CrowdStrike, McAfee).  \n'
-                                   '\uf0b7 Provide Tier -3 technical support '
-                                   'for complex network, server, and endpoint '
-                                   'issues across data cente rs'},
-              'score': 0.71151489,
-              'values': []},
-             {'id': 'infoDoc.pdf_job_45_e8224df25e07',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Position Title:  Network Engineer'},
-              'score': 0.707792521,
-              'values': []},
-             {'id': 'infoDoc.pdf_chunk_26_469953939b19',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Position Title:  Network Engineer  \n'
-                                   'Detailed Job Duties:  \n'
-                                   '\uf0b7 Design, configure, and maintain '
-                                   'secure network infrastructure including '
-                                   'Cisco switches, ASA firewalls, \n'
-                                   'routers, and Nexus devices across '
-                                   'on-premises and cloud environments.  \n'
-                                   '\uf0b7 Monitor and troubleshoot network '
-                                   'performance to ensure uptime, reliability, '
-                                   'and optimal system \n'
-                                   "function across BroadAxis's client and "
-                                   'internal infrastructure.  \n'
-                                   '\uf0b7 Lead and manage network upgrade '
-                                   'projects, from planning and d ocumentation '
-                                   'to implementation \n'
-                                   'and testing phases.  \n'
-                                   '\uf0b7 Architect and support LAN/WAN/VLAN '
-                                   'solutions, implementing protocols such as '
-                                   'BGP, OSPF, EIGRP, \n'
-                                   'and IPsec for secure and scalable '
-                                   'connectivity.  \n'
-                                   '\uf0b7 Administer Microsoft Servers '
-                                   '(2016/2019), Active Directory, Gr oup '
-                                   'Policy, DNS, DHCP, VPN, and SSL \n'
-                                   'certificate configurations for enterprise '
-                                   '-wide systems.  \n'
-                                   '\uf0b7 Provide VMware and virtual '
-                                   'infrastructure support including ESXi and '
-                                   'Dell EMC VxRail management, \n'
-                                   'ensuring high availability and disaster '
-                                   'recovery readiness.  \n'
-                                   '\uf0b7 Utilize  tools like NetApp '
-                                   'SnapMirror, Azure, and Office 365 to '
-                                   'manage backups, replication, and \n'
-                                   'hybrid cloud environments.  \n'
-                                   '\uf0b7 Create and maintain detailed '
-                                   'documentation including network diagrams, '
-                                   'configuration records, and \n'
-                                   'policy manuals to support operations and a '
-                                   'udits.  \n'
-                                   '\uf0b7 Implement and maintain Barracuda, '
-                                   'Meraki, and SonicWall firewalls, as well '
-                                   'as spam filters and \n'
-                                   'endpoint security systems (e.g., '
-                                   'CrowdStrike, McAfee).  \n'
-                                   '\uf0b7 Provide Tier -3 technical support '
-                                   'for complex network, server, and endpoint '
-                                   'issues across data cente rs \n'
-                                   'and remote sites.  \n'
-                                   '\uf0b7 Lead collaboration with '
-                                   'cybersecurity and infrastructure teams to '
-                                   'assess vulnerabilities, improve \n'
-                                   'policies, and ensure compliance with '
-                                   'federal or enterprise -level security '
-                                   'requirements.  \n'
-                                   '\uf0b7 Conduct ongoing capacity planning '
-                                   'and performance  tuning to support growing '
-                                   'user demands and \n'
-                                   'new infrastructure rollouts.'},
-              'score': 0.696077228,
-              'values': []}],
- 'namespace': 'broadaxis-index',
- 'usage': {'read_units': 1}}
-2025-08-18 10:02:51,463 - MCPServer - INFO - Found 3 matches
-2025-08-18 10:02:51,464 - MCPServer - INFO - Match 1: score=0.7115, source=infoDoc.pdf, text_len=1496
-2025-08-18 10:02:51,464 - MCPServer - INFO - Match 2: score=0.7078, source=infoDoc.pdf, text_len=33
-2025-08-18 10:02:51,464 - MCPServer - INFO - Match 3: score=0.6961, source=infoDoc.pdf, text_len=1871
-2025-08-18 10:02:51,471 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 13:58:39,718 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:27:48,829 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:27:48,837 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:27:48,863 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:27:48,865 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 13:33:00,834 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 13:58:39,719 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 13:58:39,771 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 13:58:39,773 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-19 14:00:06,724 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:33:00,835 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:33:00,849 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:33:00,877 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:33:00,879 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 13:33:48,874 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 14:00:06,727 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 14:00:09,544 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:00:13,185 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 14:01:28,161 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:33:48,875 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:33:48,891 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:33:48,937 - mcp.server.lowlevel.server - INFO - Processing request of type GetPromptRequest
+2025-08-21 13:33:56,070 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 14:01:28,163 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 14:01:30,480 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:01:34,712 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 14:01:37,990 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:01:43,534 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:01:46,928 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:01:50,728 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:01:54,830 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:01:58,563 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:02:02,317 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:02:05,601 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:06:33,761 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:33:56,071 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:33:56,081 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:33:58,971 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:34:00,347 - MCPServer - INFO - Listing files from SharePoint: root
+2025-08-21 13:34:01,158 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:34:04,875 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:34:04,875 - MCPServer - INFO - Listing files from SharePoint: root
+2025-08-21 13:34:09,025 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:34:09,027 - MCPServer - INFO - Listing files from SharePoint: RFP
+2025-08-21 13:34:13,438 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:34:13,439 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-21 13:34:19,315 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:34:19,319 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/14-Special Requirements.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:34:26,138 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:34:26,138 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/15-Specifications.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:35:25,319 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:35:25,319 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:39:50,398 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 14:06:33,762 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 14:06:37,195 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:06:40,592 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 14:06:43,084 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:10:02,432 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:39:50,400 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:39:50,414 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:39:50,441 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:39:50,442 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 13:40:02,707 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 14:10:02,433 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 14:10:04,857 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:10:07,830 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 14:10:10,448 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:10:14,496 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:10:17,769 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:10:22,098 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:10:26,232 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:10:30,112 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:10:34,208 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:12:55,561 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:40:02,708 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:40:02,726 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:40:02,779 - mcp.server.lowlevel.server - INFO - Processing request of type GetPromptRequest
+2025-08-21 13:40:09,464 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 14:12:55,562 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 14:12:55,599 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 14:12:55,601 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-19 14:39:37,441 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:40:09,465 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:40:09,477 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:40:12,573 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:40:14,002 - MCPServer - INFO - Listing files from SharePoint: root
+2025-08-21 13:40:15,340 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:40:23,835 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:40:23,836 - MCPServer - INFO - Listing files from SharePoint: RFP
+2025-08-21 13:40:30,882 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:40:30,883 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-21 13:40:38,817 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:40:38,817 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/14-Special Requirements.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:40:48,335 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:40:48,336 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/15-Specifications.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:41:25,132 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:41:25,133 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-21 13:43:29,695 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 14:39:37,446 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 14:39:37,507 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 14:39:37,509 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-19 14:43:13,158 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:43:29,697 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:43:29,733 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:43:31,842 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:43:33,077 - MCPServer - INFO - Listing files from SharePoint: RFP/Haris County
+2025-08-21 13:43:34,294 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:44:13,365 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 14:43:13,158 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 14:43:13,210 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 14:43:13,212 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-19 14:48:15,540 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:44:13,366 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:44:13,380 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:44:21,695 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:44:22,867 - MCPServer - INFO - SharePoint search: query='Harris County', path='RFP', type='filename', file_type='None', max_results=50
+2025-08-21 13:44:25,923 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:45:51,133 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 14:48:15,541 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 14:48:15,578 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-19 14:48:15,580 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-19 14:48:46,149 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-21 13:45:51,134 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:45:51,144 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 13:45:56,254 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-21 13:45:57,594 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-21 13:45:58,691 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:46:55,236 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-19 14:48:46,150 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-19 14:48:51,100 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-19 14:48:51,102 - MCPServer - INFO - Searching for: What is BroadAxis and what do they do
-2025-08-19 14:48:51,102 - MCPServer - INFO - Embedding text of length: 37
-2025-08-19 14:48:52,658 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-19 14:48:52,664 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-19 14:48:52,664 - MCPServer - INFO - Query embedding dimension: 1536
-2025-08-19 14:48:52,967 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
-2025-08-19 14:48:52,968 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_service_0_34fb671c6c7c',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Who We Are – BroadAxis, Inc.  \n'
-                                   'BroadAxis, Inc. is a Texas -based, '
-                                   'minority -owned IT services and consulting '
-                                   'company with over six years of \n'
-                                   'experience delivering innovative '
-                                   'technology solutions. Headquartered in '
-                                   'Plano, Texas, we serve a wide range \n'
-                                   'of clients across industries including '
-                                   'government, healthcare, finance, '
-                                   'education, retail, and energy.  \n'
-                                   'Our mission is to empower businesses by '
-                                   'providing tailored, cutting -edge IT '
-                                   'services that drive digital \n'
-                                   'transformation, operational efficiency, '
-                                   "and long -term growth . Whether it's "
-                                   'modernizing legacy systems, \n'
-                                   'building intelligent cloud '
-                                   'infrastructures, or staffing specialized '
-                                   'talent for mission -critical roles, '
-                                   'BroadAxis is \n'
-                                   'built to solve complex challenges.  \n'
-                                   'We take pride in our client -centric '
-                                   'approach, where every enga gement is '
-                                   'guided by a focus on quality, speed, \n'
-                                   'transparency, and measurable results.'},
-              'score': 0.674302816,
-              'values': []},
-             {'id': 'infoDoc.pdf_chunk_21_a406360672e0',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Why BroadAxis?  \n'
-                                   'We combine technical excellence, rapid '
-                                   'implementation, and continuous support to '
-                                   'deliver cloud and security \n'
-                                   'solutions that protect what matters '
-                                   'most.  \n'
-                                   'Business Intelligence & Data Warehousing '
-                                   'Expertise  \n'
-                                   'BroadAxis, Inc. offers end -to-end '
-                                   'Business Intelligence (BI) and data '
-                                   'integration services designed to empower \n'
-                                   'decision -makers with real -time, '
-                                   'actionable insights. As a Texas -based MBE '
-                                   'HUB -certified firm with extensive \n'
-                                   'experience across public, non -profit, and '
-                                   'commercial sectors, we combine the right '
-                                   'talent, tools, and \n'
-                                   'processes to deliver secure, scalable, and '
-                                   'user -centric BI solutions.  \n'
-                                   'Project Understanding & Capabilities  \n'
-                                   'We provide full lifecycle BI solution s '
-                                   'that:  \n'
-                                   '\uf0b7 Ingest, transform, model, and '
-                                   'visualize data from diverse sources  \n'
-                                   '\uf0b7 Ensure data quality, scalability, '
-                                   'and security  \n'
-                                   '\uf0b7 Deliver executive dashboards, '
-                                   'operational KPIs, and ad -hoc reporting  \n'
-                                   '\uf0b7 Support data governance, access '
-                                   'controls, and user enablement  \n'
-                                   'Key Deliverables Include:  \n'
-                                   '\uf0b7 Centralized enterprise data '
-                                   'warehouse (on -prem, cloud, or hybrid)  \n'
-                                   '\uf0b7 Metadata -driven ETL/ELT pipelines '
-                                   'with robust error handling and audit logs'},
-              'score': 0.661577582,
-              'values': []},
-             {'id': 'infoDoc.pdf_chunk_0_81e9a643bb5c',
-              'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Who We Are – BroadAxis, Inc.  \n'
-                                   'BroadAxis, Inc. is a Texas -based, '
-                                   'minority -owned IT services and consulting '
-                                   'company with over six years of \n'
-                                   'experience delivering innovative '
-                                   'technology solutions. Headquartered in '
-                                   'Plano, Texas, we serve a wide range \n'
-                                   'of clients across industries including '
-                                   'government, healthcare, finance, '
-                                   'education, retail, and energy.  \n'
-                                   'Our mission is to empower businesses by '
-                                   'providing tailored, cutting -edge IT '
-                                   'services that drive digital \n'
-                                   'transformation, operational efficiency, '
-                                   "and long -term growth . Whether it's "
-                                   'modernizing legacy systems, \n'
-                                   'building intelligent cloud '
-                                   'infrastructures, or staffing specialized '
-                                   'talent for mission -critical roles, '
-                                   'BroadAxis is \n'
-                                   'built to solve complex challenges.  \n'
-                                   'We take pride in our client -centric '
-                                   'approach, where every enga gement is '
-                                   'guided by a focus on quality, speed, \n'
-                                   'transparency, and measurable results.  \n'
-                                   'Key Highlights:  \n'
-                                   '\uf0b7 6+ years of IT delivery '
-                                   'excellence  \n'
-                                   '\uf0b7 Certified Minority Business '
-                                   'Enterprise (MBE) and GSA vendor  \n'
-                                   '\uf0b7 Trusted partner for state agencies '
-                                   'under the Texas DIR ITSAC  contract  \n'
-                                   '\uf0b7 Strong portfolio across public, '
-                                   'private, and nonprofit sectors'},
-              'score': 0.631910861,
-              'values': []}],
- 'namespace': 'broadaxis-index',
- 'usage': {'read_units': 1}}
-2025-08-19 14:48:52,971 - MCPServer - INFO - Found 3 matches
-2025-08-19 14:48:52,971 - MCPServer - INFO - Match 1: score=0.6743, source=infoDoc.pdf, text_len=871
-2025-08-19 14:48:52,972 - MCPServer - INFO - Match 2: score=0.6616, source=infoDoc.pdf, text_len=1151
-2025-08-19 14:48:52,972 - MCPServer - INFO - Match 3: score=0.6319, source=infoDoc.pdf, text_len=1134
-2025-08-19 14:48:52,975 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 13:46:55,237 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 13:46:55,254 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 14:13:34,330 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-21 14:13:34,332 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 14:13:34,356 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 14:13:34,411 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-21 14:13:34,414 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-21 14:18:26,392 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-21 14:18:26,392 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-21 14:18:26,403 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-21 14:18:26,431 - mcp.server.lowlevel.server - INFO - Processing request of type GetPromptRequest

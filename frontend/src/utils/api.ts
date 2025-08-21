@@ -124,19 +124,21 @@ export const apiClient = {
       return {
         tools: [
           { name: "sum", description: "Add two numbers", input_schema: {} },
-          { name: "Broadaxis_knowledge_search", description: "Search company knowledge base", input_schema: {} },
-          { name: "web_search_tool", description: "Search the web", input_schema: {} },
-          { name: "generate_pdf_document", description: "Generate PDF documents", input_schema: {} },
-          { name: "generate_word_document", description: "Generate Word documents", input_schema: {} },
-          { name: "generate_text_file", description: "Generate text files", input_schema: {} },
-          { name: "search_papers", description: "Search academic papers", input_schema: {} },
-          { name: "get_forecast", description: "Get weather forecast", input_schema: {} },
-          { name: "get_alerts", description: "Get weather alerts", input_schema: {} }
+          { name: "Broadaxis_knowledge_search", description: "Search company knowledge base with semantic search over Pinecone using OpenAI embeddings", input_schema: {} },
+          { name: "web_search_tool", description: "Perform real-time web search using Tavily API", input_schema: {} },
+          { name: "generate_pdf_document", description: "Generate and create professional PDF documents with markdown support and automatic SharePoint upload", input_schema: {} },
+          { name: "generate_word_document", description: "Generate and create professional Word documents with enhanced markdown support and automatic SharePoint upload", input_schema: {} },
+          { name: "sharepoint_read_file", description: "Read files from SharePoint with enhanced features and validation", input_schema: {} },
+          { name: "sharepoint_list_files", description: "List files and directories in SharePoint folder with enhanced filtering and sorting", input_schema: {} },
+          { name: "sharepoint_search_files", description: "Search for files in SharePoint with enhanced search capabilities", input_schema: {} },
+          { name: "extract_pdf_text", description: "Extract and process text content from PDF files in SharePoint with enhanced features for RFP analysis", input_schema: {} }
         ],
         prompts: [
-          { name: "Step-2: Executive Summary", description: "Generate executive summary of RFP documents", arguments: [] },
-          { name: "Step-3: Go/No-Go Recommendation", description: "Provide Go/No-Go analysis", arguments: [] },
-          { name: "Step-4: Generate Proposal", description: "Generate capability statement", arguments: [] }
+          { name: "Step1_Identifying_documents", description: "Browse SharePoint folders to identify and categorize RFP/RFI/RFQ documents from available folders", arguments: [] },
+          { name: "Step2_summarize_documents", description: "Generate a clear, high-value summary of SharePoint RFP, RFQ, or RFI documents for executive decision-making", arguments: [] },
+          { name: "Step3_go_no_go_recommendation", description: "Evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity with structured Go/No-Go analysis", arguments: [] },
+          { name: "Step4_generate_capability_statement", description: "Generate high-quality capability statements and proposal documents for RFP and RFQ responses", arguments: [] },
+          { name: "Step5_fill_missing_information", description: "Fill in missing fields and answer RFP/RFQ questions using verified information from internal knowledge base", arguments: [] }
         ],
         status: "fallback"
       }
@@ -237,6 +239,86 @@ export const apiClient = {
         status: 'error',
         message: 'Failed to test Microsoft Graph API authentication',
         step: 'network_error'
+      }
+    }
+  },
+
+  // SharePoint and PDF processing tools
+  async listSharePointFiles(path: string = "", fileType?: string, sortBy: string = "name", sortOrder: string = "asc", maxItems: number = 100): Promise<any> {
+    try {
+      const response = await api.post('/api/mcp/query', {
+        query: `Use sharepoint_list_files with path="${path}"${fileType ? `, file_type="${fileType}"` : ""}, sort_by="${sortBy}", sort_order="${sortOrder}", max_items=${maxItems}`
+      }, { timeout: 60000 })
+      return response.data
+    } catch (error) {
+      console.error('Failed to list SharePoint files:', error)
+      throw error
+    }
+  },
+
+  async readSharePointFile(path: string, maxSizeMb: number = 50, encoding: string = "utf-8", previewLines: number = 0): Promise<any> {
+    try {
+      const response = await api.post('/api/mcp/query', {
+        query: `Use sharepoint_read_file with path="${path}", max_size_mb=${maxSizeMb}, encoding="${encoding}", preview_lines=${previewLines}`
+      }, { timeout: 60000 })
+      return response.data
+    } catch (error) {
+      console.error('Failed to read SharePoint file:', error)
+      throw error
+    }
+  },
+
+  async searchSharePointFiles(query: string, path: string = "", searchType: string = "filename", fileType?: string, maxResults: number = 50, includeContent: boolean = false): Promise<any> {
+    try {
+      const response = await api.post('/api/mcp/query', {
+        query: `Use sharepoint_search_files with query="${query}", path="${path}", search_type="${searchType}"${fileType ? `, file_type="${fileType}"` : ""}, max_results=${maxResults}, include_content=${includeContent}`
+      }, { timeout: 60000 })
+      return response.data
+    } catch (error) {
+      console.error('Failed to search SharePoint files:', error)
+      throw error
+    }
+  },
+
+  async extractPdfText(path: string, pages: string = "all", cleanText: boolean = true, preserveStructure: boolean = true, extractTables: boolean = false, maxPages: number = 50): Promise<any> {
+    try {
+      const response = await api.post('/api/mcp/query', {
+        query: `Use extract_pdf_text with path="${path}", pages="${pages}", clean_text=${cleanText}, preserve_structure=${preserveStructure}, extract_tables=${extractTables}, max_pages=${maxPages}`
+      }, { timeout: 60000 })
+      return response.data
+    } catch (error) {
+      console.error('Failed to extract PDF text:', error)
+      throw error
+    }
+  },
+
+  // Token management
+  async getTokenUsage(): Promise<{ session_used: number; session_limit: number; daily_used: number; daily_limit: number; request_limit: number }> {
+    try {
+      const response = await api.get('/api/token-usage')
+      return response.data
+    } catch (error) {
+      console.error('Failed to get token usage:', error)
+      return {
+        session_used: 0,
+        session_limit: 200000,
+        daily_used: 0,
+        daily_limit: 300000,
+        request_limit: 50000
+      }
+    }
+  },
+
+  async getTokenLimits(): Promise<{ session_limit: number; daily_limit: number; request_limit: number }> {
+    try {
+      const response = await api.get('/api/token-limits')
+      return response.data
+    } catch (error) {
+      console.error('Failed to get token limits:', error)
+      return {
+        session_limit: 200000,
+        daily_limit: 300000,
+        request_limit: 50000
       }
     }
   },
