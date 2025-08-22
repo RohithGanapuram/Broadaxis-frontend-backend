@@ -333,6 +333,12 @@ export class ChatWebSocket {
         this.ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data)
+            
+            // Handle heartbeat messages by sending pong response
+            if (data.type === 'heartbeat') {
+              this.ws?.send(JSON.stringify({ type: 'pong' }))
+            }
+            
             this.onMessage(data)
           } catch (error) {
             console.error('Error parsing WebSocket message:', error)

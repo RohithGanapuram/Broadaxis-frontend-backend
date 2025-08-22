@@ -7,7 +7,9 @@ import json
 import os
 import sys
 import time
-from typing import Dict, List, Optional
+import random
+import base64
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from collections import defaultdict
 import imaplib
@@ -16,11 +18,10 @@ import email
 from urllib.parse import urlparse
 from pathlib import Path
 import re
-import base64
 
 
 import nest_asyncio
-from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, Request, Depends
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import http_exception_handler
@@ -232,7 +233,7 @@ manager = ConnectionManager()
 class MCPInterface:
     def __init__(self):
         self.server_params = StdioServerParameters(
-            command=sys.executable,
+            command='python',
             args=[os.path.join(os.path.dirname(__file__), "..", "ba-server", "server.py")],
             env=None,
         )
@@ -242,6 +243,11 @@ class MCPInterface:
         self._cache_lock = asyncio.Lock()
         self._connection_status = "disconnected"
         self._initializing = False
+        
+        # Rate limiting attributes
+        self._last_request_time = 0
+        self._min_request_interval = 3.0  # Minimum 3 seconds between requests
+        
         try:
             from anthropic import Anthropic
             self.anthropic = Anthropic()
@@ -317,7 +323,7 @@ class MCPInterface:
             await self.initialize()
         return self._prompts_cache
     
-    async def process_query_with_anthropic(self, query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default") -> Dict:
+    async def process_query_with_anthropic(self, query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default", websocket = None) -> Dict:
         if not self.anthropic:
             return {"response": "Anthropic API not available", "tokens_used": 0}
             
@@ -366,13 +372,63 @@ class MCPInterface:
                         return {"response": f"Token limit exceeded: {limit_check['reason']}", "tokens_used": 0}
                     
                     max_tokens = min(4024, limit_check.get("session_remaining", 4024))
-                    response = self.anthropic.messages.create(
-                        max_tokens=max_tokens,
-                        model=selected_model,
-                        system=system_prompt,
-                        tools=available_tools,
-                        messages=messages
-                    )
+                    
+                    # Rate limiting check - ensure minimum interval between requests
+                    current_time = time.time()
+                    time_since_last = current_time - self._last_request_time
+                    if time_since_last < self._min_request_interval:
+                        wait_time = self._min_request_interval - time_since_last
+                        if websocket:
+                            await manager.send_personal_message(
+                                json.dumps({
+                                    "type": "progress",
+                                    "message": f"Rate limiting: waiting {wait_time:.1f}s before next request...",
+                                    "progress": 15
+                                }),
+                                websocket
+                            )
+                        await asyncio.sleep(wait_time)
+                    
+                    # Smart retry with exponential backoff for Anthropic API calls
+                    max_retries = 2  # Reduced retries to prevent long waits
+                    base_delay = 2.0  # Increased base delay
+                    
+                    for attempt in range(max_retries + 1):
+                        try:
+                            response = self.anthropic.messages.create(
+                                max_tokens=max_tokens,
+                                model=selected_model,
+                                system=system_prompt,
+                                tools=available_tools,
+                                messages=messages
+                            )
+                            # Update last request time after successful call
+                            self._last_request_time = time.time()
+                            break  # Success, exit retry loop
+                            
+                        except Exception as api_error:
+                            if "429" in str(api_error) or "Too Many Requests" in str(api_error):
+                                if attempt < max_retries:
+                                    # Calculate exponential backoff delay with longer intervals
+                                    delay = base_delay * (3 ** attempt) + random.uniform(1, 3)  # 3x multiplier, longer random
+                                    
+                                    # Send progress update via WebSocket if available
+                                    if websocket:
+                                        await manager.send_personal_message(
+                                            json.dumps({
+                                                "type": "progress",
+                                                "message": f"Rate limit hit, waiting {delay:.1f}s before retry... (Attempt {attempt + 1}/{max_retries + 1})",
+                                                "progress": 20 + (attempt + 1) / (max_retries + 1) * 30
+                                            }),
+                                            websocket
+                                        )
+                                    
+                                    await asyncio.sleep(delay)
+                                    continue
+                                else:
+                                    return {"response": "⚠️ **Rate limit reached. Please wait 2-3 minutes before trying again, or try a simpler query.**", "tokens_used": 0}
+                            else:
+                                return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": 0}
                     
                     full_response = ""
                     tools_used = []
@@ -398,6 +454,22 @@ class MCPInterface:
                         # Execute all tool calls in parallel if any exist
                         if tool_calls:
                             messages.append({'role': 'assistant', 'content': assistant_content})
+                            
+                            # Send progress update for tool execution
+                            if websocket:
+                                tool_names = [tool.name for tool in tool_calls]
+                                progress_message = f"Executing {len(tool_calls)} tools: {', '.join(tool_names[:2])}"
+                                if len(tool_names) > 2:
+                                    progress_message += f" and {len(tool_names) - 2} more..."
+                                
+                                await manager.send_personal_message(
+                                    json.dumps({
+                                        "type": "progress",
+                                        "message": progress_message,
+                                        "progress": 25
+                                    }),
+                                    websocket
+                                )
                             
                             # Parallel tool execution function
                             async def execute_tool(tool_content):
@@ -438,14 +510,44 @@ class MCPInterface:
                                 process_query = False
                                 continue
                             
-                            # Get follow-up response after all tools complete
-                            response = self.anthropic.messages.create(
-                                max_tokens=min(2024, follow_up_check.get("session_remaining", 2024)),
-                                model=selected_model,
-                                system=system_prompt,
-                                tools=available_tools,
-                                messages=messages
-                            )
+                            # Add delay before follow-up API call to prevent rate limiting
+                            await asyncio.sleep(random.uniform(2.0, 4.0))
+                            
+                            # Get follow-up response after all tools complete with retry logic
+                            for attempt in range(max_retries + 1):
+                                try:
+                                    response = self.anthropic.messages.create(
+                                        max_tokens=min(2024, follow_up_check.get("session_remaining", 2024)),
+                                        model=selected_model,
+                                        system=system_prompt,
+                                        tools=available_tools,
+                                        messages=messages
+                                    )
+                                    # Update last request time after successful call
+                                    self._last_request_time = time.time()
+                                    break  # Success, exit retry loop
+                                    
+                                except Exception as api_error:
+                                    if "429" in str(api_error) or "Too Many Requests" in str(api_error):
+                                        if attempt < max_retries:
+                                            delay = base_delay * (3 ** attempt) + random.uniform(1, 3)
+                                            
+                                            if websocket:
+                                                await manager.send_personal_message(
+                                                    json.dumps({
+                                                        "type": "progress",
+                                                        "message": f"Rate limit hit, waiting {delay:.1f}s before retry... (Attempt {attempt + 1}/{max_retries + 1})",
+                                                        "progress": 60 + (attempt + 1) / (max_retries + 1) * 20
+                                                    }),
+                                                    websocket
+                                                )
+                                            
+                                            await asyncio.sleep(delay)
+                                            continue
+                                        else:
+                                            return {"response": "⚠️ **Rate limit reached. Please wait 2-3 minutes before trying again, or try a simpler query.**", "tokens_used": 0}
+                                    else:
+                                        return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": 0}
                             
                             if len(response.content) == 1 and response.content[0].type == "text":
                                 full_response += response.content[0].text
@@ -1595,8 +1697,8 @@ real_fetched_emails = load_real_emails_from_file()
 # Session file storage
 session_files = {}
 
-async def run_mcp_query(query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default") -> Dict:
-    return await mcp_interface.process_query_with_anthropic(query, enabled_tools, model, session_id)
+async def run_mcp_query(query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default", websocket = None) -> Dict:
+    return await mcp_interface.process_query_with_anthropic(query, enabled_tools, model, session_id, websocket)
 
 # API Routes
 @app.get("/")
@@ -2180,7 +2282,7 @@ async def websocket_chat(websocket: WebSocket):
 
                 try:
                     # Process query with enabled tools
-                    result = await run_mcp_query(query, enabled_tools, model, session_id)
+                    result = await run_mcp_query(query, enabled_tools, model, session_id, websocket)
                     
                     if not isinstance(result, dict) or "response" not in result:
                         raise ExternalAPIError("Invalid response from query processor")

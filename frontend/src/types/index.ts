@@ -58,9 +58,13 @@ export interface UploadResponse {
 }
 
 export interface WebSocketMessage {
-  type: 'status' | 'response' | 'error'
+  type: 'status' | 'response' | 'error' | 'progress' | 'connection' | 'heartbeat' | 'timeout' | 'pong'
   message: string
   status?: string
+  timestamp?: string
+  session_id?: string
+  reconnect_advice?: string
+  progress?: number
   tokens_used?: number
   tokens_remaining?: number
   usage?: {

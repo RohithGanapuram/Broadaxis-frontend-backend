@@ -81,8 +81,28 @@ const ChatInterface: React.FC = () => {
       setIsLoading(false)
     } else if (data.type === 'status') {
       console.log('Status:', data.message)
+    } else if (data.type === 'progress') {
+      // Update the loading message with progress
+      setMessages(prev => prev.map(msg => 
+        msg.isLoading ? { 
+          ...msg, 
+          content: `🔄 ${data.message} (${Math.round(data.progress)}%)`, 
+          isLoading: true
+        } : msg
+      ))
+      console.log('Progress:', data.message, data.progress)
     } else if (data.type === 'error') {
       toast.error(data.message)
+      setIsLoading(false)
+    } else if (data.type === 'connection') {
+      console.log('Connection:', data.message)
+    } else if (data.type === 'heartbeat') {
+      // Handle heartbeat - could send pong response if needed
+      console.log('Heartbeat received')
+    } else if (data.type === 'timeout') {
+      toast.error('Connection timeout - please reconnect', {
+        duration: 5000
+      })
       setIsLoading(false)
     }
   }
@@ -90,12 +110,16 @@ const ChatInterface: React.FC = () => {
   const handleWebSocketError = (error: Event) => {
     console.error('WebSocket error:', error)
     setWsConnected(false)
-    toast.error('Connection lost')
+    toast.error('Connection lost', {
+      duration: 5000
+    })
   }
 
   const handleWebSocketClose = () => {
     setWsConnected(false)
-    toast.error('Disconnected from server')
+    toast.error('Disconnected from server', {
+      duration: 5000
+    })
   }
 
   const handleSendMessage = async () => {
