@@ -1311,3 +1311,70 @@
 2025-08-22 15:14:14,129 - MCPServer - INFO - Tavily client initialized successfully
 2025-08-22 15:14:14,156 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
 2025-08-22 15:14:14,157 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-22 15:27:29,561 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-22 15:27:29,561 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-22 15:27:29,571 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-22 15:27:29,603 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-22 15:27:29,605 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-22 15:53:36,100 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-22 15:53:36,101 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-22 15:53:36,143 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-22 15:56:05,408 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-22 15:56:05,411 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-22 15:56:05,436 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-22 15:56:08,515 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 15:56:10,905 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-22 15:56:12,138 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-22 15:56:14,525 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 15:56:14,526 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/14-Special Requirements.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-22 15:56:20,554 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 15:56:20,555 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/15-Specifications.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-22 15:56:37,532 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 15:56:37,532 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-22 15:59:54,120 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-22 15:59:54,120 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-22 15:59:54,130 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-22 15:59:54,162 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-22 15:59:54,163 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-22 16:00:20,208 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-22 16:00:20,211 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-22 16:00:20,286 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-22 16:00:22,839 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 16:00:24,541 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-22 16:00:25,308 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-22 16:00:28,295 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 16:00:28,295 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/15-Specifications.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-22 16:00:36,392 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 16:00:36,394 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/14-Special Requirements.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-22 16:01:27,915 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 16:01:27,916 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/eval_metrics.pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-22 16:03:26,151 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 16:03:26,152 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', pages='all', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=50
+2025-08-22 16:05:58,580 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-22 16:05:58,581 - MCPServer - INFO - Starting PDF generation: Harris County IT Consulting Services RFP - Executive Summary
+2025-08-22 16:05:58,584 - MCPServer - ERROR - PDF generation failed: cannot access local variable 'headings_for_toc' where it is not associated with a value

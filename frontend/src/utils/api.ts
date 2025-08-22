@@ -294,6 +294,54 @@ export const apiClient = {
     }
   },
 
+  // Get SharePoint folder counts for dashboard
+  async getSharePointFolderCounts(): Promise<{ rfp: number; rfi: number; rfq: number }> {
+    try {
+      const counts = { rfp: 0, rfi: 0, rfq: 0 }
+      
+      // Get counts for each folder type
+      const folders = ['RFP', 'RFI', 'RFQ']
+      
+      for (const folder of folders) {
+        try {
+          console.log(`Fetching count for ${folder} folder...`)
+          // Use MCP query approach instead of direct API endpoint
+          const response = await api.post('/api/mcp/query', {
+            query: `Use sharepoint_list_files with path="${folder}"`
+          }, { timeout: 60000 })
+          
+          console.log(`${folder} response:`, response.data)
+          
+          if (response.data && response.data.items) {
+            // Count files (not folders) in each directory - MCP response structure
+            const files = response.data.items.filter((item: any) => !item.is_folder)
+            const fileCount = files.length
+            console.log(`${folder} folder has ${fileCount} files:`, files.map((f: any) => f.name))
+            counts[folder.toLowerCase() as keyof typeof counts] = fileCount
+          } else if (response.data && response.data.files) {
+            // Alternative response structure
+            const files = response.data.files.filter((item: any) => item.type === 'file')
+            const fileCount = files.length
+            console.log(`${folder} folder has ${fileCount} files (alt structure):`, files.map((f: any) => f.filename))
+            counts[folder.toLowerCase() as keyof typeof counts] = fileCount
+          } else {
+            console.warn(`${folder} response data:`, response.data)
+            console.warn(`${folder} response structure:`, JSON.stringify(response.data, null, 2))
+          }
+        } catch (error) {
+          console.error(`Failed to get count for ${folder} folder:`, error)
+          // Continue with other folders even if one fails
+        }
+      }
+      
+      console.log('Final counts:', counts)
+      return counts
+    } catch (error) {
+      console.error('Failed to get SharePoint folder counts:', error)
+      return { rfp: 0, rfi: 0, rfq: 0 }
+    }
+  },
+
   // Token management
   async getTokenUsage(sessionId: string = 'default'): Promise<{ session_used: number; session_limit: number; daily_used: number; daily_limit: number; request_limit: number }> {
     try {

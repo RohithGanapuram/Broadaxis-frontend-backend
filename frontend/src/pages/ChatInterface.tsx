@@ -381,14 +381,24 @@ const ChatInterface: React.FC = () => {
   }
 
   const handlePromptClick = async (prompt: any) => {
-    // Check if this is the Step1 prompt template (check both name and title)
-    if (prompt.name === 'Identifying the Documents' || prompt.title === 'Identifying the Documents' || prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')) {
+    console.log('Prompt clicked:', prompt)
+    
+    // Check if this is the Step1 or Step2 prompt template (both need folder selection)
+    if (prompt.name === 'Step1_Identifying_documents' || 
+        prompt.name === 'Step2_summarize_documents' ||
+        prompt.name === 'Identifying the Documents' || 
+        prompt.title === 'Identifying the Documents' || 
+        prompt.description.includes('identify and categorize RFP/RFI/RFQ documents') ||
+        prompt.description.includes('Generate a clear, high-value summary')) {
+      
+      console.log('Step1 or Step2 prompt detected - showing folder selection')
       setSelectedPrompt(prompt)
       await fetchSharePointFolders()
       setShowFolderSelection(true)
       setShowPromptsPanel(false)
     } else {
       // For other prompts, use the existing flow
+      console.log('Other prompt detected - executing directly')
       const promptMessage = prompt.description
       setInputMessage(promptMessage)
       setTimeout(() => {
@@ -417,6 +427,9 @@ const ChatInterface: React.FC = () => {
           })
           setInputMessage('')
           setShowPromptsPanel(false)
+        } else {
+          console.error('WebSocket not connected')
+          toast.error('Connection lost. Please refresh the page.')
         }
       }, 100)
     }
@@ -1067,14 +1080,37 @@ const ChatInterface: React.FC = () => {
               disabled={isLoading}
             />
 
-            {/* Send Button */}
-            <button
-              onClick={handleSendMessage}
-              disabled={isLoading || (!inputMessage.trim() && uploadedFiles.length === 0)}
-              className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
-            >
-              🚀
-            </button>
+                         {/* Stop Button - Show when loading */}
+             {isLoading && (
+               <button
+                 onClick={() => {
+                   // Stop the current operation
+                   setIsLoading(false)
+                   // Clear any loading messages
+                   setMessages(prev => prev.map(msg => 
+                     msg.isLoading ? { ...msg, content: 'Operation cancelled by user', isLoading: false } : msg
+                   ))
+                   // Clear progress and status updates
+                   setActiveProgress([])
+                   setStatusUpdates([])
+                   setRateLimitStatus('normal')
+                   toast.success('Operation stopped')
+                 }}
+                 className="px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl hover:from-red-700 hover:to-red-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
+                 title="Stop current operation"
+               >
+                 ⏹️
+               </button>
+             )}
+
+             {/* Send Button */}
+             <button
+               onClick={handleSendMessage}
+               disabled={isLoading || (!inputMessage.trim() && uploadedFiles.length === 0)}
+               className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
+             >
+               🚀
+             </button>
           </div>
           
 
