@@ -407,7 +407,8 @@ class MCPInterface:
                             break  # Success, exit retry loop
                             
                         except Exception as api_error:
-                            if "429" in str(api_error) or "Too Many Requests" in str(api_error):
+                            error_str = str(api_error)
+                            if "429" in error_str or "Too Many Requests" in error_str:
                                 if attempt < max_retries:
                                     # Calculate exponential backoff delay with longer intervals
                                     delay = base_delay * (3 ** attempt) + random.uniform(1, 3)  # 3x multiplier, longer random
@@ -427,6 +428,26 @@ class MCPInterface:
                                     continue
                                 else:
                                     return {"response": "⚠️ **Rate limit reached. Please wait 2-3 minutes before trying again, or try a simpler query.**", "tokens_used": 0}
+                            elif "529" in error_str or "Overloaded" in error_str or "overloaded_error" in error_str:
+                                if attempt < max_retries:
+                                    # For overloaded errors, use longer delays
+                                    delay = base_delay * (4 ** attempt) + random.uniform(2, 5)  # 4x multiplier, longer random
+                                    
+                                    # Send progress update via WebSocket if available
+                                    if websocket:
+                                        await manager.send_personal_message(
+                                            json.dumps({
+                                                "type": "progress",
+                                                "message": f"Anthropic servers overloaded, waiting {delay:.1f}s before retry... (Attempt {attempt + 1}/{max_retries + 1})",
+                                                "progress": 20 + (attempt + 1) / (max_retries + 1) * 30
+                                            }),
+                                            websocket
+                                        )
+                                    
+                                    await asyncio.sleep(delay)
+                                    continue
+                                else:
+                                    return {"response": "⚠️ **Anthropic servers are currently overloaded. Please wait 3-5 minutes before trying again, or try a simpler query.**", "tokens_used": 0}
                             else:
                                 return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": 0}
                     

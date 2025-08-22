@@ -97,9 +97,20 @@ const ChatInterface: React.FC = () => {
         } : msg
       ))
       console.log('Progress:', data.message, data.progress)
-    } else if (data.type === 'error') {
-      toast.error(data.message)
-      setIsLoading(false)
+         } else if (data.type === 'error') {
+       // Handle specific error types with better user guidance
+       if (data.message.includes('Rate limit reached') || data.message.includes('429')) {
+         toast.error('Rate limit reached. Please wait 2-3 minutes before trying again.', {
+           duration: 8000
+         })
+       } else if (data.message.includes('overloaded') || data.message.includes('529')) {
+         toast.error('Anthropic servers are overloaded. Please wait 3-5 minutes before trying again.', {
+           duration: 8000
+         })
+       } else {
+         toast.error(data.message)
+       }
+       setIsLoading(false)
     } else if (data.type === 'connection') {
       console.log('Connection:', data.message)
     } else if (data.type === 'heartbeat') {
