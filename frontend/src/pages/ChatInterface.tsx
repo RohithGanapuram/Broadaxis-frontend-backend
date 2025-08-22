@@ -33,6 +33,11 @@ const ChatInterface: React.FC = () => {
   const [statusUpdates, setStatusUpdates] = useState<WebSocketStatusUpdate[]>([])
   const [rateLimitStatus, setRateLimitStatus] = useState<'normal' | 'throttled' | 'overloaded'>('normal')
   
+  // SharePoint caching state
+  const [sharePointCache, setSharePointCache] = useState<{[key: string]: {folders: string[], timestamp: number}}>({})
+  const [isLoadingFolders, setIsLoadingFolders] = useState(false)
+  const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes cache
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom
@@ -304,7 +309,17 @@ const ChatInterface: React.FC = () => {
     })
   }
 
-  const fetchSharePointFolders = async () => {
+  const fetchSharePointFolders = async (forceRefresh = false) => {
+    const cacheKey = 'root'
+    const now = Date.now()
+    
+    // Check cache first (unless force refresh)
+    if (!forceRefresh && sharePointCache[cacheKey] && (now - sharePointCache[cacheKey].timestamp) < CACHE_DURATION) {
+      setAvailableFolders(sharePointCache[cacheKey].folders)
+      return
+    }
+    
+    setIsLoadingFolders(true)
     try {
       const response = await apiClient.listSharePointFiles('')
       if (response.status === 'success' && response.files) {
@@ -312,15 +327,33 @@ const ChatInterface: React.FC = () => {
         const folders = response.files
           .filter((item: any) => item.type === 'folder')
           .map((item: any) => item.filename)
+        
+        // Update cache
+        setSharePointCache(prev => ({
+          ...prev,
+          [cacheKey]: { folders, timestamp: now }
+        }))
         setAvailableFolders(folders)
       }
     } catch (error) {
       console.error('Error fetching SharePoint folders:', error)
       toast.error('Failed to fetch SharePoint folders')
+    } finally {
+      setIsLoadingFolders(false)
     }
   }
 
-  const fetchSubFolders = async (parentFolder: string) => {
+  const fetchSubFolders = async (parentFolder: string, forceRefresh = false) => {
+    const cacheKey = parentFolder
+    const now = Date.now()
+    
+    // Check cache first (unless force refresh)
+    if (!forceRefresh && sharePointCache[cacheKey] && (now - sharePointCache[cacheKey].timestamp) < CACHE_DURATION) {
+      setSubFolders(sharePointCache[cacheKey].folders)
+      return sharePointCache[cacheKey].folders.length > 0
+    }
+    
+    setIsLoadingFolders(true)
     try {
       const response = await apiClient.listSharePointFiles(parentFolder)
       if (response.status === 'success' && response.files) {
@@ -328,6 +361,12 @@ const ChatInterface: React.FC = () => {
         const folders = response.files
           .filter((item: any) => item.type === 'folder')
           .map((item: any) => item.filename)
+        
+        // Update cache
+        setSharePointCache(prev => ({
+          ...prev,
+          [cacheKey]: { folders, timestamp: now }
+        }))
         setSubFolders(folders)
         return folders.length > 0
       }
@@ -336,6 +375,8 @@ const ChatInterface: React.FC = () => {
       console.error('Error fetching subfolders:', error)
       toast.error('Failed to fetch subfolders')
       return false
+    } finally {
+      setIsLoadingFolders(false)
     }
   }
 
@@ -793,15 +834,25 @@ const ChatInterface: React.FC = () => {
                  <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
                    <div className="flex items-center justify-between mb-4">
                      <h3 className="font-bold text-blue-800 text-lg">📁 Select SharePoint Folder</h3>
-                     <button
-                       onClick={() => {
-                         setShowFolderSelection(false)
-                         setSelectedPrompt(null)
-                       }}
-                       className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center hover:bg-blue-800"
-                     >
-                       ×
-                     </button>
+                     <div className="flex items-center space-x-2">
+                       <button
+                         onClick={() => fetchSharePointFolders(true)}
+                         disabled={isLoadingFolders}
+                         className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                         title="Refresh folders"
+                       >
+                         {isLoadingFolders ? '🔄' : '🔄'} Refresh
+                       </button>
+                       <button
+                         onClick={() => {
+                           setShowFolderSelection(false)
+                           setSelectedPrompt(null)
+                         }}
+                         className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center hover:bg-blue-800"
+                       >
+                         ×
+                       </button>
+                     </div>
                    </div>
                    
                    <p className="text-sm text-blue-600 mb-4">
@@ -824,8 +875,10 @@ const ChatInterface: React.FC = () => {
                        ))
                      ) : (
                        <div className="text-center py-4 text-blue-600">
-                         <p className="text-sm">Loading folders...</p>
-                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mx-auto mt-2"></div>
+                         <p className="text-sm">{isLoadingFolders ? 'Loading folders...' : 'No folders found'}</p>
+                         {isLoadingFolders && (
+                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mx-auto mt-2"></div>
+                         )}
                        </div>
                      )}
                    </div>
@@ -851,16 +904,26 @@ const ChatInterface: React.FC = () => {
                  <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
                    <div className="flex items-center justify-between mb-4">
                      <h3 className="font-bold text-blue-800 text-lg">📁 Select Project Folder</h3>
-                     <button
-                       onClick={() => {
-                         setShowSubFolderSelection(false)
-                         setSelectedPrompt(null)
-                         setSelectedParentFolder('')
-                       }}
-                       className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center hover:bg-blue-800"
-                     >
-                       ×
-                     </button>
+                     <div className="flex items-center space-x-2">
+                       <button
+                         onClick={() => fetchSubFolders(selectedParentFolder, true)}
+                         disabled={isLoadingFolders}
+                         className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                         title="Refresh subfolders"
+                       >
+                         {isLoadingFolders ? '🔄' : '🔄'} Refresh
+                       </button>
+                       <button
+                         onClick={() => {
+                           setShowSubFolderSelection(false)
+                           setSelectedPrompt(null)
+                           setSelectedParentFolder('')
+                         }}
+                         className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center hover:bg-blue-800"
+                       >
+                         ×
+                       </button>
+                     </div>
                    </div>
                    
                    <p className="text-sm text-blue-600 mb-4">
@@ -883,8 +946,10 @@ const ChatInterface: React.FC = () => {
                        ))
                      ) : (
                        <div className="text-center py-4 text-blue-600">
-                         <p className="text-sm">Loading subfolders...</p>
-                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mx-auto mt-2"></div>
+                         <p className="text-sm">{isLoadingFolders ? 'Loading subfolders...' : 'No subfolders found'}</p>
+                         {isLoadingFolders && (
+                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mx-auto mt-2"></div>
+                         )}
                        </div>
                      )}
                    </div>
@@ -1019,6 +1084,6 @@ const ChatInterface: React.FC = () => {
 
     </div>
   )
-}
-
-export default ChatInterface
+  }
+  
+  export default ChatInterface
