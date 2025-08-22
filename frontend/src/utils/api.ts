@@ -221,9 +221,9 @@ export const apiClient = {
   // SharePoint and PDF processing tools
   async listSharePointFiles(path: string = "", fileType?: string, sortBy: string = "name", sortOrder: string = "asc", maxItems: number = 100): Promise<any> {
     try {
-      const response = await api.post('/api/mcp/query', {
-        query: `Use sharepoint_list_files with path="${path}"${fileType ? `, file_type="${fileType}"` : ""}, sort_by="${sortBy}", sort_order="${sortOrder}", max_items=${maxItems}`
-      }, { timeout: 60000 })
+      // Use the direct SharePoint API endpoint
+      const endpoint = path ? `/api/files/${encodeURIComponent(path)}` : '/api/files'
+      const response = await api.get(endpoint, { timeout: 60000 })
       return response.data
     } catch (error) {
       console.error('Failed to list SharePoint files:', error)

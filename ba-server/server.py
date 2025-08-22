@@ -1942,17 +1942,14 @@ def Step1_Identifying_documents():
     """Browse SharePoint folders to identify and categorize RFP/RFI/RFQ documents from available folders."""
     return f"""You are BroadAxis AI, and you need to analyze SharePoint folders to identify and categorize RFP/RFI/RFQ documents. 
 
-**Step 1: Browse SharePoint Root Directory**
-First, check what folders are available in your SharePoint root directory using sharepoint_list_files.
+**Step 1: Analyze Selected Folder**
+Start by listing the contents of the specified SharePoint folder using sharepoint_list_files.
 
-**Step 2: Navigate to RFP Folder**
-Once you see the available folders (like RFP, RFQ, RFI, etc.), browse the RFP folder specifically using sharepoint_list_files.
+**Step 2: Browse Subfolders (if any)**
+If the selected folder contains subfolders, browse through them using sharepoint_list_files to find project-specific folders.
 
-**Step 3: Browse Project Subfolders**
-List the subfolders/projects within the RFP category using sharepoint_list_files.
-
-**Step 4: Analyze Documents**
-After identifying specific project folders, read and categorize each PDF file using extract_pdf_text into:
+**Step 3: Analyze Documents**
+After identifying the target folder, read and categorize each PDF file using extract_pdf_text with max_pages=1 into:
 
 1. 📘 **Primary Documents** — PDFs containing RFP, RFQ, or RFI content (project scope, requirements, evaluation criteria)
 2. 📝 **Fillable Forms** — PDFs with interactive fields for user input (pricing tables, response forms)
@@ -1960,7 +1957,7 @@ After identifying specific project folders, read and categorize each PDF file us
 
 **IMPORTANT:**
 - Use sharepoint_list_files to browse folders
-- Use extract_pdf_text to read PDF documents
+- Use extract_pdf_text with max_pages=1 to efficiently read only the first page of PDF documents for identification
 - Do not make assumptions about folder structures or document content
 - After completing the analysis, clearly state "ANALYSIS COMPLETE" to indicate you have finished
 """

@@ -21,6 +21,12 @@ const ChatInterface: React.FC = () => {
   const [wsConnected, setWsConnected] = useState(false)
   const [showToolsPanel, setShowToolsPanel] = useState(false)
   const [showPromptsPanel, setShowPromptsPanel] = useState(false)
+  const [showFolderSelection, setShowFolderSelection] = useState(false)
+  const [availableFolders, setAvailableFolders] = useState<string[]>([])
+  const [selectedPrompt, setSelectedPrompt] = useState<any>(null)
+  const [selectedParentFolder, setSelectedParentFolder] = useState<string>('')
+  const [subFolders, setSubFolders] = useState<string[]>([])
+  const [showSubFolderSelection, setShowSubFolderSelection] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -247,6 +253,167 @@ const ChatInterface: React.FC = () => {
     })
   }
 
+  const fetchSharePointFolders = async () => {
+    try {
+      const response = await apiClient.listSharePointFiles('')
+      if (response.status === 'success' && response.files) {
+        // Filter for folders only
+        const folders = response.files
+          .filter((item: any) => item.type === 'folder')
+          .map((item: any) => item.filename)
+        setAvailableFolders(folders)
+      }
+    } catch (error) {
+      console.error('Error fetching SharePoint folders:', error)
+      toast.error('Failed to fetch SharePoint folders')
+    }
+  }
+
+  const fetchSubFolders = async (parentFolder: string) => {
+    try {
+      const response = await apiClient.listSharePointFiles(parentFolder)
+      if (response.status === 'success' && response.files) {
+        // Filter for folders only
+        const folders = response.files
+          .filter((item: any) => item.type === 'folder')
+          .map((item: any) => item.filename)
+        setSubFolders(folders)
+        return folders.length > 0
+      }
+      return false
+    } catch (error) {
+      console.error('Error fetching subfolders:', error)
+      toast.error('Failed to fetch subfolders')
+      return false
+    }
+  }
+
+  const handlePromptClick = async (prompt: any) => {
+    // Check if this is the Step1 prompt template (check both name and title)
+    if (prompt.name === 'Identifying the Documents' || prompt.title === 'Identifying the Documents' || prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')) {
+      setSelectedPrompt(prompt)
+      await fetchSharePointFolders()
+      setShowFolderSelection(true)
+      setShowPromptsPanel(false)
+    } else {
+      // For other prompts, use the existing flow
+      const promptMessage = prompt.description
+      setInputMessage(promptMessage)
+      setTimeout(() => {
+        if (globalWebSocket.getConnectionStatus()) {
+          const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            type: 'user',
+            content: promptMessage,
+            timestamp: new Date()
+          }
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isLoading: true
+          }
+          addMessage(userMessage)
+          addMessage(assistantMessage)
+          setIsLoading(true)
+          
+          globalWebSocket.sendMessage({
+            query: prompt.description,
+            enabled_tools: settings.enabledTools,
+            model: settings.model
+          })
+          setInputMessage('')
+          setShowPromptsPanel(false)
+        }
+      }, 100)
+    }
+  }
+
+  const handleFolderSelection = async (folderName: string) => {
+    if (selectedPrompt) {
+      // Check if this folder has subfolders
+      const hasSubFolders = await fetchSubFolders(folderName)
+      
+      if (hasSubFolders) {
+        // Show subfolder selection
+        setSelectedParentFolder(folderName)
+        setShowSubFolderSelection(true)
+        setShowFolderSelection(false)
+      } else {
+        // No subfolders, proceed with the selected folder
+        const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${folderName}`
+        setInputMessage(promptMessage)
+        setTimeout(() => {
+          if (globalWebSocket.getConnectionStatus()) {
+            const userMessage: ChatMessage = {
+              id: Date.now().toString(),
+              type: 'user',
+              content: promptMessage,
+              timestamp: new Date()
+            }
+            const assistantMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              type: 'assistant',
+              content: '',
+              timestamp: new Date(),
+              isLoading: true
+            }
+            addMessage(userMessage)
+            addMessage(assistantMessage)
+            setIsLoading(true)
+            
+            globalWebSocket.sendMessage({
+              query: promptMessage,
+              enabled_tools: settings.enabledTools,
+              model: settings.model
+            })
+            setInputMessage('')
+            setShowFolderSelection(false)
+            setSelectedPrompt(null)
+          }
+        }, 100)
+      }
+    }
+  }
+
+  const handleSubFolderSelection = (subFolderName: string) => {
+    if (selectedPrompt && selectedParentFolder) {
+      const fullPath = `${selectedParentFolder}/${subFolderName}`
+      const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${fullPath}`
+      setInputMessage(promptMessage)
+      setTimeout(() => {
+        if (globalWebSocket.getConnectionStatus()) {
+          const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            type: 'user',
+            content: promptMessage,
+            timestamp: new Date()
+          }
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isLoading: true
+          }
+          addMessage(userMessage)
+          addMessage(assistantMessage)
+          setIsLoading(true)
+          
+          globalWebSocket.sendMessage({
+            query: promptMessage,
+            enabled_tools: settings.enabledTools,
+            model: settings.model
+          })
+          setInputMessage('')
+          setShowSubFolderSelection(false)
+          setSelectedPrompt(null)
+          setSelectedParentFolder('')
+        }
+      }, 100)
+    }
+  }
 
 
   return (
@@ -503,39 +670,7 @@ const ChatInterface: React.FC = () => {
                         availablePrompts.map((prompt, index) => (
                           <button
                             key={index}
-                            onClick={() => {
-                              // Create a more descriptive message that shows the prompt template is being used
-                              const promptMessage = prompt.description
-                              setInputMessage(promptMessage)
-                              setTimeout(() => {
-                                if (globalWebSocket.getConnectionStatus()) {
-                                  const userMessage: ChatMessage = {
-                                    id: Date.now().toString(),
-                                    type: 'user',
-                                    content: promptMessage,
-                                    timestamp: new Date()
-                                  }
-                                  const assistantMessage: ChatMessage = {
-                                    id: (Date.now() + 1).toString(),
-                                    type: 'assistant',
-                                    content: '',
-                                    timestamp: new Date(),
-                                    isLoading: true
-                                  }
-                                  addMessage(userMessage)
-                                  addMessage(assistantMessage)
-                                  setIsLoading(true)
-                                  
-                                  globalWebSocket.sendMessage({
-                                    query: prompt.description,
-                                    enabled_tools: settings.enabledTools,
-                                    model: settings.model
-                                  })
-                                  setInputMessage('')
-                                  setShowPromptsPanel(false)
-                                }
-                              }, 100)
-                            }}
+                            onClick={() => handlePromptClick(prompt)}
                             className="w-full text-left p-3 bg-blue-700/10 hover:bg-blue-700/20 rounded-lg transition-colors"
                           >
                             <div className="font-medium text-blue-800 text-sm">{prompt.name}</div>
@@ -553,6 +688,134 @@ const ChatInterface: React.FC = () => {
                 </div>
               )}
             </div>
+
+                         {/* Folder Selection Modal */}
+             {showFolderSelection && (
+               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                 <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+                   <div className="flex items-center justify-between mb-4">
+                     <h3 className="font-bold text-blue-800 text-lg">📁 Select SharePoint Folder</h3>
+                     <button
+                       onClick={() => {
+                         setShowFolderSelection(false)
+                         setSelectedPrompt(null)
+                       }}
+                       className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center hover:bg-blue-800"
+                     >
+                       ×
+                     </button>
+                   </div>
+                   
+                   <p className="text-sm text-blue-600 mb-4">
+                     Choose the SharePoint folder you want to analyze for RFP/RFI/RFQ documents:
+                   </p>
+                   
+                   <div className="space-y-2 max-h-60 overflow-y-auto">
+                     {availableFolders.length > 0 ? (
+                       availableFolders.map((folderName, index) => (
+                         <button
+                           key={index}
+                           onClick={() => handleFolderSelection(folderName)}
+                           className="w-full text-left p-3 bg-blue-700/10 hover:bg-blue-700/20 rounded-lg transition-colors border border-blue-200/50"
+                         >
+                           <div className="flex items-center space-x-2">
+                             <span className="text-blue-600">📁</span>
+                             <span className="font-medium text-blue-800">{folderName}</span>
+                           </div>
+                         </button>
+                       ))
+                     ) : (
+                       <div className="text-center py-4 text-blue-600">
+                         <p className="text-sm">Loading folders...</p>
+                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mx-auto mt-2"></div>
+                       </div>
+                     )}
+                   </div>
+                   
+                   <div className="mt-4 pt-4 border-t border-blue-200/50">
+                     <button
+                       onClick={() => {
+                         setShowFolderSelection(false)
+                         setSelectedPrompt(null)
+                       }}
+                       className="w-full px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                     >
+                       Cancel
+                     </button>
+                   </div>
+                 </div>
+               </div>
+             )}
+
+             {/* Subfolder Selection Modal */}
+             {showSubFolderSelection && (
+               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                 <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+                   <div className="flex items-center justify-between mb-4">
+                     <h3 className="font-bold text-blue-800 text-lg">📁 Select Project Folder</h3>
+                     <button
+                       onClick={() => {
+                         setShowSubFolderSelection(false)
+                         setSelectedPrompt(null)
+                         setSelectedParentFolder('')
+                       }}
+                       className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center hover:bg-blue-800"
+                     >
+                       ×
+                     </button>
+                   </div>
+                   
+                   <p className="text-sm text-blue-600 mb-4">
+                     Choose a project folder within <span className="font-medium">{selectedParentFolder}</span>:
+                   </p>
+                   
+                   <div className="space-y-2 max-h-60 overflow-y-auto">
+                     {subFolders.length > 0 ? (
+                       subFolders.map((folderName, index) => (
+                         <button
+                           key={index}
+                           onClick={() => handleSubFolderSelection(folderName)}
+                           className="w-full text-left p-3 bg-blue-700/10 hover:bg-blue-700/20 rounded-lg transition-colors border border-blue-200/50"
+                         >
+                           <div className="flex items-center space-x-2">
+                             <span className="text-blue-600">📁</span>
+                             <span className="font-medium text-blue-800">{folderName}</span>
+                           </div>
+                         </button>
+                       ))
+                     ) : (
+                       <div className="text-center py-4 text-blue-600">
+                         <p className="text-sm">Loading subfolders...</p>
+                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mx-auto mt-2"></div>
+                       </div>
+                     )}
+                   </div>
+                   
+                   <div className="mt-4 pt-4 border-t border-blue-200/50 flex space-x-2">
+                     <button
+                       onClick={() => {
+                         setShowSubFolderSelection(false)
+                         setShowFolderSelection(true)
+                         setSelectedParentFolder('')
+                       }}
+                       className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                     >
+                       ← Back
+                     </button>
+                     <button
+                       onClick={() => {
+                         setShowSubFolderSelection(false)
+                         setSelectedPrompt(null)
+                         setSelectedParentFolder('')
+                       }}
+                       className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                     >
+                       Cancel
+                     </button>
+                   </div>
+                 </div>
+               </div>
+             )}
 
             {/* Tools Button */}
             <div className="relative">
