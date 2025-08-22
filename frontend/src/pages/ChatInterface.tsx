@@ -3,9 +3,11 @@ import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
 import { apiClient } from '../utils/api'
-import { globalWebSocket } from '../utils/websocket'
+import { globalWebSocket, ProgressTracker as ProgressTrackerType, WebSocketStatusUpdate } from '../utils/websocket'
 import { useAppContext } from '../context/AppContext'
 import { ChatMessage, FileInfo, AppSettings } from '../types'
+import ProgressTracker from '../components/ProgressTracker'
+import StatusIndicator from '../components/StatusIndicator'
 
 const ChatInterface: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('')
@@ -27,6 +29,9 @@ const ChatInterface: React.FC = () => {
   const [selectedParentFolder, setSelectedParentFolder] = useState<string>('')
   const [subFolders, setSubFolders] = useState<string[]>([])
   const [showSubFolderSelection, setShowSubFolderSelection] = useState(false)
+  const [activeProgress, setActiveProgress] = useState<ProgressTrackerType[]>([])
+  const [statusUpdates, setStatusUpdates] = useState<WebSocketStatusUpdate[]>([])
+  const [rateLimitStatus, setRateLimitStatus] = useState<'normal' | 'throttled' | 'overloaded'>('normal')
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -61,12 +66,16 @@ const ChatInterface: React.FC = () => {
 
     // Add event handlers to global WebSocket
     globalWebSocket.addMessageHandler(handleWebSocketMessage)
+    globalWebSocket.addProgressHandler(handleProgressUpdate)
+    globalWebSocket.addStatusHandler(handleStatusUpdate)
     globalWebSocket.addErrorHandler(handleWebSocketError)
     globalWebSocket.addCloseHandler(handleWebSocketClose)
 
     // Cleanup handlers on unmount
     return () => {
       globalWebSocket.removeMessageHandler(handleWebSocketMessage)
+      globalWebSocket.removeProgressHandler(handleProgressUpdate)
+      globalWebSocket.removeStatusHandler(handleStatusUpdate)
       globalWebSocket.removeErrorHandler(handleWebSocketError)
       globalWebSocket.removeCloseHandler(handleWebSocketClose)
     }
@@ -85,36 +94,42 @@ const ChatInterface: React.FC = () => {
         } : msg
       ))
       setIsLoading(false)
-    } else if (data.type === 'status') {
-      console.log('Status:', data.message)
-    } else if (data.type === 'progress') {
-      // Update the loading message with progress
+    } else if (data.type === 'error') {
+      // Handle specific error types with better user guidance
+      if (data.message.includes('Rate limit reached') || data.message.includes('429')) {
+        toast.error('Rate limit reached. Please wait 2-3 minutes before trying again.', {
+          duration: 8000,
+          icon: '⏳'
+        })
+      } else if (data.message.includes('overloaded') || data.message.includes('529')) {
+        toast.error('Server is currently overloaded. Please try again in a few minutes.', {
+          duration: 10000,
+          icon: '🔄'
+        })
+      } else if (data.message.includes('Token limit exceeded')) {
+        toast.error('Token limit exceeded. Please start a new session or try a shorter query.', {
+          duration: 6000,
+          icon: '📊'
+        })
+      } else if (data.message.includes('timeout')) {
+        toast.error('Request timed out. The operation may be too complex - try simplifying your query.', {
+          duration: 8000,
+          icon: '⏰'
+        })
+      } else {
+        toast.error(`Error: ${data.message}`, {
+          duration: 5000,
+          icon: '❌'
+        })
+      }
+      
       setMessages(prev => prev.map(msg => 
-        msg.isLoading ? { 
-          ...msg, 
-          content: `🔄 ${data.message} (${Math.round(data.progress)}%)`, 
-          isLoading: true
-        } : msg
+        msg.isLoading ? { ...msg, content: `Error: ${data.message}`, isLoading: false } : msg
       ))
-      console.log('Progress:', data.message, data.progress)
-         } else if (data.type === 'error') {
-       // Handle specific error types with better user guidance
-       if (data.message.includes('Rate limit reached') || data.message.includes('429')) {
-         toast.error('Rate limit reached. Please wait 2-3 minutes before trying again.', {
-           duration: 8000
-         })
-       } else if (data.message.includes('overloaded') || data.message.includes('529')) {
-         toast.error('Anthropic servers are overloaded. Please wait 3-5 minutes before trying again.', {
-           duration: 8000
-         })
-       } else {
-         toast.error(data.message)
-       }
-       setIsLoading(false)
+      setIsLoading(false)
     } else if (data.type === 'connection') {
       console.log('Connection:', data.message)
     } else if (data.type === 'heartbeat') {
-      // Handle heartbeat - could send pong response if needed
       console.log('Heartbeat received')
     } else if (data.type === 'timeout') {
       toast.error('Connection timeout - please reconnect', {
@@ -122,6 +137,31 @@ const ChatInterface: React.FC = () => {
       })
       setIsLoading(false)
     }
+  }
+
+  const handleProgressUpdate = (progress: ProgressTrackerType) => {
+    setActiveProgress(prev => {
+      const existing = prev.find(p => p.id === progress.id)
+      if (existing) {
+        return prev.map(p => p.id === progress.id ? progress : p)
+      } else {
+        return [...prev, progress]
+      }
+    })
+    
+    // Update rate limit status based on progress messages
+    if (progress.message.includes('Rate limit hit') || progress.message.includes('waiting')) {
+      setRateLimitStatus('throttled')
+    } else if (progress.message.includes('overloaded')) {
+      setRateLimitStatus('overloaded')
+    } else if (progress.message.includes('executing') || progress.message.includes('processing')) {
+      setRateLimitStatus('normal')
+    }
+  }
+
+  const handleStatusUpdate = (status: WebSocketStatusUpdate) => {
+    setStatusUpdates(prev => [...prev, status])
+    console.log('Status update:', status.message)
   }
 
   const handleWebSocketError = (error: Event) => {
@@ -453,48 +493,76 @@ const ChatInterface: React.FC = () => {
           </button>
         </div>
         
-        {/* Chat Sessions List */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-2">
-            <h3 className="text-xs font-semibold text-blue-600 mb-2 px-2">CHAT HISTORY</h3>
-            <div className="space-y-1">
-              {chatSessions.slice().reverse().map((session) => (
-                <div key={session.id} className="group relative">
-                  <button
-                    onClick={() => switchToSession(session.id)}
-                    className={`w-full text-left p-2 rounded-lg text-sm transition-colors ${
-                      currentSessionId === session.id
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'text-blue-600 hover:bg-blue-50'
-                    }`}
-                  >
-                    <div className="truncate font-medium">{session.title}</div>
-                    <div className="text-xs text-blue-400 mt-1">
-                      {session.updatedAt.toLocaleDateString()}
-                    </div>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (confirm('Delete this chat?')) {
-                        deleteSession(session.id)
-                        toast.success('Chat deleted')
-                      }
-                    }}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-xs bg-red-100 text-red-600 hover:bg-red-200 transition-all"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              {chatSessions.length === 0 && (
-                <div className="text-center text-blue-400 text-xs py-4">
-                  No chat history yet
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+                 {/* Chat Sessions List */}
+         <div className="flex-1 overflow-y-auto">
+           <div className="p-2">
+             <h3 className="text-xs font-semibold text-blue-600 mb-2 px-2">CHAT HISTORY</h3>
+             <div className="space-y-1">
+               {chatSessions.slice().reverse().map((session) => (
+                 <div key={session.id} className="group relative">
+                   <button
+                     onClick={() => switchToSession(session.id)}
+                     className={`w-full text-left p-2 rounded-lg text-sm transition-colors ${
+                       currentSessionId === session.id
+                         ? 'bg-blue-100 text-blue-800'
+                         : 'text-blue-600 hover:bg-blue-50'
+                     }`}
+                   >
+                     <div className="truncate font-medium">{session.title}</div>
+                     <div className="text-xs text-blue-400 mt-1">
+                       {session.updatedAt.toLocaleDateString()}
+                     </div>
+                   </button>
+                   <button
+                     onClick={(e) => {
+                       e.stopPropagation()
+                       if (confirm('Delete this chat?')) {
+                         deleteSession(session.id)
+                         toast.success('Chat deleted')
+                       }
+                     }}
+                     className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-xs bg-red-100 text-red-600 hover:bg-red-200 transition-all"
+                   >
+                     ×
+                   </button>
+                 </div>
+               ))}
+               {chatSessions.length === 0 && (
+                 <div className="text-center text-blue-400 text-xs py-4">
+                   No chat history yet
+                 </div>
+               )}
+             </div>
+           </div>
+         </div>
+
+         {/* Real-time Progress and Status Updates - Moved to bottom of sidebar */}
+         {(activeProgress.length > 0 || statusUpdates.length > 0) && (
+           <div className="bg-white/95 backdrop-blur-sm border-t border-blue-200/30 p-2">
+             <div className="text-xs font-semibold text-blue-600 mb-2">STATUS</div>
+             {/* Progress Trackers */}
+             {activeProgress.map((progress) => (
+               <ProgressTracker
+                 key={progress.id}
+                 progress={progress}
+                 onComplete={() => {
+                   setActiveProgress(prev => prev.filter(p => p.id !== progress.id))
+                 }}
+               />
+             ))}
+             
+             {/* Status Updates */}
+             {statusUpdates.map((status, index) => (
+               <StatusIndicator
+                 key={`${status.timestamp}-${index}`}
+                 status={status}
+                 onDismiss={() => {
+                   setStatusUpdates(prev => prev.filter((_, i) => i !== index))
+                 }}
+               />
+             ))}
+           </div>
+         )}
       </div>
 
       {/* Main Chat Area */}
@@ -516,6 +584,8 @@ const ChatInterface: React.FC = () => {
             </div>
           </div>
         </div>
+
+        
 
         {/* Uploaded Files - Compact Design */}
         {uploadedFiles.length > 0 && (
@@ -618,6 +688,23 @@ const ChatInterface: React.FC = () => {
 
         {/* Input Area with Integrated Buttons */}
         <div className="bg-white/70 backdrop-blur-md border-t border-blue-200/50 p-4 shadow-lg relative">
+          {/* Rate Limiting Status Indicator */}
+          {rateLimitStatus !== 'normal' && (
+            <div className="mb-3 p-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-2">
+              {rateLimitStatus === 'throttled' ? (
+                <>
+                  <span className="text-orange-600">⏳</span>
+                  <span className="text-orange-700">Rate limiting active - requests may be delayed</span>
+                </>
+              ) : rateLimitStatus === 'overloaded' ? (
+                <>
+                  <span className="text-red-600">🔄</span>
+                  <span className="text-red-700">Server overloaded - please wait before sending new requests</span>
+                </>
+              ) : null}
+            </div>
+          )}
+          
           <div className="flex items-end space-x-3">
             {/* File Upload Button */}
             <div className="relative">

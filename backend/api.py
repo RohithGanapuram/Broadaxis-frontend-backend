@@ -29,6 +29,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from pydantic import BaseModel, ValidationError as PydanticValidationError
 from dotenv import load_dotenv
+from limiter import MinuteBudgetLimiter
 
 # Load environment variables from parent directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -244,15 +245,42 @@ class MCPInterface:
         self._connection_status = "disconnected"
         self._initializing = False
         
-        # Rate limiting attributes
+        # legacy fixed-interval throttle (unused after limiter below)
         self._last_request_time = 0
         self._min_request_interval = 3.0  # Minimum 3 seconds between requests
-        
+
+
         try:
             from anthropic import Anthropic
             self.anthropic = Anthropic()
         except ImportError:
             print("Warning: Anthropic not available")
+
+        # NEW: server-wide Anthropic budget limiter
+        self._budget = MinuteBudgetLimiter(
+            rpm=int(os.getenv("ANTHROPIC_RPM", 60)),
+            max_in_flight=int(os.getenv("ANTHROPIC_MAX_IN_FLIGHT", 6)),
+        )
+        
+        # Per-session throttling
+        self._last_by_session = defaultdict(float)
+        self._min_request_interval = float(os.getenv("ANTHROPIC_MIN_INTERVAL_SEC", 0.5))
+        
+
+    def _retry_after_secs(self, e, fallback: float) -> float:
+        try:
+            # Anthropic SDK exceptions typically have a .response with headers
+            headers = getattr(getattr(e, "response", None), "headers", {}) or {}
+            ra = headers.get("retry-after") or headers.get("Retry-After")
+            if ra:
+                return float(ra)
+        except Exception:
+            pass
+        return fallback
+
+    def _is_rate_limited(self, e) -> bool:
+        status = getattr(e, "status_code", None)
+        return status == 429 or "Too Many Requests" in str(e)
     
     async def initialize(self):
         """Initialize both tools and prompts in a single connection"""
@@ -373,26 +401,20 @@ class MCPInterface:
                     
                     max_tokens = min(4024, limit_check.get("session_remaining", 4024))
                     
-                    # Rate limiting check - ensure minimum interval between requests
-                    current_time = time.time()
-                    time_since_last = current_time - self._last_request_time
-                    if time_since_last < self._min_request_interval:
-                        wait_time = self._min_request_interval - time_since_last
-                        if websocket:
-                            await manager.send_personal_message(
-                                json.dumps({
-                                    "type": "progress",
-                                    "message": f"Rate limiting: waiting {wait_time:.1f}s before next request...",
-                                    "progress": 15
-                                }),
-                                websocket
-                            )
-                        await asyncio.sleep(wait_time)
+                    # --- Minute-budgeted Anthropic call (FIRST call) ---
+                    max_retries = 2
+                    base_delay = 2.0
                     
-                    # Smart retry with exponential backoff for Anthropic API calls
-                    max_retries = 2  # Reduced retries to prevent long waits
-                    base_delay = 2.0  # Increased base delay
+                    # Per-session throttling
+                    now = time.time()
+                    since = now - self._last_by_session[session_id]
+                    if since < self._min_request_interval:
+                        await asyncio.sleep(self._min_request_interval - since)
                     
+                    # Budget reservation
+                    await self._budget.reserve()
+                    total_in = total_out = 0
+
                     for attempt in range(max_retries + 1):
                         try:
                             response = self.anthropic.messages.create(
@@ -402,60 +424,76 @@ class MCPInterface:
                                 tools=available_tools,
                                 messages=messages
                             )
-                            # Update last request time after successful call
-                            self._last_request_time = time.time()
+
+                            # usage tally
+                            if hasattr(response, "usage"):
+                                total_in += getattr(response.usage, "input_tokens", 0)
+                                total_out += getattr(response.usage, "output_tokens", 0)
+                            
+                            # Send progress update for initial processing
+                            if websocket:
+                                await manager.send_personal_message(
+                                    json.dumps({
+                                        "type": "progress",
+                                        "message": "Processing your request...",
+                                        "progress": 30,
+                                        "step": "processing",
+                                        "current_step": 1,
+                                        "total_steps": 1
+                                    }),
+                                    websocket
+                                )
+                            
                             break  # Success, exit retry loop
                             
                         except Exception as api_error:
-                            error_str = str(api_error)
-                            if "429" in error_str or "Too Many Requests" in error_str:
+                            if self._is_rate_limited(api_error):
+                                delay = self._retry_after_secs(api_error, base_delay * (3 ** attempt) + random.uniform(1,3))
+                                if websocket:
+                                    await manager.send_personal_message(
+                                        json.dumps({
+                                            "type": "progress",
+                                            "message": f"Rate limit hit, waiting {delay:.1f}s before retry... (Attempt {attempt + 1}/{max_retries + 1})",
+                                            "progress": 20 + (attempt + 1) / (max_retries + 1) * 30,
+                                            "step": "rate_limit_retry",
+                                            "current_step": attempt + 1,
+                                            "total_steps": max_retries + 1
+                                        }), 
+                                        websocket
+                                    )
+                                await asyncio.sleep(delay)
+                                continue
+                            elif "529" in str(api_error) or "Overloaded" in str(api_error) or "overloaded_error" in str(api_error):
                                 if attempt < max_retries:
-                                    # Calculate exponential backoff delay with longer intervals
-                                    delay = base_delay * (3 ** attempt) + random.uniform(1, 3)  # 3x multiplier, longer random
-                                    
-                                    # Send progress update via WebSocket if available
-                                    if websocket:
-                                        await manager.send_personal_message(
-                                            json.dumps({
-                                                "type": "progress",
-                                                "message": f"Rate limit hit, waiting {delay:.1f}s before retry... (Attempt {attempt + 1}/{max_retries + 1})",
-                                                "progress": 20 + (attempt + 1) / (max_retries + 1) * 30
-                                            }),
-                                            websocket
-                                        )
-                                    
-                                    await asyncio.sleep(delay)
-                                    continue
-                                else:
-                                    return {"response": "⚠️ **Rate limit reached. Please wait 2-3 minutes before trying again, or try a simpler query.**", "tokens_used": 0}
-                            elif "529" in error_str or "Overloaded" in error_str or "overloaded_error" in error_str:
-                                if attempt < max_retries:
-                                    # For overloaded errors, use longer delays
-                                    delay = base_delay * (4 ** attempt) + random.uniform(2, 5)  # 4x multiplier, longer random
-                                    
-                                    # Send progress update via WebSocket if available
+                                    delay = self._retry_after_secs(api_error, base_delay * (4 ** attempt) + random.uniform(2, 5))
                                     if websocket:
                                         await manager.send_personal_message(
                                             json.dumps({
                                                 "type": "progress",
                                                 "message": f"Anthropic servers overloaded, waiting {delay:.1f}s before retry... (Attempt {attempt + 1}/{max_retries + 1})",
-                                                "progress": 20 + (attempt + 1) / (max_retries + 1) * 30
+                                                "progress": 20 + (attempt + 1) / (max_retries + 1) * 30,
+                                                "step": "server_overload_retry",
+                                                "current_step": attempt + 1,
+                                                "total_steps": max_retries + 1
                                             }),
                                             websocket
                                         )
-                                    
                                     await asyncio.sleep(delay)
                                     continue
                                 else:
                                     return {"response": "⚠️ **Anthropic servers are currently overloaded. Please wait 3-5 minutes before trying again, or try a simpler query.**", "tokens_used": 0}
                             else:
                                 return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": 0}
+                        finally:
+                            self._budget.release()
+                            # Update session timestamp after successful call
+                            self._last_by_session[session_id] = time.time()
                     
                     full_response = ""
                     tools_used = []
-                    process_query = True
-                    total_tokens_used = 0
+                    total_tokens_used = total_in + total_out
                     
+                    process_query = True
                     while process_query:
                         assistant_content = []
                         tool_calls = []
@@ -474,6 +512,9 @@ class MCPInterface:
                         
                         # Execute all tool calls in parallel if any exist
                         if tool_calls:
+                            # Optionally bound the count of tool calls per assistant turn
+                            MAX_TOOL_CALLS_PER_TURN = int(os.getenv("MCP_MAX_TOOL_CALLS_PER_TURN", 4))
+                            tool_calls = tool_calls[:MAX_TOOL_CALLS_PER_TURN]
                             messages.append({'role': 'assistant', 'content': assistant_content})
                             
                             # Send progress update for tool execution
@@ -487,31 +528,75 @@ class MCPInterface:
                                     json.dumps({
                                         "type": "progress",
                                         "message": progress_message,
-                                        "progress": 25
+                                        "progress": 0,  # Start at 0, will be updated as tools complete
+                                        "step": "tool_execution",
+                                        "current_step": 1,
+                                        "total_steps": len(tool_calls)
                                     }),
                                     websocket
                                 )
                             
-                            # Parallel tool execution function
+                            # NEW: cap tool concurrency & coalesce duplicate calls
+                            TOOL_CONCURRENCY = int(os.getenv("MCP_TOOL_CONCURRENCY", 3))
+                            tool_sem = asyncio.Semaphore(TOOL_CONCURRENCY)
+                            _inflight: Dict[tuple, asyncio.Task] = {}
+
                             async def execute_tool(tool_content):
+                                key = (tool_content.name, json.dumps(tool_content.input, sort_keys=True))
+                                if key in _inflight:
+                                    return await _inflight[key]
+
+                                async def _run():
+                                    async with tool_sem:
+                                        try:
+                                            result = await session.call_tool(tool_content.name, arguments=tool_content.input)
+                                            return {
+                                                "type": "tool_result",
+                                                "tool_use_id": tool_content.id,
+                                                "content": result.content
+                                            }
+                                        except Exception as tool_error:
+                                            error_handler.log_error(tool_error, {'tool_name': tool_content.name})
+                                            return {
+                                                "type": "tool_result",
+                                                "tool_use_id": tool_content.id,
+                                                "content": [{"type": "text", "text": f"Tool failed: {str(tool_error)}"}]
+                                            }
+
+                                task = asyncio.create_task(_run())
+                                _inflight[key] = task
                                 try:
-                                    result = await session.call_tool(tool_content.name, arguments=tool_content.input)
-                                    return {
-                                        "type": "tool_result",
-                                        "tool_use_id": tool_content.id,
-                                        "content": result.content
-                                    }
-                                except Exception as tool_error:
-                                    error_handler.log_error(tool_error, {'tool_name': tool_content.name})
-                                    return {
-                                        "type": "tool_result",
-                                        "tool_use_id": tool_content.id,
-                                        "content": [{"type": "text", "text": f"Tool failed: {str(tool_error)}"}]
-                                    }
+                                    return await task
+                                finally:
+                                    _inflight.pop(key, None)
                             
-                            # Execute all tools concurrently
+                            # Execute all tools concurrently with progress updates
+                            completed_tools = 0
+                            total_tools = len(tool_calls)
+                            
+                            async def execute_tool_with_progress(tool):
+                                nonlocal completed_tools
+                                result = await execute_tool(tool)
+                                completed_tools += 1
+                                
+                                # Send progress update
+                                if websocket:
+                                    progress_percentage = int((completed_tools / total_tools) * 100)
+                                    await manager.send_personal_message(
+                                        json.dumps({
+                                            "type": "progress",
+                                            "message": f"Completed {completed_tools}/{total_tools} tools",
+                                            "progress": progress_percentage,
+                                            "step": "tool_execution",
+                                            "current_step": completed_tools,
+                                            "total_steps": total_tools
+                                        }),
+                                        websocket
+                                    )
+                                return result
+                            
                             tool_results = await asyncio.gather(
-                                *[execute_tool(tool) for tool in tool_calls],
+                                *[execute_tool_with_progress(tool) for tool in tool_calls],
                                 return_exceptions=True
                             )
                             
@@ -531,10 +616,23 @@ class MCPInterface:
                                 process_query = False
                                 continue
                             
-                            # Add delay before follow-up API call to prevent rate limiting
-                            await asyncio.sleep(random.uniform(2.0, 4.0))
+                            # --- Minute-budgeted Anthropic call (FOLLOW-UP) ---
+                            # Send progress update for response generation
+                            if websocket:
+                                await manager.send_personal_message(
+                                    json.dumps({
+                                        "type": "progress",
+                                        "message": "Generating final response...",
+                                        "progress": 90,
+                                        "step": "generation",
+                                        "current_step": 1,
+                                        "total_steps": 1
+                                    }),
+                                    websocket
+                                )
                             
-                            # Get follow-up response after all tools complete with retry logic
+                            await self._budget.reserve()
+
                             for attempt in range(max_retries + 1):
                                 try:
                                     response = self.anthropic.messages.create(
@@ -544,39 +642,41 @@ class MCPInterface:
                                         tools=available_tools,
                                         messages=messages
                                     )
-                                    # Update last request time after successful call
-                                    self._last_request_time = time.time()
-                                    break  # Success, exit retry loop
-                                    
+                                    if hasattr(response, "usage"):
+                                        total_in += getattr(response.usage, "input_tokens", 0)
+                                        total_out += getattr(response.usage, "output_tokens", 0)
+                                    break
                                 except Exception as api_error:
-                                    if "429" in str(api_error) or "Too Many Requests" in str(api_error):
-                                        if attempt < max_retries:
-                                            delay = base_delay * (3 ** attempt) + random.uniform(1, 3)
-                                            
-                                            if websocket:
-                                                await manager.send_personal_message(
-                                                    json.dumps({
-                                                        "type": "progress",
-                                                        "message": f"Rate limit hit, waiting {delay:.1f}s before retry... (Attempt {attempt + 1}/{max_retries + 1})",
-                                                        "progress": 60 + (attempt + 1) / (max_retries + 1) * 20
-                                                    }),
-                                                    websocket
-                                                )
-                                            
-                                            await asyncio.sleep(delay)
-                                            continue
-                                        else:
-                                            return {"response": "⚠️ **Rate limit reached. Please wait 2-3 minutes before trying again, or try a simpler query.**", "tokens_used": 0}
+                                    if self._is_rate_limited(api_error) and attempt < max_retries:
+                                        delay = self._retry_after_secs(api_error, base_delay * (3 ** attempt) + random.uniform(1, 3))
+                                        if websocket:
+                                            await manager.send_personal_message(
+                                                json.dumps({
+                                                    "type": "progress",
+                                                    "message": f"Rate limited. Retrying in {delay:.1f}s… (Attempt {attempt + 1}/{max_retries + 1})",
+                                                    "progress": 60 + (attempt + 1) / (max_retries + 1) * 20
+                                                }),
+                                                websocket
+                                            )
+                                        await asyncio.sleep(delay)
+                                        continue
+                                    elif attempt >= max_retries:
+                                        return {"response": "⚠️ **Rate limit reached. Please try again shortly.**", "tokens_used": total_in + total_out}
                                     else:
-                                        return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": 0}
-                            
+                                        return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": total_in + total_out}
+                                finally:
+                                    self._budget.release()
+                                    # Update session timestamp after successful call
+                                    self._last_by_session[session_id] = time.time()
+
                             if len(response.content) == 1 and response.content[0].type == "text":
                                 full_response += response.content[0].text
                                 process_query = False
                     
                     # Calculate total tokens used
+                    total_tokens_used = total_in + total_out
                     if hasattr(response, 'usage'):
-                        total_tokens_used += response.usage.input_tokens + response.usage.output_tokens
+                        total_tokens_used = total_in + total_out  # already tallied above
                     
                     token_manager.add_usage(session_id, total_tokens_used)
                     
@@ -2233,6 +2333,9 @@ async def get_email_attachments(email_id: int):
 async def websocket_chat(websocket: WebSocket):
     """WebSocket endpoint for real-time chat communication."""
     session_id = f"ws_{id(websocket)}_{int(time.time())}"
+    # NEW: per-socket gate to avoid overlapping requests from one client
+    if not hasattr(websocket, "__gate"):
+        websocket.__gate = asyncio.Semaphore(1)
     
     try:
         await manager.connect(websocket)
@@ -2255,11 +2358,43 @@ async def websocket_chat(websocket: WebSocket):
                     )
                     continue
 
+                # Handle different message types
+                message_type = message_data.get("type", "")
+                
+                # Handle heartbeat/ping messages
+                if message_type in ["ping", "pong", "heartbeat"]:
+                    # Send pong response for ping, or just acknowledge
+                    if message_type == "ping":
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "pong",
+                                "timestamp": datetime.now().isoformat()
+                            }),
+                            websocket
+                        )
+                    continue
+                
+                # Handle connection messages
+                if message_type == "connection":
+                    await manager.send_personal_message(
+                        json.dumps({
+                            "type": "connection",
+                            "message": "Connection established",
+                            "status": "success",
+                            "timestamp": datetime.now().isoformat()
+                        }),
+                        websocket
+                    )
+                    continue
+                
+                # Handle chat messages (default behavior)
                 query = message_data.get("query", "").strip()
                 enabled_tools = message_data.get("enabled_tools", [])
                 model = message_data.get("model", "claude-3-7-sonnet-20250219")
                 
                 if not query:
+                    # Log the message that caused the error for debugging
+                    print(f"Received message without query: {message_data}")
                     await manager.send_personal_message(
                         json.dumps({
                             "type": "error",
@@ -2297,13 +2432,21 @@ async def websocket_chat(websocket: WebSocket):
 
                 # Send acknowledgment
                 await manager.send_personal_message(
-                    json.dumps({"type": "status", "message": "Processing your request..."}),
+                    json.dumps({
+                        "type": "status", 
+                        "message": "Processing your request...",
+                        "status": "info",
+                        "timestamp": datetime.now().isoformat()
+                    }),
                     websocket
                 )
 
                 try:
-                    # Process query with enabled tools
-                    result = await run_mcp_query(query, enabled_tools, model, session_id, websocket)
+                    # Process query with enabled tools (guarded per-socket)
+                    async with websocket.__gate:
+                        result = await run_mcp_query(
+                            query, enabled_tools, model, session_id, websocket
+                        )
                     
                     if not isinstance(result, dict) or "response" not in result:
                         raise ExternalAPIError("Invalid response from query processor")
@@ -2319,6 +2462,17 @@ async def websocket_chat(websocket: WebSocket):
                             "tokens_used": result.get("tokens_used", 0),
                             "tokens_remaining": usage["session_limit"] - usage["session_used"],
                             "usage": usage
+                        }),
+                        websocket
+                    )
+
+                    # Send success status
+                    await manager.send_personal_message(
+                        json.dumps({
+                            "type": "status",
+                            "message": "Response generated successfully!",
+                            "status": "success",
+                            "timestamp": datetime.now().isoformat()
                         }),
                         websocket
                     )

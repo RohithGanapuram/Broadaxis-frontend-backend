@@ -6,16 +6,21 @@ const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 5000, // 5 seconds default timeout
+  timeout: 30000, // Increased to 30 seconds for complex operations
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// Request interceptor for logging
+// Request interceptor for logging and rate limit awareness
 api.interceptors.request.use(
   (config) => {
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    
+    // Add rate limit awareness headers
+    config.headers['X-Client-Version'] = '1.0.0'
+    config.headers['X-Request-Type'] = config.url?.includes('/chat') ? 'ai-request' : 'standard'
+    
     return config
   },
   (error) => {
@@ -24,7 +29,7 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor for error handling
+// Response interceptor for error handling with rate limit awareness
 api.interceptors.response.use(
   (response) => {
     return response
@@ -32,13 +37,18 @@ api.interceptors.response.use(
   (error) => {
     console.error('API Response Error:', error.response?.data || error.message)
     
-    // Handle specific error cases
+    // Enhanced error handling for rate limits and timeouts
     if (error.code === 'ECONNABORTED') {
-      console.error('Request timeout')
+      console.error('Request timeout - consider reducing complexity or waiting')
     } else if (error.code === 'ECONNREFUSED') {
       console.error('Connection refused - server may be down')
     } else if (!error.response) {
       console.error('Network error - no response received')
+    } else if (error.response?.status === 429) {
+      console.error('Rate limit exceeded - server is throttling requests')
+      // Could implement exponential backoff here
+    } else if (error.response?.status === 503) {
+      console.error('Service temporarily unavailable - server overloaded')
     }
     
     return Promise.reject(error)
@@ -82,7 +92,7 @@ export const apiClient = {
     const response = await api.post('/api/chat/document', {
       query,
       enabled_tools: [],
-      model: 'claude-3-haiku-20240307'
+      model: 'claude-3-7-sonnet-20250219'
     }, {
       params: { session_id: sessionId, filename },
       timeout: 60000
@@ -218,6 +228,23 @@ export const apiClient = {
     }
   },
 
+  // Test SharePoint connection
+  async testSharePoint(): Promise<{ test_result: { status: string; message: string; step?: string } }> {
+    try {
+      const response = await api.get('/api/test-sharepoint', { timeout: 15000 })
+      return response.data
+    } catch (error) {
+      console.error('Failed to test SharePoint:', error)
+      return {
+        test_result: {
+          status: 'error',
+          message: 'Failed to test SharePoint connection',
+          step: 'network_error'
+        }
+      }
+    }
+  },
+
   // SharePoint and PDF processing tools
   async listSharePointFiles(path: string = "", fileType?: string, sortBy: string = "name", sortOrder: string = "asc", maxItems: number = 100): Promise<any> {
     try {
@@ -268,10 +295,10 @@ export const apiClient = {
   },
 
   // Token management
-  async getTokenUsage(): Promise<{ session_used: number; session_limit: number; daily_used: number; daily_limit: number; request_limit: number }> {
+  async getTokenUsage(sessionId: string = 'default'): Promise<{ session_used: number; session_limit: number; daily_used: number; daily_limit: number; request_limit: number }> {
     try {
-      const response = await api.get('/api/token-usage')
-      return response.data
+      const response = await api.get(`/api/tokens/${sessionId}`)
+      return response.data.usage
     } catch (error) {
       console.error('Failed to get token usage:', error)
       return {
@@ -286,8 +313,8 @@ export const apiClient = {
 
   async getTokenLimits(): Promise<{ session_limit: number; daily_limit: number; request_limit: number }> {
     try {
-      const response = await api.get('/api/token-limits')
-      return response.data
+      const response = await api.get('/api/tokens')
+      return response.data.limits
     } catch (error) {
       console.error('Failed to get token limits:', error)
       return {
@@ -334,11 +361,7 @@ export class ChatWebSocket {
           try {
             const data = JSON.parse(event.data)
             
-            // Handle heartbeat messages by sending pong response
-            if (data.type === 'heartbeat') {
-              this.ws?.send(JSON.stringify({ type: 'pong' }))
-            }
-            
+            // Don't handle heartbeat here - let the GlobalWebSocketManager handle it
             this.onMessage(data)
           } catch (error) {
             console.error('Error parsing WebSocket message:', error)
