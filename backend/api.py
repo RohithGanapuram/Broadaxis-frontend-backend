@@ -251,8 +251,8 @@ class MCPInterface:
 
 
         try:
-            from anthropic import Anthropic
-            self.anthropic = Anthropic()
+            from anthropic import AsyncAnthropic
+            self.anthropic = AsyncAnthropic()
         except ImportError:
             print("Warning: Anthropic not available")
 
@@ -387,7 +387,7 @@ class MCPInterface:
                         # Basic conversation - no tools needed
                         available_tools = []
                     
-                    system_prompt = "I'm BroadAxis AI. For company questions, I search our knowledge base first. For market research, I use web search. I provide direct answers for general conversation."
+                    system_prompt = "I'm BroadAxis AI. For company questions, I search our knowledge base first. For market research, I use web search. I provide direct answers for general conversation. IMPORTANT: If multiple tools look useful, choose the single highest-value tool first, then wait for results before deciding on another. This ensures efficient processing and prevents overwhelming the system."
                     
                     selected_model = model or "claude-3-7-sonnet-20250219"
                     messages = [{'role': 'user', 'content': query}]
@@ -407,17 +407,17 @@ class MCPInterface:
                     
                     # Per-session throttling
                     now = time.time()
-                    since = now - self._last_by_session[session_id]
+                    since = now - self._last_by_session.get(session_id, 0)
                     if since < self._min_request_interval:
                         await asyncio.sleep(self._min_request_interval - since)
                     
-                    # Budget reservation
-                    await self._budget.reserve()
                     total_in = total_out = 0
 
                     for attempt in range(max_retries + 1):
+                        # Budget reservation for each attempt
+                        await self._budget.reserve()
                         try:
-                            response = self.anthropic.messages.create(
+                            response = await self.anthropic.messages.create(
                                 max_tokens=max_tokens,
                                 model=selected_model,
                                 system=system_prompt,
@@ -486,8 +486,9 @@ class MCPInterface:
                                 return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": 0}
                         finally:
                             self._budget.release()
-                            # Update session timestamp after successful call
-                            self._last_by_session[session_id] = time.time()
+                    
+                    # Update session timestamp only after successful call
+                    self._last_by_session[session_id] = time.time()
                     
                     full_response = ""
                     tools_used = []
@@ -512,9 +513,6 @@ class MCPInterface:
                         
                         # Execute all tool calls in parallel if any exist
                         if tool_calls:
-                            # Optionally bound the count of tool calls per assistant turn
-                            MAX_TOOL_CALLS_PER_TURN = int(os.getenv("MCP_MAX_TOOL_CALLS_PER_TURN", 4))
-                            tool_calls = tool_calls[:MAX_TOOL_CALLS_PER_TURN]
                             messages.append({'role': 'assistant', 'content': assistant_content})
                             
                             # Send progress update for tool execution
@@ -536,10 +534,119 @@ class MCPInterface:
                                     websocket
                                 )
                             
-                            # NEW: cap tool concurrency & coalesce duplicate calls
-                            TOOL_CONCURRENCY = int(os.getenv("MCP_TOOL_CONCURRENCY", 3))
+                            # Adaptive concurrency based on remaining tokens
+                            remaining = limit_check.get("session_remaining", 4024)
+                            TOOL_CONCURRENCY = 1 if remaining < 1500 else min(int(os.getenv("MCP_TOOL_CONCURRENCY", 1)), 2)
+                            MAX_TOOL_CALLS_PER_TURN = 1 if remaining < 2000 else 2
+                            
+                            # Adaptive tool result size based on remaining tokens
+                            if remaining < 1000:
+                                tool_result_max_chars = 2000
+                            elif remaining < 2000:
+                                tool_result_max_chars = 3000
+                            else:
+                                tool_result_max_chars = 4000
+                            
+                            # Apply the adaptive cap to tool calls
+                            if len(tool_calls) > MAX_TOOL_CALLS_PER_TURN:
+                                # Keep only the first tool call and notify the user
+                                tool_calls = tool_calls[:MAX_TOOL_CALLS_PER_TURN]
+                                if websocket:
+                                    await manager.send_personal_message(
+                                        json.dumps({
+                                            "type": "progress",
+                                            "message": f"Running the first {MAX_TOOL_CALLS_PER_TURN} tool(s) now; will request others if needed.",
+                                            "progress": 25,
+                                            "step": "tool_execution",
+                                            "current_step": 1,
+                                            "total_steps": MAX_TOOL_CALLS_PER_TURN
+                                        }),
+                                        websocket
+                                    )
+                            
                             tool_sem = asyncio.Semaphore(TOOL_CONCURRENCY)
                             _inflight: Dict[tuple, asyncio.Task] = {}
+
+                            def trim_tool_result(content, max_chars=4000):
+                                """Trim verbose tool results to prevent token overflow"""
+                                def normalize_text(text):
+                                    """Normalize text by stripping HTML, logs, and binary content"""
+                                    # Remove HTML tags
+                                    text = re.sub(r'<[^>]+>', '', text)
+                                    # Remove log patterns (timestamps, log levels)
+                                    text = re.sub(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.*?(?:INFO|DEBUG|WARN|ERROR|FATAL).*?\n', '', text)
+                                    # Remove binary-like content (base64, hex strings)
+                                    text = re.sub(r'[A-Za-z0-9+/]{50,}={0,2}', '[binary_data]', text)
+                                    # Remove excessive whitespace
+                                    text = re.sub(r'\n\s*\n', '\n\n', text)
+                                    return text.strip()
+                                
+                                def create_summary(text, max_chars=4000):
+                                    """Create a heuristic summary for large content"""
+                                    if len(text) <= max_chars:
+                                        return text
+                                    
+                                    # Try to find meaningful sections
+                                    lines = text.split('\n')
+                                    summary_lines = []
+                                    total_chars = 0
+                                    
+                                    # Look for headers, titles, or important content
+                                    for line in lines:
+                                        line = line.strip()
+                                        if not line:
+                                            continue
+                                        
+                                        # Prioritize lines that look like headers or important content
+                                        if (line.isupper() or 
+                                            line.startswith('#') or 
+                                            line.startswith('Title:') or 
+                                            line.startswith('Subject:') or
+                                            len(line) < 100 and line.endswith(':')):
+                                            if total_chars + len(line) + 1 <= max_chars * 0.7:  # Leave room for content
+                                                summary_lines.append(line)
+                                                total_chars += len(line) + 1
+                                        
+                                        # Add some regular content
+                                        elif total_chars + len(line) + 1 <= max_chars * 0.8:
+                                            summary_lines.append(line)
+                                            total_chars += len(line) + 1
+                                    
+                                    if summary_lines:
+                                        summary = '\n'.join(summary_lines)
+                                        summary += f"\n\n[Content truncated. Original length: {len(text)} characters]"
+                                        return summary
+                                    else:
+                                        # Fallback: just take the first portion
+                                        return text[:max_chars] + "...[truncated]"
+                                
+                                if isinstance(content, list):
+                                    # Handle list of content blocks
+                                    trimmed_content = []
+                                    total_chars = 0
+                                    for block in content:
+                                        if isinstance(block, dict) and "text" in block:
+                                            text = normalize_text(block["text"])
+                                            processed_text = create_summary(text, max_chars)
+                                            if total_chars + len(processed_text) > max_chars:
+                                                # Truncate this block
+                                                remaining = max_chars - total_chars
+                                                if remaining > 100:  # Only if we have meaningful content left
+                                                    trimmed_text = processed_text[:remaining] + "...[truncated]"
+                                                    trimmed_content.append({"type": "text", "text": trimmed_text})
+                                                break
+                                            else:
+                                                trimmed_content.append({"type": "text", "text": processed_text})
+                                                total_chars += len(processed_text)
+                                        else:
+                                            trimmed_content.append(block)
+                                    return trimmed_content
+                                elif isinstance(content, str):
+                                    # Handle string content
+                                    normalized_text = normalize_text(content)
+                                    return create_summary(normalized_text, max_chars)
+                                else:
+                                    return content
 
                             async def execute_tool(tool_content):
                                 key = (tool_content.name, json.dumps(tool_content.input, sort_keys=True))
@@ -550,10 +657,12 @@ class MCPInterface:
                                     async with tool_sem:
                                         try:
                                             result = await session.call_tool(tool_content.name, arguments=tool_content.input)
+                                            # Trim the result to prevent token overflow
+                                            trimmed_content = trim_tool_result(result.content, tool_result_max_chars)
                                             return {
                                                 "type": "tool_result",
                                                 "tool_use_id": tool_content.id,
-                                                "content": result.content
+                                                "content": trimmed_content
                                             }
                                         except Exception as tool_error:
                                             error_handler.log_error(tool_error, {'tool_name': tool_content.name})
@@ -600,12 +709,16 @@ class MCPInterface:
                                 return_exceptions=True
                             )
                             
-                            # Add all tool results to messages
+                            # Batch all tool results into a single user message
+                            batched_tool_results = []
                             for result in tool_results:
                                 if isinstance(result, dict):
-                                    messages.append({"role": "user", "content": [result]})
+                                    batched_tool_results.append(result)
                                 else:
                                     error_handler.log_error(result, {'operation': 'parallel_tool_execution'})
+                            
+                            if batched_tool_results:
+                                messages.append({"role": "user", "content": batched_tool_results})
                             
                             # Check tokens before follow-up call
                             current_tokens = token_manager.count_messages_tokens(messages, system_prompt)
@@ -630,12 +743,12 @@ class MCPInterface:
                                     }),
                                     websocket
                                 )
-                            
-                            await self._budget.reserve()
 
                             for attempt in range(max_retries + 1):
+                                # Budget reservation for each attempt
+                                await self._budget.reserve()
                                 try:
-                                    response = self.anthropic.messages.create(
+                                    response = await self.anthropic.messages.create(
                                         max_tokens=min(2024, follow_up_check.get("session_remaining", 2024)),
                                         model=selected_model,
                                         system=system_prompt,
@@ -666,8 +779,9 @@ class MCPInterface:
                                         return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": total_in + total_out}
                                 finally:
                                     self._budget.release()
-                                    # Update session timestamp after successful call
-                                    self._last_by_session[session_id] = time.time()
+                            
+                            # Update session timestamp only after successful call
+                            self._last_by_session[session_id] = time.time()
 
                             if len(response.content) == 1 and response.content[0].type == "text":
                                 full_response += response.content[0].text
