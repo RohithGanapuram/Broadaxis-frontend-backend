@@ -743,6 +743,27 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
         story.append(Paragraph(title, title_style))
         story.append(Spacer(1, 20))
         
+        # Initialize headings_for_toc for table of contents
+        headings_for_toc = []  # Track headings for table of contents
+        
+        # First pass: collect headings for table of contents
+        content_lines = content.split('\n')
+        for line in content_lines:
+            line = line.strip()
+            if line:
+                if line.startswith('# '):
+                    heading_text = line[2:]
+                    if include_toc:
+                        headings_for_toc.append((1, heading_text))
+                elif line.startswith('## '):
+                    heading_text = line[3:]
+                    if include_toc:
+                        headings_for_toc.append((2, heading_text))
+                elif line.startswith('### '):
+                    heading_text = line[4:]
+                    if include_toc:
+                        headings_for_toc.append((3, heading_text))
+
         # Add table of contents if requested and headings exist
         if include_toc and headings_for_toc:
             toc_style = ParagraphStyle(
@@ -762,10 +783,7 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
             
             story.append(Spacer(1, 20))
 
-        # Process content with enhanced markdown support
-        content_lines = content.split('\n')
-        headings_for_toc = []  # Track headings for table of contents
-        
+        # Second pass: process content with enhanced markdown support
         for line in content_lines:
             line = line.strip()
             if line:
@@ -775,18 +793,12 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
                 if line.startswith('# '):
                     heading_text = line[2:]
                     story.append(Paragraph(heading_text, styles['Heading1']))
-                    if include_toc:
-                        headings_for_toc.append((1, heading_text))
                 elif line.startswith('## '):
                     heading_text = line[3:]
                     story.append(Paragraph(heading_text, styles['Heading2']))
-                    if include_toc:
-                        headings_for_toc.append((2, heading_text))
                 elif line.startswith('### '):
                     heading_text = line[4:]
                     story.append(Paragraph(heading_text, styles['Heading3']))
-                    if include_toc:
-                        headings_for_toc.append((3, heading_text))
                 elif line.startswith('- ') or line.startswith('* '):
                     story.append(Paragraph(f"• {line[2:]}", styles['Normal']))
                 elif line.startswith('1. ') or line.startswith('2. ') or line.startswith('3. '):
@@ -948,6 +960,31 @@ def generate_word_document(title: str, content: str, filename: str = None, inclu
         # Add some space after title
         doc.add_paragraph()
         
+        # Initialize headings_for_toc for table of contents
+        headings_for_toc = []  # Track headings for table of contents
+        
+        # First pass: collect headings for table of contents
+        content_lines = content.split('\n')
+        for line in content_lines:
+            line = line.strip()
+            if line:
+                if line.startswith('# '):
+                    heading_text = line[2:]
+                    if include_toc:
+                        headings_for_toc.append((1, heading_text))
+                elif line.startswith('## '):
+                    heading_text = line[3:]
+                    if include_toc:
+                        headings_for_toc.append((2, heading_text))
+                elif line.startswith('### '):
+                    heading_text = line[4:]
+                    if include_toc:
+                        headings_for_toc.append((3, heading_text))
+                elif line.startswith('#### '):
+                    heading_text = line[5:]
+                    if include_toc:
+                        headings_for_toc.append((4, heading_text))
+
         # Add table of contents if requested and headings exist
         if include_toc and headings_for_toc:
             toc_heading = doc.add_heading("Table of Contents", level=2)
@@ -960,33 +997,22 @@ def generate_word_document(title: str, content: str, filename: str = None, inclu
             
             doc.add_paragraph()  # Add space after TOC
 
-        # Process content with enhanced markdown support
-        content_lines = content.split('\n')
-        headings_for_toc = []  # Track headings for table of contents
-        
+        # Second pass: process content with enhanced markdown support
         for line in content_lines:
             line = line.strip()
             if line:
                 if line.startswith('# '):
                     heading_text = line[2:]
                     doc.add_heading(heading_text, level=1)
-                    if include_toc:
-                        headings_for_toc.append((1, heading_text))
                 elif line.startswith('## '):
                     heading_text = line[3:]
                     doc.add_heading(heading_text, level=2)
-                    if include_toc:
-                        headings_for_toc.append((2, heading_text))
                 elif line.startswith('### '):
                     heading_text = line[4:]
                     doc.add_heading(heading_text, level=3)
-                    if include_toc:
-                        headings_for_toc.append((3, heading_text))
                 elif line.startswith('#### '):
                     heading_text = line[5:]
                     doc.add_heading(heading_text, level=4)
-                    if include_toc:
-                        headings_for_toc.append((4, heading_text))
                 elif line.startswith('- ') or line.startswith('* '):
                     doc.add_paragraph(line[2:], style='List Bullet')
                 elif line.startswith('1. ') or line.startswith('2. ') or line.startswith('3. '):
