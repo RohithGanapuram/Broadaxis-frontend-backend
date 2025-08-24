@@ -354,7 +354,10 @@ class MCPInterface:
     async def process_query_with_anthropic(self, query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default", websocket = None) -> Dict:
         if not self.anthropic:
             return {"response": "Anthropic API not available", "tokens_used": 0}
-            
+        
+        # Initialize token tracking
+        total_in = total_out = 0
+        
         try:
             # Use fresh connection for tool-based queries with cached tools
             self._connection_status = "connecting"
@@ -410,8 +413,6 @@ class MCPInterface:
                     since = now - self._last_by_session.get(session_id, 0)
                     if since < self._min_request_interval:
                         await asyncio.sleep(self._min_request_interval - since)
-                    
-                    total_in = total_out = 0
 
                     for attempt in range(max_retries + 1):
                         # Budget reservation for each attempt
@@ -492,7 +493,6 @@ class MCPInterface:
                     
                     full_response = ""
                     tools_used = []
-                    total_tokens_used = total_in + total_out
                     
                     process_query = True
                     while process_query:
@@ -774,9 +774,9 @@ class MCPInterface:
                                         await asyncio.sleep(delay)
                                         continue
                                     elif attempt >= max_retries:
-                                        return {"response": "⚠️ **Rate limit reached. Please try again shortly.**", "tokens_used": total_in + total_out}
+                                        return {"response": "⚠️ **Rate limit reached. Please try again shortly.**", "tokens_used": 0}
                                     else:
-                                        return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": total_in + total_out}
+                                        return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": 0}
                                 finally:
                                     self._budget.release()
                             
@@ -787,12 +787,7 @@ class MCPInterface:
                                 full_response += response.content[0].text
                                 process_query = False
                     
-                    # Calculate total tokens used
-                    total_tokens_used = total_in + total_out
-                    if hasattr(response, 'usage'):
-                        total_tokens_used = total_in + total_out  # already tallied above
-                    
-                    token_manager.add_usage(session_id, total_tokens_used)
+                    # Token usage is tracked in the finally block
                     
                     if tools_used:
                         tools_info = "\n\n---\n🔧 **Tools Used:** " + ", ".join(set(tools_used))
@@ -800,12 +795,17 @@ class MCPInterface:
                     
                     return {
                         "response": full_response,
-                        "tokens_used": total_tokens_used
+                        "tokens_used": total_in + total_out
                     }
                     
         except Exception as e:
             self._connection_status = "offline"
             return {"response": f"Error: {str(e)}", "tokens_used": 0}
+        finally:
+            # Always track token usage, even on errors
+            total_tokens_used = total_in + total_out
+            if total_tokens_used > 0:
+                token_manager.add_usage(session_id, total_tokens_used)
 
 mcp_interface = MCPInterface()
 
