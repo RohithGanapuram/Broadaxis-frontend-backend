@@ -266,6 +266,28 @@ class MCPInterface:
         self._last_by_session = defaultdict(float)
         self._min_request_interval = float(os.getenv("ANTHROPIC_MIN_INTERVAL_SEC", 0.5))
         
+        # Model-specific token limits and configurations
+        self._model_configs = {
+            "claude-3-7-sonnet-20250219": {
+                "max_output_tokens": 8192,  # Claude 3.7 Sonnet limit
+                "recommended_first_call": 4096,
+                "recommended_follow_up": 2048,
+                "description": "Claude 3.7 Sonnet"
+            },
+            "claude-sonnet-4-20250514": {
+                "max_output_tokens": 8192,  # Claude 4 Sonnet limit
+                "recommended_first_call": 4096,
+                "recommended_follow_up": 2048,
+                "description": "Claude 4 Sonnet"
+            },
+            "claude-opus-4-20250514": {
+                "max_output_tokens": 8192,  # Claude 4 Opus limit
+                "recommended_first_call": 4096,
+                "recommended_follow_up": 2048,
+                "description": "Claude 4 Opus"
+            }
+        }
+        
 
     def _retry_after_secs(self, e, fallback: float) -> float:
         try:
@@ -281,6 +303,66 @@ class MCPInterface:
     def _is_rate_limited(self, e) -> bool:
         status = getattr(e, "status_code", None)
         return status == 429 or "Too Many Requests" in str(e)
+    
+    def _calculate_max_tokens(self, model: str, session_remaining: int, call_type: str = "first") -> int:
+        """
+        Calculate adaptive max_tokens based on model limits and user allowance.
+        
+        Args:
+            model: The model name
+            session_remaining: Remaining tokens in the session
+            call_type: "first" for initial call, "follow_up" for subsequent calls
+            
+        Returns:
+            Adaptive max_tokens value
+        """
+        # Get model configuration, fallback to Claude 3.7 Sonnet defaults
+        model_config = self._model_configs.get(model, self._model_configs["claude-3-7-sonnet-20250219"])
+        
+        # Get recommended limits for this call type
+        if call_type == "first":
+            recommended = model_config["recommended_first_call"]
+        else:  # follow_up
+            recommended = model_config["recommended_follow_up"]
+        
+        # Calculate adaptive limit: min(user_allowance, model_limit, recommended)
+        model_limit = model_config["max_output_tokens"]
+        
+        # Use the most restrictive of the three limits
+        adaptive_limit = min(session_remaining, model_limit, recommended)
+        
+        # Ensure we don't go below a reasonable minimum
+        min_limit = 512 if call_type == "first" else 256
+        final_limit = max(adaptive_limit, min_limit)
+        
+        # Log the calculation for debugging (only in development)
+        if os.getenv("DEBUG_TOKEN_LIMITS", "false").lower() == "true":
+            print(f"Token calculation for {model} ({call_type}): "
+                  f"session_remaining={session_remaining}, "
+                  f"model_limit={model_limit}, "
+                  f"recommended={recommended}, "
+                  f"final={final_limit}")
+        
+        return final_limit
+    
+    def get_model_info(self, model: str) -> dict:
+        """
+        Get information about a specific model's configuration.
+        
+        Args:
+            model: The model name
+            
+        Returns:
+            Dictionary with model configuration information
+        """
+        model_config = self._model_configs.get(model, self._model_configs["claude-3-7-sonnet-20250219"])
+        return {
+            "model": model,
+            "description": model_config["description"],
+            "max_output_tokens": model_config["max_output_tokens"],
+            "recommended_first_call": model_config["recommended_first_call"],
+            "recommended_follow_up": model_config["recommended_follow_up"]
+        }
     
     async def initialize(self):
         """Initialize both tools and prompts in a single connection"""
@@ -402,7 +484,7 @@ class MCPInterface:
                     if not limit_check["allowed"]:
                         return {"response": f"Token limit exceeded: {limit_check['reason']}", "tokens_used": 0}
                     
-                    max_tokens = min(4024, limit_check.get("session_remaining", 4024))
+                    max_tokens = self._calculate_max_tokens(selected_model, limit_check.get("session_remaining", 4096), "first")
                     
                     # --- Minute-budgeted Anthropic call (FIRST call) ---
                     max_retries = 2
@@ -534,18 +616,27 @@ class MCPInterface:
                                     websocket
                                 )
                             
-                            # Adaptive concurrency based on remaining tokens
-                            remaining = limit_check.get("session_remaining", 4024)
-                            TOOL_CONCURRENCY = 1 if remaining < 1500 else min(int(os.getenv("MCP_TOOL_CONCURRENCY", 1)), 2)
-                            MAX_TOOL_CALLS_PER_TURN = 1 if remaining < 2000 else 2
+                            # Adaptive concurrency based on remaining tokens and model
+                            remaining = limit_check.get("session_remaining", 4096)
+                            model_config = self._model_configs.get(selected_model, self._model_configs["claude-3-7-sonnet-20250219"])
                             
-                            # Adaptive tool result size based on remaining tokens
+                            # More conservative limits for models with higher token limits
+                            if model_config["max_output_tokens"] > 8000:
+                                TOOL_CONCURRENCY = 1 if remaining < 2000 else min(int(os.getenv("MCP_TOOL_CONCURRENCY", 1)), 2)
+                                MAX_TOOL_CALLS_PER_TURN = 1 if remaining < 2500 else 2
+                            else:
+                                TOOL_CONCURRENCY = 1 if remaining < 1500 else min(int(os.getenv("MCP_TOOL_CONCURRENCY", 1)), 2)
+                                MAX_TOOL_CALLS_PER_TURN = 1 if remaining < 2000 else 2
+                            
+                            # Adaptive tool result size based on remaining tokens and model
+                            model_config = self._model_configs.get(selected_model, self._model_configs["claude-3-7-sonnet-20250219"])
                             if remaining < 1000:
                                 tool_result_max_chars = 2000
                             elif remaining < 2000:
                                 tool_result_max_chars = 3000
                             else:
-                                tool_result_max_chars = 4000
+                                # Scale based on model's max output tokens
+                                tool_result_max_chars = min(4000, model_config["max_output_tokens"] // 2)
                             
                             # Apply the adaptive cap to tool calls
                             if len(tool_calls) > MAX_TOOL_CALLS_PER_TURN:
@@ -749,7 +840,7 @@ class MCPInterface:
                                 await self._budget.reserve()
                                 try:
                                     response = await self.anthropic.messages.create(
-                                        max_tokens=min(2024, follow_up_check.get("session_remaining", 2024)),
+                                        max_tokens=self._calculate_max_tokens(selected_model, follow_up_check.get("session_remaining", 2048), "follow_up"),
                                         model=selected_model,
                                         system=system_prompt,
                                         tools=available_tools,
@@ -1999,6 +2090,77 @@ def get_token_limits():
         "tiktoken_available": tiktoken is not None,
         "status": "success"
     }
+
+@app.get("/api/model-info/{model}")
+def get_model_info(model: str):
+    """Get information about a specific model's configuration."""
+    try:
+        model_info = mcp_interface.get_model_info(model)
+        return {
+            "model_info": model_info,
+            "status": "success"
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'model': model, 'operation': 'get_model_info'})
+        return {
+            "error": f"Failed to get model info for {model}",
+            "status": "error"
+        }
+
+@app.get("/api/models")
+def get_available_models():
+    """Get list of all available models and their configurations."""
+    try:
+        models = {}
+        for model_name in mcp_interface._model_configs.keys():
+            models[model_name] = mcp_interface.get_model_info(model_name)
+        
+        return {
+            "models": models,
+            "status": "success"
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_available_models'})
+        return {
+            "error": "Failed to get available models",
+            "status": "error"
+        }
+
+@app.get("/api/test-token-calculation")
+def test_token_calculation():
+    """Test endpoint to verify adaptive token calculation logic."""
+    try:
+        test_cases = [
+            {"model": "claude-3-7-sonnet-20250219", "session_remaining": 1000, "call_type": "first"},
+            {"model": "claude-3-7-sonnet-20250219", "session_remaining": 1000, "call_type": "follow_up"},
+            {"model": "claude-3-7-sonnet-20250219", "session_remaining": 10000, "call_type": "first"},
+            {"model": "claude-3-7-sonnet-20250219", "session_remaining": 10000, "call_type": "follow_up"},
+            {"model": "claude-sonnet-4-20250514", "session_remaining": 5000, "call_type": "first"},
+            {"model": "claude-opus-4-20250514", "session_remaining": 3000, "call_type": "follow_up"},
+        ]
+        
+        results = {}
+        for case in test_cases:
+            max_tokens = mcp_interface._calculate_max_tokens(
+                case["model"], 
+                case["session_remaining"], 
+                case["call_type"]
+            )
+            results[f"{case['model']}_{case['call_type']}_{case['session_remaining']}"] = {
+                "input": case,
+                "output": max_tokens
+            }
+        
+        return {
+            "test_results": results,
+            "status": "success"
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'test_token_calculation'})
+        return {
+            "error": "Failed to test token calculation",
+            "status": "error"
+        }
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), session_id: str = "default"):

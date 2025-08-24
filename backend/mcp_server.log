@@ -1888,3 +1888,24 @@
 2025-08-24 11:48:48,528 - MCPServer - INFO - Performing web search for query: current tariffs on India by USA 2024
 2025-08-24 11:48:51,956 - MCPServer - INFO - Web search completed successfully. Found 5 results
 2025-08-24 11:48:51,964 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-24 12:09:33,665 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-24 12:09:33,666 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-24 12:09:33,675 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-24 12:09:33,703 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-24 12:09:33,705 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-24 12:10:00,684 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-24 12:10:00,685 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-24 12:10:00,712 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-24 12:10:03,033 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-24 12:10:04,514 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris County
+2025-08-24 12:10:05,597 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
