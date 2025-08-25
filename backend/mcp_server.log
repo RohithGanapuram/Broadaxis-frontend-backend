@@ -5383,3 +5383,52 @@
 2025-08-25 11:13:19,683 - MCPServer - INFO - Match 3: score=0.3393, source=infoDoc.pdf, text_len=1975
 2025-08-25 11:13:19,684 - MCPServer - INFO - Match 4: score=0.3337, source=infoDoc.pdf, text_len=1985
 2025-08-25 11:13:19,684 - MCPServer - INFO - Match 5: score=0.3325, source=infoDoc.pdf, text_len=1993
+2025-08-25 11:37:47,708 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-25 11:37:47,709 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-25 11:37:47,719 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-25 11:37:47,752 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-25 11:37:47,755 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-25 11:38:43,642 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-25 11:38:43,642 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-25 11:38:43,659 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-25 11:38:46,467 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-25 11:38:48,190 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-25 11:38:49,396 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-25 11:38:52,565 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-25 11:38:52,565 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/5-General Requirements for Proposals (1).pdf
+2025-08-25 11:39:13,012 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-25 11:39:13,014 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-25 11:39:13,049 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-25 11:39:15,757 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-25 11:39:17,082 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-25 11:39:18,045 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-25 11:39:21,011 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-25 11:39:21,011 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/5-General Requirements for Proposals (1).pdf
+2025-08-25 11:39:23,025 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
+2025-08-25 11:39:28,112 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-25 11:39:28,113 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/eval_metrics.pdf
+2025-08-25 11:39:29,863 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/eval_metrics.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
+2025-08-25 11:39:33,687 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-25 11:39:33,687 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/15-Specifications.pdf
+2025-08-25 11:39:35,121 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/15-Specifications.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
+2025-08-25 11:39:41,150 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-25 11:39:41,151 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/14-Special Requirements.pdf
+2025-08-25 11:39:42,856 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/14-Special Requirements.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
+2025-08-25 11:39:47,466 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-25 11:39:47,467 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/MoneyQuest.pdf
+2025-08-25 11:39:48,921 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/MoneyQuest.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1

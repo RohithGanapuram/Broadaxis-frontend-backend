@@ -127,6 +127,9 @@ class EmailFetchResponse(BaseModel):
     attachments_downloaded: int
     fetched_emails: List[FetchedEmail]
 
+# Thread management for conversation history
+thread_store = {}
+
 class TokenManager:
     def __init__(self):
         self.MAX_TOKENS_PER_REQUEST = 50000
@@ -334,7 +337,119 @@ class MCPInterface:
         
         # Ensure we don't go below a reasonable minimum
         min_limit = 512 if call_type == "first" else 256
-        final_limit = max(adaptive_limit, min_limit)
+        
+        return max(adaptive_limit, min_limit)
+    
+    async def get_or_create_thread(self, session_id: str) -> str:
+        """
+        Get or create a conversation history for the given session ID.
+        
+        Args:
+            session_id: Unique session identifier
+            
+        Returns:
+            Session ID (used as thread identifier)
+        """
+        if session_id not in thread_store:
+            # Initialize empty conversation history for this session
+            thread_store[session_id] = []
+            print(f"Created new conversation history for session {session_id}")
+        
+        return session_id
+    
+    async def cleanup_old_threads(self, max_threads: int = 100):
+        """
+        Clean up old conversation histories to prevent memory issues.
+        This is a simple implementation - in production, you might want
+        to use a more sophisticated cleanup strategy.
+        """
+        if len(thread_store) > max_threads:
+            # Remove oldest conversations (simple FIFO approach)
+            oldest_sessions = list(thread_store.keys())[:len(thread_store) - max_threads]
+            for session_id in oldest_sessions:
+                del thread_store[session_id]
+                print(f"Cleaned up conversation history for session {session_id}")
+    
+    async def add_message_to_thread(self, session_id: str, role: str, content: str) -> str:
+        """
+        Add a message to the conversation history for the given session.
+        
+        Args:
+            session_id: Session identifier
+            role: Message role ('user' or 'assistant')
+            content: Message content
+            
+        Returns:
+            Message ID (timestamp-based)
+        """
+        try:
+            await self.get_or_create_thread(session_id)
+            
+            # Add message to conversation history
+            message_id = f"msg_{int(time.time() * 1000)}"
+            message = {
+                'id': message_id,
+                'role': role,
+                'content': content,
+                'timestamp': time.time()
+            }
+            
+            thread_store[session_id].append(message)
+            
+            # Keep only the last 50 messages to prevent memory issues
+            if len(thread_store[session_id]) > 50:
+                thread_store[session_id] = thread_store[session_id][-50:]
+            
+            return message_id
+        except Exception as e:
+            print(f"Error adding message to conversation history for session {session_id}: {e}")
+            return None
+    
+    async def get_thread_messages(self, session_id: str, limit: int = 20) -> List[Dict]:
+        """
+        Get recent messages from the conversation history for the given session.
+        
+        Args:
+            session_id: Session identifier
+            limit: Maximum number of messages to retrieve
+            
+        Returns:
+            List of message dictionaries in standard format
+        """
+        try:
+            await self.get_or_create_thread(session_id)
+            
+            # Get messages from conversation history
+            messages = thread_store[session_id][-limit:] if thread_store[session_id] else []
+            
+            # Convert to standard format
+            standard_messages = []
+            for msg in messages:
+                standard_messages.append({
+                    'role': msg['role'],
+                    'content': msg['content']
+                })
+            
+            return standard_messages
+            
+        except Exception as e:
+            print(f"Error getting conversation history for session {session_id}: {e}")
+            return []
+    
+    async def get_thread_stats(self) -> Dict:
+        """
+        Get statistics about conversation history usage.
+        
+        Returns:
+            Dictionary with conversation statistics
+        """
+        total_messages = sum(len(messages) for messages in thread_store.values())
+        return {
+            "total_sessions": len(thread_store),
+            "total_messages": total_messages,
+            "active_sessions": list(thread_store.keys()),
+            "avg_messages_per_session": total_messages / len(thread_store) if thread_store else 0
+        }
         
         # Log the calculation for debugging (only in development)
         if os.getenv("DEBUG_TOKEN_LIMITS", "false").lower() == "true":
@@ -476,7 +591,15 @@ class MCPInterface:
                     system_prompt = "I'm BroadAxis AI. For company questions, I search our knowledge base first. For market research, I use web search. I provide direct answers for general conversation. IMPORTANT: If multiple tools look useful, choose the single highest-value tool first, then wait for results before deciding on another. This ensures efficient processing and prevents overwhelming the system."
                     
                     selected_model = model or "claude-3-7-sonnet-20250219"
-                    messages = [{'role': 'user', 'content': query}]
+                    
+                    # Add user message to thread
+                    await self.add_message_to_thread(session_id, 'user', query)
+                    
+                    # Get conversation history from thread
+                    thread_messages = await self.get_thread_messages(session_id, limit=20)
+                    
+                    # Build messages for the API call
+                    messages = thread_messages.copy()
                     
                     # Token management
                     estimated_tokens = token_manager.count_messages_tokens(messages, system_prompt)
@@ -884,6 +1007,9 @@ class MCPInterface:
                     if tools_used:
                         tools_info = "\n\n---\n🔧 **Tools Used:** " + ", ".join(set(tools_used))
                         full_response += tools_info
+                    
+                    # Add assistant response to thread
+                    await self.add_message_to_thread(session_id, 'assistant', full_response)
                     
                     return {
                         "response": full_response,
@@ -3035,6 +3161,37 @@ async def download_file(filename: str):
         )
     else:
         raise HTTPException(status_code=404, detail="File not found")
+
+@app.get("/api/conversation/stats")
+async def get_conversation_statistics():
+    """Get statistics about conversation history"""
+    try:
+        stats = await mcp_interface.get_thread_stats()
+        return {
+            "status": "success",
+            "conversation_statistics": stats
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error getting conversation statistics: {str(e)}",
+            "conversation_statistics": {}
+        }
+
+@app.get("/api/conversation/cleanup")
+async def cleanup_conversations():
+    """Clean up old conversation histories to free up resources"""
+    try:
+        await mcp_interface.cleanup_old_threads(max_threads=50)
+        return {
+            "status": "success",
+            "message": "Conversation cleanup completed"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error during conversation cleanup: {str(e)}"
+        }
 
 if __name__ == "__main__":
     import uvicorn
