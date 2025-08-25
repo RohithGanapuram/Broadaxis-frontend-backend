@@ -38,6 +38,13 @@ const ChatInterface: React.FC = () => {
   const [isLoadingFolders, setIsLoadingFolders] = useState(false)
   const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes cache
   
+  // Enhanced folder and file selection for Step 2
+  const [availableFiles, setAvailableFiles] = useState<any[]>([])
+  const [showFileSelection, setShowFileSelection] = useState(false)
+  const [selectedFolder, setSelectedFolder] = useState<string>('')
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false)
+  const [fileCache, setFileCache] = useState<{[key: string]: {files: any[], timestamp: number}}>({})
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom
@@ -323,7 +330,7 @@ const ChatInterface: React.FC = () => {
     try {
       const response = await apiClient.listSharePointFiles('')
       if (response.status === 'success' && response.files) {
-        // Filter for folders only
+        // Filter for folders only - backend uses 'type' field
         const folders = response.files
           .filter((item: any) => item.type === 'folder')
           .map((item: any) => item.filename)
@@ -357,7 +364,7 @@ const ChatInterface: React.FC = () => {
     try {
       const response = await apiClient.listSharePointFiles(parentFolder)
       if (response.status === 'success' && response.files) {
-        // Filter for folders only
+        // Filter for folders only - backend uses 'type' field
         const folders = response.files
           .filter((item: any) => item.type === 'folder')
           .map((item: any) => item.filename)
@@ -380,26 +387,99 @@ const ChatInterface: React.FC = () => {
     }
   }
 
+  const fetchSharePointFiles = async (folderPath: string, forceRefresh = false) => {
+    const cacheKey = folderPath
+    const now = Date.now()
+    
+    // Check cache first (unless force refresh)
+    if (!forceRefresh && fileCache[cacheKey] && (now - fileCache[cacheKey].timestamp) < CACHE_DURATION) {
+      setAvailableFiles(fileCache[cacheKey].files)
+      return
+    }
+    
+    setIsLoadingFiles(true)
+    try {
+      const response = await apiClient.listSharePointFiles(folderPath)
+      if (response.status === 'success' && response.files) {
+        // Filter for files only (not folders) and map backend fields to frontend expectations
+        const files = response.files
+          .filter((item: any) => item.type !== 'folder')
+          .map((item: any) => ({
+            name: item.filename, // Backend returns 'filename'
+            path: item.path,
+            extension: item.type, // Backend returns 'type' for file extension
+            size_mb: item.file_size ? (item.file_size / (1024 * 1024)).toFixed(2) : 0, // Convert bytes to MB
+            modified_date: item.modified_at // Backend returns 'modified_at'
+          }))
+        
+        // Update cache
+        setFileCache(prev => ({
+          ...prev,
+          [cacheKey]: { files, timestamp: now }
+        }))
+        setAvailableFiles(files)
+      }
+    } catch (error) {
+      console.error('Error fetching SharePoint files:', error)
+      toast.error('Failed to fetch SharePoint files')
+    } finally {
+      setIsLoadingFiles(false)
+    }
+  }
+
+  const getToolsForPrompt = (prompt: any): string[] => {
+    // Check if this is Step 1 (document identification)
+    const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
+                   prompt.name === 'Identifying the Documents' || 
+                   prompt.title === 'Identifying the Documents' || 
+                   prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
+    
+    // Check if this is Step 2 (summary generation)
+    const isStep2 = prompt.name === 'Step2_summarize_documents' || 
+                   prompt.title === 'Step-2: Executive Summary of Procurement Document' ||
+                   prompt.description.includes('Generate a clear, high-value summary')
+    
+    if (isStep1) {
+      // For Step 1, disable extract_pdf_text to force use of sharepoint_read_file with preview
+      const disabledTools = ['extract_pdf_text']
+      return settings.enabledTools.filter(tool => !disabledTools.includes(tool))
+    }
+    
+    if (isStep2) {
+      // For Step 2, disable document generation tools to prevent SharePoint uploads
+      const documentGenerationTools = ['generate_pdf_document', 'generate_word_document']
+      return settings.enabledTools.filter(tool => !documentGenerationTools.includes(tool))
+    }
+    
+    // For all other prompts, use all enabled tools
+    return settings.enabledTools
+  }
+
   const handlePromptClick = async (prompt: any) => {
     console.log('Prompt clicked:', prompt)
     
     // Check if this is the Step1 or Step2 prompt template (both need folder selection)
-    if (prompt.name === 'Step1_Identifying_documents' || 
-        prompt.name === 'Step2_summarize_documents' ||
-        prompt.name === 'Identifying the Documents' || 
-        prompt.title === 'Identifying the Documents' || 
-        prompt.description.includes('identify and categorize RFP/RFI/RFQ documents') ||
-        prompt.description.includes('Generate a clear, high-value summary')) {
-      
-      console.log('Step1 or Step2 prompt detected - showing folder selection')
+    const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
+                   prompt.name === 'Identifying the Documents' || 
+                   prompt.title === 'Identifying the Documents' || 
+                   prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
+    
+    const isStep2 = prompt.name === 'Step2_summarize_documents' || 
+                   prompt.title === 'Step-2: Executive Summary of Procurement Document' ||
+                   prompt.description.includes('Generate a clear, high-value summary')
+    
+    if (isStep1 || isStep2) {
+      console.log(`${isStep1 ? 'Step1' : 'Step2'} prompt detected - showing folder selection`)
       setSelectedPrompt(prompt)
       await fetchSharePointFolders()
       setShowFolderSelection(true)
       setShowPromptsPanel(false)
     } else {
-      // For other prompts, use the existing flow
+      // For other prompts (including Step 3), use the description as the query
       console.log('Other prompt detected - executing directly')
-      const promptMessage = prompt.description
+      
+      const promptMessage = prompt.description || prompt.name || 'Please execute this prompt template.'
+      
       setInputMessage(promptMessage)
       setTimeout(() => {
         if (globalWebSocket.getConnectionStatus()) {
@@ -421,8 +501,8 @@ const ChatInterface: React.FC = () => {
           setIsLoading(true)
           
           globalWebSocket.sendMessage({
-            query: prompt.description,
-            enabled_tools: settings.enabledTools,
+            query: promptMessage,
+            enabled_tools: getToolsForPrompt(prompt),
             model: settings.model
           })
           setInputMessage('')
@@ -437,7 +517,32 @@ const ChatInterface: React.FC = () => {
 
   const handleFolderSelection = async (folderName: string) => {
     if (selectedPrompt) {
-      // Check if this folder has subfolders
+      // Check if this is Step 2 (needs file selection)
+      const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
+                     selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
+                     selectedPrompt.description.includes('Generate a clear, high-value summary')
+      
+      if (isStep2) {
+        // For Step 2, first check if this folder has subfolders
+        const hasSubFolders = await fetchSubFolders(folderName)
+        
+        if (hasSubFolders) {
+          // Show subfolder selection first for Step 2
+          setSelectedParentFolder(folderName)
+          setShowSubFolderSelection(true)
+          setShowFolderSelection(false)
+          return
+        } else {
+          // No subfolders, show file selection directly
+          setSelectedFolder(folderName)
+          await fetchSharePointFiles(folderName)
+          setShowFileSelection(true)
+          setShowFolderSelection(false)
+          return
+        }
+      }
+      
+      // For Step 1, check if this folder has subfolders
       const hasSubFolders = await fetchSubFolders(folderName)
       
       if (hasSubFolders) {
@@ -470,7 +575,7 @@ const ChatInterface: React.FC = () => {
             
             globalWebSocket.sendMessage({
               query: promptMessage,
-              enabled_tools: settings.enabledTools,
+              enabled_tools: getToolsForPrompt(selectedPrompt),
               model: settings.model
             })
             setInputMessage('')
@@ -482,9 +587,25 @@ const ChatInterface: React.FC = () => {
     }
   }
 
-  const handleSubFolderSelection = (subFolderName: string) => {
+  const handleSubFolderSelection = async (subFolderName: string) => {
     if (selectedPrompt && selectedParentFolder) {
       const fullPath = `${selectedParentFolder}/${subFolderName}`
+      
+      // Check if this is Step 2 (needs file selection)
+      const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
+                     selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
+                     selectedPrompt.description.includes('Generate a clear, high-value summary')
+      
+      if (isStep2) {
+        // For Step 2, show file selection after subfolder selection
+        setSelectedFolder(fullPath)
+        await fetchSharePointFiles(fullPath)
+        setShowFileSelection(true)
+        setShowSubFolderSelection(false)
+        return
+      }
+      
+      // For Step 1, proceed with analysis
       const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${fullPath}`
       setInputMessage(promptMessage)
       setTimeout(() => {
@@ -508,13 +629,62 @@ const ChatInterface: React.FC = () => {
           
           globalWebSocket.sendMessage({
             query: promptMessage,
-            enabled_tools: settings.enabledTools,
+            enabled_tools: getToolsForPrompt(selectedPrompt),
             model: settings.model
           })
           setInputMessage('')
           setShowSubFolderSelection(false)
           setSelectedPrompt(null)
           setSelectedParentFolder('')
+        }
+      }, 100)
+    }
+  }
+
+  const handleFileSelection = (selectedFile: any) => {
+    if (selectedPrompt && selectedFolder) {
+      const fullPath = `${selectedFolder}/${selectedFile.name}`
+      const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${selectedFolder}\n\nPlease select and summarize the document: ${selectedFile.name}`
+      
+      // Show loading toast
+      toast.loading(`Generating summary for ${selectedFile.name}...`, { id: 'file-summary' })
+      
+      setInputMessage(promptMessage)
+      setTimeout(() => {
+        if (globalWebSocket.getConnectionStatus()) {
+          const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            type: 'user',
+            content: promptMessage,
+            timestamp: new Date()
+          }
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isLoading: true
+          }
+          addMessage(userMessage)
+          addMessage(assistantMessage)
+          setIsLoading(true)
+          
+          globalWebSocket.sendMessage({
+            query: promptMessage,
+            enabled_tools: getToolsForPrompt(selectedPrompt),
+            model: settings.model
+          })
+          setInputMessage('')
+          setShowFileSelection(false)
+          setSelectedPrompt(null)
+          setSelectedFolder('')
+          setAvailableFiles([])
+          
+          // Dismiss loading toast
+          toast.dismiss('file-summary')
+        } else {
+          console.error('WebSocket not connected')
+          toast.error('Connection lost. Please refresh the page.', { id: 'file-summary' })
         }
       }, 100)
     }
@@ -916,7 +1086,13 @@ const ChatInterface: React.FC = () => {
                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                  <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
                    <div className="flex items-center justify-between mb-4">
-                     <h3 className="font-bold text-blue-800 text-lg">📁 Select Project Folder</h3>
+                     <h3 className="font-bold text-blue-800 text-lg">
+                       {selectedPrompt && (selectedPrompt.name === 'Step2_summarize_documents' || 
+                        selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
+                        selectedPrompt.description.includes('Generate a clear, high-value summary'))
+                         ? '📁 Select Project Folder' 
+                         : '📁 Select Project Folder'}
+                     </h3>
                      <div className="flex items-center space-x-2">
                        <button
                          onClick={() => fetchSubFolders(selectedParentFolder, true)}
@@ -940,7 +1116,12 @@ const ChatInterface: React.FC = () => {
                    </div>
                    
                    <p className="text-sm text-blue-600 mb-4">
-                     Choose a project folder within <span className="font-medium">{selectedParentFolder}</span>:
+                     {selectedPrompt && (selectedPrompt.name === 'Step2_summarize_documents' || 
+                      selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
+                      selectedPrompt.description.includes('Generate a clear, high-value summary'))
+                        ? `Choose a project folder within ${selectedParentFolder} to browse documents:`
+                        : `Choose a project folder within ${selectedParentFolder}:`
+                      }
                    </p>
                    
                    <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -983,6 +1164,113 @@ const ChatInterface: React.FC = () => {
                          setShowSubFolderSelection(false)
                          setSelectedPrompt(null)
                          setSelectedParentFolder('')
+                       }}
+                       className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                     >
+                       Cancel
+                     </button>
+                   </div>
+                 </div>
+               </div>
+             )}
+
+             {/* File Selection Modal for Step 2 */}
+             {showFileSelection && (
+               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                 <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-2xl w-full mx-4">
+                   <div className="flex items-center justify-between mb-4">
+                     <h3 className="font-bold text-blue-800 text-lg">📄 Select Document to Summarize</h3>
+                     <div className="flex items-center space-x-2">
+                       <button
+                         onClick={() => fetchSharePointFiles(selectedFolder, true)}
+                         disabled={isLoadingFiles}
+                         className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                         title="Refresh files"
+                       >
+                         {isLoadingFiles ? '🔄' : '🔄'} Refresh
+                       </button>
+                       <button
+                         onClick={() => {
+                           setShowFileSelection(false)
+                           setSelectedPrompt(null)
+                           setSelectedFolder('')
+                           setAvailableFiles([])
+                         }}
+                         className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center hover:bg-blue-800"
+                       >
+                         ×
+                       </button>
+                     </div>
+                   </div>
+                   
+                   <p className="text-sm text-blue-600 mb-4">
+                     Choose a document from <span className="font-medium">{selectedFolder}</span> to generate an executive summary:
+                   </p>
+                   
+                   <div className="space-y-2 max-h-80 overflow-y-auto">
+                     {availableFiles.length > 0 ? (
+                       availableFiles.map((file, index) => (
+                         <button
+                           key={index}
+                           onClick={() => handleFileSelection(file)}
+                           className="w-full text-left p-4 bg-blue-700/10 hover:bg-blue-700/20 rounded-lg transition-colors border border-blue-200/50"
+                         >
+                           <div className="flex items-center justify-between">
+                             <div className="flex items-center space-x-3">
+                               <span className="text-blue-600 text-lg">
+                                 {file.extension === 'pdf' ? '📄' : 
+                                  file.extension === 'docx' ? '📝' : 
+                                  file.extension === 'xlsx' ? '📊' : '📄'}
+                               </span>
+                               <div>
+                                 <div className="font-medium text-blue-800">{file.name}</div>
+                                 <div className="text-xs text-blue-600 mt-1">
+                                   {file.size_mb ? `${file.size_mb} MB` : 'Unknown size'} • {file.extension?.toUpperCase() || 'Unknown type'}
+                                   {file.modified_date && ` • Modified: ${new Date(file.modified_date).toLocaleDateString()}`}
+                                 </div>
+                               </div>
+                             </div>
+                             <div className="text-blue-600 text-sm">
+                               Click to summarize →
+                             </div>
+                           </div>
+                         </button>
+                       ))
+                     ) : (
+                       <div className="text-center py-8 text-blue-600">
+                         {isLoadingFiles ? (
+                           <div>
+                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+                             <p className="text-sm">Loading files from {selectedFolder}...</p>
+                           </div>
+                         ) : (
+                           <div>
+                             <p className="text-sm">No files found in this folder</p>
+                             <p className="text-xs mt-2 text-blue-500">Try selecting a different folder or check folder permissions</p>
+                           </div>
+                         )}
+                       </div>
+                     )}
+                   </div>
+                   
+                   <div className="mt-4 pt-4 border-t border-blue-200/50 flex space-x-2">
+                     <button
+                       onClick={() => {
+                         setShowFileSelection(false)
+                         setShowFolderSelection(true)
+                         setSelectedFolder('')
+                         setAvailableFiles([])
+                       }}
+                       className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                     >
+                       ← Back to Folders
+                     </button>
+                     <button
+                       onClick={() => {
+                         setShowFileSelection(false)
+                         setSelectedPrompt(null)
+                         setSelectedFolder('')
+                         setAvailableFiles([])
                        }}
                        className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                      >

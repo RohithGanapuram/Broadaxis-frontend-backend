@@ -1195,7 +1195,7 @@ def sharepoint_read_file(path: str, max_size_mb: int = 50, encoding: str = "utf-
                     except UnicodeDecodeError:
                         processed_content = content.decode('utf-8', errors='replace')
             
-            # Handle preview mode
+            # Handle preview mode for text files
             if preview_lines > 0 and is_text_file:
                 lines = processed_content.split('\n')
                 if len(lines) > preview_lines:
@@ -1203,6 +1203,39 @@ def sharepoint_read_file(path: str, max_size_mb: int = 50, encoding: str = "utf-
                     preview_note = f" (showing first {preview_lines} lines of {len(lines)} total)"
                 else:
                     preview_note = ""
+            # Handle preview mode for PDF files
+            elif preview_lines > 0 and file_extension.lower() == 'pdf':
+                try:
+                    # Use extract_pdf_text to get a preview of the PDF
+                    # Estimate how many pages to extract based on requested lines (roughly 50 lines per page)
+                    estimated_pages = max(1, min(3, (preview_lines + 49) // 50))  # At least 1 page, max 3 pages
+                    
+                    pdf_preview_result = extract_pdf_text(clean_path, pages="first", max_pages=estimated_pages)
+                    
+                    # Parse the JSON result
+                    pdf_data = json.loads(pdf_preview_result)
+                    if pdf_data['status'] == 'success':
+                        extracted_text = pdf_data.get('text', '')  # Use 'text' field from extract_pdf_text response
+                        total_pages = pdf_data.get('total_pages', 0)
+                        pages_extracted = pdf_data.get('pages_extracted', 0)
+                        
+                        # Limit to requested number of lines
+                        lines = extracted_text.split('\n')
+                        if len(lines) > preview_lines:
+                            processed_content = '\n'.join(lines[:preview_lines])
+                            preview_note = f" (showing first {preview_lines} lines from first {pages_extracted} pages of {total_pages} total pages)"
+                        else:
+                            processed_content = extracted_text
+                            preview_note = f" (showing first {pages_extracted} pages of {total_pages} total pages)"
+                    else:
+                        # If PDF extraction fails, return error message
+                        processed_content = f"Error extracting PDF preview: {pdf_data.get('error', 'Unknown error')}"
+                        preview_note = " (PDF preview extraction failed)"
+                        
+                except Exception as pdf_error:
+                    logger.warning(f"PDF preview extraction failed: {pdf_error}")
+                    processed_content = f"Error extracting PDF preview: {str(pdf_error)}"
+                    preview_note = " (PDF preview extraction failed)"
             else:
                 preview_note = ""
             
@@ -1968,24 +2001,38 @@ def Step1_Identifying_documents():
     """Browse SharePoint folders to identify and categorize RFP/RFI/RFQ documents from available folders."""
     return f"""You are BroadAxis AI, and you need to analyze SharePoint folders to identify and categorize RFP/RFI/RFQ documents. 
 
-**Step 1: Analyze Selected Folder**
-Start by listing the contents of the specified SharePoint folder using sharepoint_list_files.
-
-**Step 2: Browse Subfolders (if any)**
-If the selected folder contains subfolders, browse through them using sharepoint_list_files to find project-specific folders.
-
 **Step 3: Analyze Documents**
-After identifying the target folder, read and categorize each PDF file using extract_pdf_text with max_pages=1 into:
+After user selecting the target folder, read ONLY the first 50 lines of each PDF file and categorize each PDF file using sharepoint_read_file with preview_lines=50 into:
 
 1. 📘 **Primary Documents** — PDFs containing RFP, RFQ, or RFI content (project scope, requirements, evaluation criteria)
-2. 📝 **Fillable Forms** — PDFs with interactive fields for user input (pricing tables, response forms)
-3. 📄 **Non-Fillable Documents** — Supporting documents, attachments, or informational appendices
+2. 📄 **Supporting Documents** — Attachments, appendices, specifications
+3. 📝 **Other Documents** — Forms, templates, or miscellaneous files
 
 **IMPORTANT:**
 - Use sharepoint_list_files to browse folders
-- Use extract_pdf_text with max_pages=1 to efficiently read only the first page of PDF documents for identification
+- Use sharepoint_read_file with preview_lines=50 to efficiently read ONLY the first 50 lines of PDF documents for identification
+- For text files, also use sharepoint_read_file with preview_lines=50
+- DO NOT read entire documents - use preview mode only
 - Do not make assumptions about folder structures or document content
+- Provide ONLY the three categories with filenames and single-line explanations
+- Do not include any other information, analysis, or commentary
 - After completing the analysis, clearly state "ANALYSIS COMPLETE" to indicate you have finished
+
+**RESPONSE FORMAT (EXACTLY AS SHOWN):**
+
+📘 **Primary Documents**
+- filename1.pdf - Contains RFP requirements and evaluation criteria
+- filename2.pdf - Main procurement document with project scope
+
+📄 **Supporting Documents**
+- filename3.pdf - Technical specifications appendix
+- filename4.pdf - Supporting documentation for requirements
+
+📝 **Other Documents**
+- filename5.pdf - Fillable response form template
+- filename6.pdf - Miscellaneous reference document
+
+ANALYSIS COMPLETE
 """
 
 
@@ -2051,36 +2098,80 @@ Highlight anything that could give a competitive edge or present upsell/cross-se
 
 @mcp.prompt(title="Step-3 : Go/No-Go Recommendation")
 def Step3_go_no_go_recommendation() -> str:
+    """Evaluate RFP/RFQ/RFI opportunities for a Go/No-Go recommendation using BroadAxis's knowledge base."""
     return """
 You are BroadAxis-AI, an assistant trained to evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity.
-You have already summarized and extracted the key information above.
-Now perform a structured **Go/No-Go analysis** using the following steps:
+
+**CONTEXT:** You have already analyzed the RFP documents and generated summaries above. Now you need to evaluate BroadAxis's capability match using our internal knowledge base.
+
 ---
+
 ### 🧠 Step-by-Step Evaluation Framework
 
-1. **Review the RFP Requirements**
-   - Highlight the most critical needs and evaluation criteria.
+#### 1. **Review RFP Requirements from Summaries**
+   - Extract key technical requirements, domain expertise needed, and evaluation criteria
+   - Identify critical success factors and mandatory qualifications
+   - Note any specialized skills, certifications, or experience requirements
 
-2. **Search Internal Knowledge**
-   - Identify relevant past projects
-   - Retrieve proof of experience in similar domains
-   - Surface known strengths or capability gaps
+#### 2. **Search BroadAxis Knowledge Base for Relevant Experience**
+   Use the Broadaxis_knowledge_search tool to search for:
+   
+   **For Technical Requirements:**
+   - Search for specific technologies mentioned (e.g., "cybersecurity", "cloud infrastructure", "data analytics")
+   - Search for domain expertise (e.g., "healthcare IT", "government contracts", "financial services")
+   - Search for specific methodologies or frameworks mentioned
+   
+   **For Experience Requirements:**
+   - Search for similar project types or client industries
+   - Search for specific certifications or qualifications
+   - Search for team expertise in required areas
+   
+   **For Past Performance:**
+   - Search for relevant case studies or success stories
+   - Search for client testimonials in similar domains
+   - Search for project outcomes and metrics
 
-3. **Evaluate Capability Alignment**
-   - Estimate percentage match (e.g., "BroadAxis meets ~85% of the requirements")
-   - Note any missing capabilities or unclear requirements
+#### 3. **Evaluate Capability Match**
+   - **Strong Match (80%+):** Clear evidence of relevant experience and capabilities
+   - **Partial Match (50-79%):** Some relevant experience but gaps exist
+   - **Weak Match (<50%):** Limited relevant experience or significant gaps
+   
+   For each requirement, specify:
+   - ✅ **Match Found:** What specific experience/capability matches
+   - ⚠️ **Partial Match:** What's available vs. what's needed
+   - ❌ **Gap Identified:** What's missing or unclear
 
-4. **Assess Resource Requirements**
-   - Are there any specialized skills, timelines, or staffing needs?
-   - Does BroadAxis have the necessary team or partners?
+#### 4. **Assess Resource Availability**
+   - Team availability for the project timeline
+   - Required certifications or qualifications
+   - Partner relationships if needed
+   - Technical infrastructure requirements
 
-5. **Evaluate Competitive Positioning**
-   - Based on known experience and domain, would BroadAxis be competitive?
+#### 5. **Competitive Analysis**
+   - Based on known experience, would BroadAxis be competitive?
+   - What are our differentiators in this space?
+   - What risks exist in pursuing this opportunity?
 
-Use only verified internal information and the SharePoint documents.
-Do not guess or hallucinate capabilities. If information is missing, clearly state what else is needed for a confident decision.
-If your recommendation is a Go, list down the things the user needs to complete to finish the submission of RFP/RFI/RFQ.
+---
 
+### 📋 **GO/NO-GO RECOMMENDATION**
+
+**RECOMMENDATION: [GO / NO-GO / NEED MORE INFO]**
+
+**Confidence Level:** [HIGH / MEDIUM / LOW]
+
+**Key Factors:**
+- [List top 3-5 factors driving the recommendation]
+
+**Required Actions (if GO):**
+- [List specific steps needed to complete submission]
+
+**Missing Information (if NEED MORE INFO):**
+- [List what additional information is needed]
+
+---
+
+**IMPORTANT:** Use only verified information from the BroadAxis knowledge base. Do not guess or assume capabilities. If information is missing, clearly state what else is needed for a confident decision.
 """
 
 @mcp.prompt(title="Step-4 : Generate Proposal or Capability Statement")

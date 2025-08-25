@@ -18,6 +18,7 @@ import email
 from urllib.parse import urlparse
 from pathlib import Path
 import re
+import urllib.parse
 
 
 import nest_asyncio
@@ -1148,15 +1149,22 @@ class SharePointManager:
             # Create folder path if it doesn't exist
             self.create_sharepoint_folder(site_id, drive_id, folder_path, access_token)
 
+            # Sanitize filename for SharePoint - remove or replace problematic characters
+            safe_filename = re.sub(r'[^\w\-_.]', '_', filename)
+            
+            # URL encode the path components for the API call
+            encoded_folder_path = urllib.parse.quote(folder_path, safe='')
+            encoded_filename = urllib.parse.quote(safe_filename, safe='')
+
             # Upload file
-            upload_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{folder_path}/{filename}:/content"
+            upload_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{encoded_folder_path}/{encoded_filename}:/content"
             print(f"Uploading file to: {upload_url}")
 
             upload_response = requests.put(upload_url, headers=headers, data=file_content)
 
             if upload_response.status_code in [200, 201]:
-                print(f"✅ Successfully uploaded: {filename}")
-                return {"status": "success", "message": f"File uploaded: {filename}"}
+                print(f"✅ Successfully uploaded: {safe_filename}")
+                return {"status": "success", "message": f"File uploaded: {safe_filename}"}
             else:
                 print(f"❌ Upload failed: {upload_response.status_code} - {upload_response.text}")
                 return {"status": "error", "message": f"Upload failed: {upload_response.status_code}"}
@@ -1176,22 +1184,28 @@ class SharePointManager:
 
             for part in path_parts:
                 if part:
+                    # Sanitize folder name for SharePoint
+                    safe_part = re.sub(r'[^\w\-_.]', '_', part)
                     parent_path = current_path if current_path else ""
-                    current_path = f"{current_path}/{part}" if current_path else part
+                    current_path = f"{current_path}/{safe_part}" if current_path else safe_part
+
+                    # URL encode the path for the API call
+                    encoded_current_path = urllib.parse.quote(current_path, safe='')
 
                     # Check if folder exists
-                    check_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{current_path}"
+                    check_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{encoded_current_path}"
                     check_response = requests.get(check_url, headers=headers)
 
                     if check_response.status_code == 404:
                         # Folder doesn't exist, create it
                         if parent_path:
-                            create_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{parent_path}:/children"
+                            encoded_parent_path = urllib.parse.quote(parent_path, safe='')
+                            create_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{encoded_parent_path}:/children"
                         else:
                             create_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root/children"
 
                         folder_data = {
-                            "name": part,
+                            "name": safe_part,
                             "folder": {},
                             "@microsoft.graph.conflictBehavior": "rename"
                         }

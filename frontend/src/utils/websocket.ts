@@ -133,14 +133,20 @@ class GlobalWebSocketManager {
   }
 
   private handleProgressUpdate(progress: WebSocketProgressUpdate): void {
-    const progressId = progress.step || 'default'
+    // Use a single progress tracker for the entire request lifecycle
+    const progressId = 'request-progress'
+    
+    // Get existing tracker or create new one
+    const existingTracker = this.activeProgress.get(progressId)
+    const startTime = existingTracker?.startTime || Date.now()
+    
     const tracker: ProgressTracker = {
       id: progressId,
       type: this.determineProgressType(progress.message),
       title: this.extractProgressTitle(progress.message),
       progress: progress.progress,
       message: progress.message,
-      startTime: Date.now(),
+      startTime: startTime,
       currentStep: progress.current_step,
       total_steps: progress.total_steps
     }
@@ -159,13 +165,13 @@ class GlobalWebSocketManager {
 
   private handleResponseUpdate(response: WebSocketResponseUpdate): void {
     // Clear any active progress for this response
-    this.activeProgress.clear()
+    this.activeProgress.delete('request-progress')
     this.messageHandlers.forEach(handler => handler(response))
   }
 
   private handleErrorUpdate(error: WebSocketErrorUpdate): void {
     // Clear progress on error
-    this.activeProgress.clear()
+    this.activeProgress.delete('request-progress')
     this.messageHandlers.forEach(handler => handler(error))
   }
 
