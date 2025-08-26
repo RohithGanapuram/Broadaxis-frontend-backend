@@ -96,7 +96,7 @@ npm run dev
 - **Go/No-Go Recommendations**: AI-driven decision support with scoring
 - **Company Knowledge Integration**: Leverages internal knowledge base via Pinecone
 - **Multi-Model Support**: Claude 3.5 Sonnet, Claude 3 Haiku, and OpenAI models
-- **Token Management**: Smart token counting with limits (8K/request, 50K/session, 200K/day)
+- **Persistent MCP Connection**: Optimized connection management for better performance
 
 ### 📧 Email Integration & Management
 - **Microsoft Graph API Integration**: Fetch RFP/RFI/RFQ emails from multiple accounts
@@ -134,12 +134,14 @@ ba-rfpapp/
 ├── embedding.py                   # PDF embedding utilities
 ├── README.md                      # This file
 │
-├── backend/                       # FastAPI Backend
-│   ├── api.py                    # Main API endpoints (2500+ lines)
+├── backend/                       # FastAPI Backend (Modular Structure)
+│   ├── api.py                    # Main API endpoints and core functionality
+│   ├── mcp_interface.py          # MCP interface with persistent connection
+│   ├── websocket_api.py          # WebSocket functionality
+│   ├── email_api.py              # Email management endpoints
+│   ├── sharepoint_api.py         # SharePoint integration endpoints
 │   ├── error_handler.py          # Centralized error handling
-│   ├── shared_utils.py           # Shared utilities
 │   ├── run_backend.py            # Backend startup script
-│   ├── real_fetched_emails.json  # Email data storage
 │   └── email_attachments/        # Downloaded email attachments
 │       ├── 2025-01-13/
 │       ├── 2025-01-14/
@@ -183,7 +185,7 @@ ba-rfpapp/
 │   └── tailwind.config.js       # Tailwind CSS config
 │
 └── ba-server/                    # MCP Server
-    ├── server.py                # Main MCP server (950+ lines)
+    ├── server.py                # Main MCP server with all tools
     ├── generated_files/         # Generated documents
     └── mcp_server.log           # Server logs
 ```
@@ -191,51 +193,79 @@ ba-rfpapp/
 ## 🔌 API Endpoints
 
 ### Core Functionality
+- `GET /` - Root endpoint with API information
+- `GET /health` - Health check with detailed status
+- `GET /api/status` - MCP server connection status
 - `POST /api/initialize` - Initialize MCP server with tools & prompts
-- `POST /api/chat` - Send chat messages with tool selection
 - `POST /api/upload` - Upload files with validation and analysis
 - `WS /ws/chat` - WebSocket for real-time chat communication
 
-### Email & SharePoint Management
+### Email Management (email_api.py)
+- `POST /api/test-graph-auth` - Test Microsoft Graph authentication
 - `POST /api/fetch-emails` - Fetch RFP/RFI/RFQ emails via Graph API
 - `GET /api/fetched-emails` - List fetched emails with metadata
-- `GET /api/email-attachments/{id}` - Get email attachments
-- `POST /api/test-auth` - Test Microsoft Graph authentication
-- `GET /api/files` - List SharePoint files with caching
-- `GET /api/files/{path}` - Browse SharePoint folders
-- `GET /api/sharepoint-file/{path}` - Get SharePoint file content
-- `DELETE /api/sharepoint-file/{path}` - Delete SharePoint files
-- `POST /api/sharepoint-search` - Search SharePoint files
+- `GET /api/email-attachments/{email_id}` - Get email attachments
 
-### System & Monitoring
-- `GET /health` - Health check with detailed status
-- `GET /api/status` - MCP server connection status
-- `GET /api/tokens` - Token usage statistics and limits
-- `GET /api/tools` - List available MCP tools
-- `GET /api/prompts` - List available MCP prompts
+### SharePoint Management (sharepoint_api.py)
+- `GET /api/test-sharepoint` - Test SharePoint connectivity
+- `GET /api/files` - List SharePoint files with caching
+- `GET /api/files/{folder_path:path}` - Browse SharePoint folders
+- `GET /api/files/{filename}` - Download SharePoint files
 
 ## 🛠️ Available MCP Tools
 
 ### Core AI Tools
 1. **broadaxis_knowledge_search** - Internal company knowledge search via Pinecone
+   - Search company expertise, past projects, and capabilities
+   - Semantic search with relevance scoring
+   - Source filtering and metadata access
+
 2. **web_search_tool** - External web search via Tavily API
+   - Real-time web search for market research
+   - Advanced search depth with comprehensive results
+   - Title, URL, and snippet extraction
 
 ### Document Generation Tools
 3. **generate_pdf_document** - Professional PDF creation with ReportLab
+   - Markdown formatting support
+   - Configurable page sizes (letter, A4, legal)
+   - Table of contents generation
+   - Automatic SharePoint upload
+
 4. **generate_word_document** - Word document generation with python-docx
-5. **generate_text_file** - Text file creation with formatting
+   - Enhanced markdown support
+   - Page orientation control
+   - Professional formatting
+   - SharePoint integration
 
 ### SharePoint Filesystem Tools
-6. **sharepoint_read_file** - Read file contents from SharePoint
-7. **sharepoint_write_file** - Write/create files in SharePoint
-8. **sharepoint_list_files** - List files and folders in SharePoint
-9. **sharepoint_delete_file** - Delete files from SharePoint
-10. **sharepoint_search_files** - Search files by name in SharePoint
+5. **sharepoint_read_file** - Read file contents from SharePoint
+   - Support for text and binary files
+   - Preview mode for large files
+   - File type detection and validation
+   - Enhanced error handling
+
+6. **sharepoint_list_files** - List files and folders in SharePoint
+   - Advanced filtering and sorting
+   - File type categorization
+   - Metadata extraction
+   - Pagination support
+
+7. **sharepoint_search_files** - Search files in SharePoint
+   - Filename and content search
+   - Relevance scoring
+   - File type filtering
+   - Content preview for text files
 
 ### PDF Processing Tools
-11. **extract_pdf_text** - Extract text content from PDF files
-12. **get_pdf_metadata** - Get PDF document metadata
-13. **detect_pdf_form_fields** - Detect form fields in PDF documents
+8. **extract_pdf_text** - Extract text content from PDF files
+   - Page range selection
+   - Text cleaning and formatting
+   - Structure preservation
+   - Table detection (placeholder)
+
+### Utility Tools
+9. **sum** - Simple addition tool for testing
 
 ## 🎯 Usage Workflows
 
@@ -271,7 +301,6 @@ ba-rfpapp/
 - **API Key Management**: Secure environment variable storage
 - **CORS Configuration**: Proper frontend access control
 - **File Upload Validation**: Type checking and sanitization
-- **Rate Limiting**: Token-based usage limits and monitoring
 - **Error Handling**: Comprehensive logging without sensitive data exposure
 
 ### Microsoft Graph Security
@@ -325,12 +354,11 @@ ba-rfpapp/
 - **Health Check Endpoint**: `/health` - Detailed system status
 - **Server Status**: `/api/status` - MCP server connection status
 - **WebSocket Monitoring**: Real-time connection status
-- **Token Usage Tracking**: `/api/tokens` - Usage statistics
 
 ### Logging
 - **Backend Logs**: Console output and file logging
 - **MCP Server Logs**: `ba-server/mcp_server.log`
-- **Error Logs**: `backend/broadaxis_errors.log`
+- **Error Logs**: Centralized error handling via `error_handler.py`
 - **Frontend Logs**: Browser console and error tracking
 
 ## 🆘 Troubleshooting
@@ -368,7 +396,7 @@ ba-rfpapp/
 ### Performance Optimization
 - **Caching**: SharePoint folder caching reduces API calls
 - **Parallel Processing**: Concurrent tool execution
-- **Token Management**: Efficient token usage tracking
+- **Persistent Connections**: Optimized MCP server connection management
 - **Connection Pooling**: Optimized HTTP connections
 
 ## 🔧 Development
@@ -408,4 +436,4 @@ python server.py
 
 **Built with ❤️ for BroadAxis RFP/RFQ Management**
 
-*Version 1.0.0 - Comprehensive AI-powered RFP management platform*
+*Version 2.0.0 - Refactored modular architecture with persistent MCP connections*

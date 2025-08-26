@@ -85,7 +85,6 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-
 class ChatRequest(BaseModel):
     query: str
     enabled_tools: List[str] = []
@@ -123,14 +122,6 @@ class EmailFetchResponse(BaseModel):
     emails_found: int
     attachments_downloaded: int
     fetched_emails: List[FetchedEmail]
-
-
-
-# MCP interface is now imported from mcp_interface.py
-
-
-
-
 
 # Session file storage
 session_files = {}
@@ -249,7 +240,6 @@ async def upload_file(file: UploadFile = File(...), session_id: str = "default")
         raise FileOperationError("Failed to process uploaded file", {'filename': file.filename})
 
 
-
 @app.post("/api/initialize")
 async def initialize_mcp():
     """Initialize MCP server - fetch both tools and prompts"""
@@ -272,24 +262,6 @@ async def initialize_mcp():
             "connection_status": "offline",
             "error_message": "Failed to initialize MCP server"
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # WebSocket endpoint for real-time chat
 @app.websocket("/ws/chat")
