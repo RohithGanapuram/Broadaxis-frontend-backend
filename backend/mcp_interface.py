@@ -42,7 +42,12 @@ class MCPInterface:
     async def _ensure_connection(self):
         """Ensure we have an active connection to the MCP server"""
         if self.session is None or self._connection_status != "connected":
-            await self.initialize()
+            try:
+                await self.initialize()
+            except Exception as e:
+                error_handler.log_error(e, {'operation': 'ensure_connection'})
+                self._connection_status = "offline"
+                raise ExternalAPIError("Failed to establish MCP connection", {'original_error': str(e)})
     
     async def initialize(self):
         """Initialize connection to MCP server and fetch tools/prompts"""
@@ -153,17 +158,20 @@ class MCPInterface:
                 
                 # Send progress update for initial processing
                 if websocket and send_message_callback:
-                    await send_message_callback(
-                        json.dumps({
-                            "type": "progress",
-                            "message": "Processing your request...",
-                            "progress": 30,
-                            "step": "processing",
-                            "current_step": 1,
-                            "total_steps": 1
-                        }),
-                        websocket
-                    )
+                    try:
+                        await send_message_callback(
+                            json.dumps({
+                                "type": "progress",
+                                "message": "Processing your request...",
+                                "progress": 30,
+                                "step": "processing",
+                                "current_step": 1,
+                                "total_steps": 1
+                            }),
+                            websocket
+                        )
+                    except Exception as ws_error:
+                        error_handler.log_error(ws_error, {'operation': 'websocket_processing_update'})
                 
             except Exception as api_error:
                 return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": 0}
@@ -194,22 +202,25 @@ class MCPInterface:
                     
                     # Send progress update for tool execution
                     if websocket and send_message_callback:
-                        tool_names = [tool.name for tool in tool_calls]
-                        progress_message = f"Executing {len(tool_calls)} tools: {', '.join(tool_names[:2])}"
-                        if len(tool_names) > 2:
-                            progress_message += f" and {len(tool_names) - 2} more..."
-                        
-                        await send_message_callback(
-                            json.dumps({
-                                "type": "progress",
-                                "message": progress_message,
-                                "progress": 0,  # Start at 0, will be updated as tools complete
-                                "step": "tool_execution",
-                                "current_step": 1,
-                                "total_steps": len(tool_calls)
-                            }),
-                            websocket
-                        )
+                        try:
+                            tool_names = [tool.name for tool in tool_calls]
+                            progress_message = f"Executing {len(tool_calls)} tools: {', '.join(tool_names[:2])}"
+                            if len(tool_names) > 2:
+                                progress_message += f" and {len(tool_names) - 2} more..."
+                            
+                            await send_message_callback(
+                                json.dumps({
+                                    "type": "progress",
+                                    "message": progress_message,
+                                    "progress": 0,  # Start at 0, will be updated as tools complete
+                                    "step": "tool_execution",
+                                    "current_step": 1,
+                                    "total_steps": len(tool_calls)
+                                }),
+                                websocket
+                            )
+                        except Exception as ws_error:
+                            error_handler.log_error(ws_error, {'operation': 'websocket_tool_execution_update'})
                     
                     # Simple tool execution without token management
                     tool_sem = asyncio.Semaphore(2)  # Allow 2 concurrent tools
@@ -256,18 +267,21 @@ class MCPInterface:
                         
                         # Send progress update
                         if websocket and send_message_callback:
-                            progress_percentage = int((completed_tools / total_tools) * 100)
-                            await send_message_callback(
-                                json.dumps({
-                                    "type": "progress",
-                                    "message": f"Completed {completed_tools}/{total_tools} tools",
-                                    "progress": progress_percentage,
-                                    "step": "tool_execution",
-                                    "current_step": completed_tools,
-                                    "total_steps": total_tools
-                                }),
-                                websocket
-                            )
+                            try:
+                                progress_percentage = int((completed_tools / total_tools) * 100)
+                                await send_message_callback(
+                                    json.dumps({
+                                        "type": "progress",
+                                        "message": f"Completed {completed_tools}/{total_tools} tools",
+                                        "progress": progress_percentage,
+                                        "step": "tool_execution",
+                                        "current_step": completed_tools,
+                                        "total_steps": total_tools
+                                    }),
+                                    websocket
+                                )
+                            except Exception as ws_error:
+                                error_handler.log_error(ws_error, {'operation': 'websocket_progress_update'})
                         return result
                     
                     tool_results = await asyncio.gather(
@@ -289,17 +303,20 @@ class MCPInterface:
                     # --- Simple follow-up call without retry logic ---
                     # Send progress update for response generation
                     if websocket and send_message_callback:
-                        await send_message_callback(
-                            json.dumps({
-                                "type": "progress",
-                                "message": "Generating final response...",
-                                "progress": 90,
-                                "step": "generation",
-                                "current_step": 1,
-                                "total_steps": 1
-                            }),
-                            websocket
-                        )
+                        try:
+                            await send_message_callback(
+                                json.dumps({
+                                    "type": "progress",
+                                    "message": "Generating final response...",
+                                    "progress": 90,
+                                    "step": "generation",
+                                    "current_step": 1,
+                                    "total_steps": 1
+                                }),
+                                websocket
+                            )
+                        except Exception as ws_error:
+                            error_handler.log_error(ws_error, {'operation': 'websocket_generation_update'})
 
                     try:
                         response = await self.anthropic.messages.create(
@@ -331,8 +348,12 @@ class MCPInterface:
 
     async def cleanup(self):
         """Clean up the persistent connection"""
-        if self.exit_stack:
-            await self.exit_stack.aclose()
+        try:
+            if self.exit_stack:
+                await self.exit_stack.aclose()
+        except Exception as e:
+            error_handler.log_error(e, {'operation': 'cleanup_mcp_connection'})
+        finally:
             self.exit_stack = None
             self.session = None
             self.stdio = None
