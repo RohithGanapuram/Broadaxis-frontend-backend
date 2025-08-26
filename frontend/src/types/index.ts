@@ -4,14 +4,6 @@ export interface ChatMessage {
   content: string
   timestamp: Date
   isLoading?: boolean
-  tokens_used?: number
-  tokens_remaining?: number
-  usage?: {
-    session_used: number
-    session_limit: number
-    daily_used: number
-    daily_limit: number
-  }
 }
 
 export interface FileInfo {
@@ -27,14 +19,6 @@ export interface FileInfo {
 export interface ChatResponse {
   response: string
   status: string
-  tokens_used?: number
-  tokens_remaining?: number
-  usage?: {
-    session_used: number
-    session_limit: number
-    daily_used: number
-    daily_limit: number
-  }
 }
 
 export interface Tool {
@@ -65,14 +49,6 @@ export interface WebSocketMessage {
   session_id?: string
   reconnect_advice?: string
   progress?: number
-  tokens_used?: number
-  tokens_remaining?: number
-  usage?: {
-    session_used: number
-    session_limit: number
-    daily_used: number
-    daily_limit: number
-  }
 }
 
 export interface AppSettings {

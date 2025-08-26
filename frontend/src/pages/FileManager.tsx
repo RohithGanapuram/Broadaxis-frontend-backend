@@ -63,9 +63,9 @@ const FileManager: React.FC = () => {
   const handleDownload = (filename: string) => {
     toast.loading(`Downloading ${filename}...`, { id: filename })
     
-    // Create download link to backend API
+    // Create download link to backend API using the correct endpoint
     const element = document.createElement('a')
-    element.href = `http://localhost:8000/api/files/${filename}`
+    element.href = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/files/${encodeURIComponent(filename)}`
     element.download = filename
     element.target = '_blank'
     document.body.appendChild(element)

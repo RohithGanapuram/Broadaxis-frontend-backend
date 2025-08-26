@@ -12,15 +12,10 @@ const api = axios.create({
   },
 })
 
-// Request interceptor for logging and rate limit awareness
+// Request interceptor for logging
 api.interceptors.request.use(
   (config) => {
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
-    
-    // Add rate limit awareness headers
-    config.headers['X-Client-Version'] = '1.0.0'
-    config.headers['X-Request-Type'] = config.url?.includes('/chat') ? 'ai-request' : 'standard'
-    
     return config
   },
   (error) => {
@@ -29,7 +24,7 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor for error handling with rate limit awareness
+// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => {
     return response
@@ -37,18 +32,13 @@ api.interceptors.response.use(
   (error) => {
     console.error('API Response Error:', error.response?.data || error.message)
     
-    // Enhanced error handling for rate limits and timeouts
+    // Enhanced error handling
     if (error.code === 'ECONNABORTED') {
       console.error('Request timeout - consider reducing complexity or waiting')
     } else if (error.code === 'ECONNREFUSED') {
       console.error('Connection refused - server may be down')
     } else if (!error.response) {
       console.error('Network error - no response received')
-    } else if (error.response?.status === 429) {
-      console.error('Rate limit exceeded - server is throttling requests')
-      // Could implement exponential backoff here
-    } else if (error.response?.status === 503) {
-      console.error('Service temporarily unavailable - server overloaded')
     }
     
     return Promise.reject(error)
@@ -71,8 +61,6 @@ export const apiClient = {
     }
   },
 
-
-
   // File upload endpoints
   async uploadFile(file: File, sessionId: string = 'default'): Promise<FileInfo> {
     const formData = new FormData()
@@ -86,37 +74,6 @@ export const apiClient = {
     })
     return response.data
   },
-
-  // Document chat with hybrid retrieval
-  async chatWithDocument(query: string, sessionId: string = 'default', filename?: string): Promise<ChatResponse> {
-    const response = await api.post('/api/chat/document', {
-      query,
-      enabled_tools: [],
-      model: 'claude-3-7-sonnet-20250219'
-    }, {
-      params: { session_id: sessionId, filename },
-      timeout: 60000
-    })
-    return response.data
-  },
-
-  // Session file management
-  async getSessionFiles(sessionId: string): Promise<{ files: FileInfo[]; total_chunks?: number }> {
-    try {
-      const response = await api.get(`/api/files/${sessionId}`)
-      return response.data
-    } catch (error) {
-      console.error('Failed to get session files:', error)
-      return { files: [] }
-    }
-  },
-
-  async clearSession(sessionId: string): Promise<{ message: string }> {
-    const response = await api.delete(`/api/files/${sessionId}`)
-    return response.data
-  },
-
-
 
   // Initialize MCP server (single call for tools and prompts)
   async initializeMCP(): Promise<{ tools: Tool[]; prompts: Prompt[]; status: string }> {
@@ -149,11 +106,7 @@ export const apiClient = {
     }
   },
 
-
-
-
-
-  // File management endpoints
+  // File management endpoints (SharePoint)
   async listFiles(): Promise<{ files: any[]; status: string; message: string }> {
     try {
       const response = await api.get('/api/files', { timeout: 15000 })
@@ -168,14 +121,14 @@ export const apiClient = {
     }
   },
 
-// Email fetching endpoints
+  // Email fetching endpoints
   async fetchEmails(emailAccounts: string[] = [], useRealEmail: boolean = true, useGraphApi: boolean = true): Promise<EmailFetchResponse> {
     try {
       const response = await api.post('/api/fetch-emails', {
         email_accounts: emailAccounts,
         use_real_email: useRealEmail,
         use_graph_api: useGraphApi
-      }, { timeout: 30000 }) // Reduced to 30 seconds
+      }, { timeout: 30000 })
       return response.data
     } catch (error: any) {
       console.error('Failed to fetch emails:', error)
@@ -245,7 +198,7 @@ export const apiClient = {
     }
   },
 
-  // SharePoint and PDF processing tools
+  // SharePoint and PDF processing tools - using direct API endpoints
   async listSharePointFiles(path: string = "", fileType?: string, sortBy: string = "name", sortOrder: string = "asc", maxItems: number = 100): Promise<any> {
     try {
       // Use the direct SharePoint API endpoint
@@ -260,9 +213,7 @@ export const apiClient = {
 
   async readSharePointFile(path: string, maxSizeMb: number = 50, encoding: string = "utf-8", previewLines: number = 0): Promise<any> {
     try {
-      const response = await api.post('/api/mcp/query', {
-        query: `Use sharepoint_read_file with path="${path}", max_size_mb=${maxSizeMb}, encoding="${encoding}", preview_lines=${previewLines}`
-      }, { timeout: 60000 })
+      const response = await api.get(`/api/files/${encodeURIComponent(path)}`, { timeout: 60000 })
       return response.data
     } catch (error) {
       console.error('Failed to read SharePoint file:', error)
@@ -272,24 +223,23 @@ export const apiClient = {
 
   async searchSharePointFiles(query: string, path: string = "", searchType: string = "filename", fileType?: string, maxResults: number = 50, includeContent: boolean = false): Promise<any> {
     try {
-      const response = await api.post('/api/mcp/query', {
-        query: `Use sharepoint_search_files with query="${query}", path="${path}", search_type="${searchType}"${fileType ? `, file_type="${fileType}"` : ""}, max_results=${maxResults}, include_content=${includeContent}`
-      }, { timeout: 60000 })
-      return response.data
+      // For now, we'll use the list files endpoint and filter client-side
+      // In the future, we can add a search endpoint to the backend
+      const response = await api.get('/api/files', { timeout: 60000 })
+      const files = response.data.files || []
+      
+      // Simple client-side filtering
+      const filteredFiles = files.filter((file: any) => 
+        file.name.toLowerCase().includes(query.toLowerCase()) ||
+        file.path.toLowerCase().includes(query.toLowerCase())
+      )
+      
+      return {
+        files: filteredFiles.slice(0, maxResults),
+        total: filteredFiles.length
+      }
     } catch (error) {
       console.error('Failed to search SharePoint files:', error)
-      throw error
-    }
-  },
-
-  async extractPdfText(path: string, pages: string = "all", cleanText: boolean = true, preserveStructure: boolean = true, extractTables: boolean = false, maxPages: number = 50): Promise<any> {
-    try {
-      const response = await api.post('/api/mcp/query', {
-        query: `Use extract_pdf_text with path="${path}", pages="${pages}", clean_text=${cleanText}, preserve_structure=${preserveStructure}, extract_tables=${extractTables}, max_pages=${maxPages}`
-      }, { timeout: 60000 })
-      return response.data
-    } catch (error) {
-      console.error('Failed to extract PDF text:', error)
       throw error
     }
   },
@@ -305,28 +255,18 @@ export const apiClient = {
       for (const folder of folders) {
         try {
           console.log(`Fetching count for ${folder} folder...`)
-          // Use MCP query approach instead of direct API endpoint
-          const response = await api.post('/api/mcp/query', {
-            query: `Use sharepoint_list_files with path="${folder}"`
-          }, { timeout: 60000 })
+          const response = await api.get(`/api/files/${encodeURIComponent(folder)}`, { timeout: 60000 })
           
           console.log(`${folder} response:`, response.data)
           
-          if (response.data && response.data.items) {
-            // Count files (not folders) in each directory - MCP response structure
-            const files = response.data.items.filter((item: any) => !item.is_folder)
+          if (response.data && response.data.files) {
+            // Count files (not folders) in each directory
+            const files = response.data.files.filter((item: any) => item.type === 'file')
             const fileCount = files.length
             console.log(`${folder} folder has ${fileCount} files:`, files.map((f: any) => f.name))
             counts[folder.toLowerCase() as keyof typeof counts] = fileCount
-          } else if (response.data && response.data.files) {
-            // Alternative response structure
-            const files = response.data.files.filter((item: any) => item.type === 'file')
-            const fileCount = files.length
-            console.log(`${folder} folder has ${fileCount} files (alt structure):`, files.map((f: any) => f.filename))
-            counts[folder.toLowerCase() as keyof typeof counts] = fileCount
           } else {
             console.warn(`${folder} response data:`, response.data)
-            console.warn(`${folder} response structure:`, JSON.stringify(response.data, null, 2))
           }
         } catch (error) {
           console.error(`Failed to get count for ${folder} folder:`, error)
@@ -342,37 +282,22 @@ export const apiClient = {
     }
   },
 
-  // Token management
-  async getTokenUsage(sessionId: string = 'default'): Promise<{ session_used: number; session_limit: number; daily_used: number; daily_limit: number; request_limit: number }> {
+  // Session file management - simplified since we removed session-specific endpoints
+  async getSessionFiles(sessionId: string): Promise<{ files: FileInfo[]; total_chunks?: number }> {
     try {
-      const response = await api.get(`/api/tokens/${sessionId}`)
-      return response.data.usage
+      // For now, return empty array since we removed session-specific file management
+      // In the future, we can implement this using the upload endpoint response
+      return { files: [] }
     } catch (error) {
-      console.error('Failed to get token usage:', error)
-      return {
-        session_used: 0,
-        session_limit: 200000,
-        daily_used: 0,
-        daily_limit: 300000,
-        request_limit: 50000
-      }
+      console.error('Failed to get session files:', error)
+      return { files: [] }
     }
   },
 
-  async getTokenLimits(): Promise<{ session_limit: number; daily_limit: number; request_limit: number }> {
-    try {
-      const response = await api.get('/api/tokens')
-      return response.data.limits
-    } catch (error) {
-      console.error('Failed to get token limits:', error)
-      return {
-        session_limit: 200000,
-        daily_limit: 300000,
-        request_limit: 50000
-      }
-    }
+  async clearSession(sessionId: string): Promise<{ message: string }> {
+    // Since we removed session management, just return success
+    return { message: "Session cleared (session management disabled)" }
   },
-
 
 }
 
@@ -408,8 +333,6 @@ export class ChatWebSocket {
         this.ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data)
-            
-            // Don't handle heartbeat here - let the GlobalWebSocketManager handle it
             this.onMessage(data)
           } catch (error) {
             console.error('Error parsing WebSocket message:', error)

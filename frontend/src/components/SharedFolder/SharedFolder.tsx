@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { apiClient } from '../../utils/api'
 
 interface SharedFile {
   filename: string
@@ -42,13 +43,8 @@ const SharedFolder: React.FC = () => {
     
     setIsLoading(true)
     try {
-      const url = folderPath
-        ? `http://localhost:8000/api/files/${encodeURIComponent(folderPath)}`
-        : 'http://localhost:8000/api/files'
-
-      const response = await fetch(url)
-      const data = await response.json()
-
+      const data = await apiClient.listSharePointFiles(folderPath)
+      
       if (data.status === 'success') {
         const filesData = data.files || []
         setFiles(filesData)

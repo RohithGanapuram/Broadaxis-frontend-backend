@@ -817,7 +817,7 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
         # Upload to SharePoint
         try:
             sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-            from api import SharePointManager  # type: ignore
+            from sharepoint_api import SharePointManager  # type: ignore
             
             with open(temp_file_path, 'rb') as f:
                 file_content = f.read()
@@ -1037,7 +1037,7 @@ def generate_word_document(title: str, content: str, filename: str = None, inclu
         # Upload to SharePoint
         try:
             sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-            from api import SharePointManager  # type: ignore
+            from sharepoint_api import SharePointManager  # type: ignore
             
             sharepoint_manager = SharePointManager()
             sharepoint_folder = f"Generated_Documents/{datetime.datetime.now().strftime('%Y-%m')}"
@@ -1149,7 +1149,7 @@ def sharepoint_read_file(path: str, max_size_mb: int = 50, encoding: str = "utf-
     
     try:
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-        from api import SharePointManager  # type: ignore
+        from sharepoint_api import SharePointManager  # type: ignore
         
         sharepoint_manager = SharePointManager()
         
@@ -1398,7 +1398,7 @@ def sharepoint_list_files(path: str = "", file_type: str = None, sort_by: str = 
     
     try:
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-        from api import SharePointManager  # type: ignore
+        from sharepoint_api import SharePointManager  # type: ignore
         
         sharepoint_manager = SharePointManager()
         
@@ -1642,7 +1642,7 @@ def sharepoint_search_files(query: str, path: str = "", search_type: str = "file
     
     try:
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-        from api import SharePointManager  # type: ignore
+        from sharepoint_api import SharePointManager  # type: ignore
         
         sharepoint_manager = SharePointManager()
         
@@ -1880,7 +1880,7 @@ def extract_pdf_text(path: str, pages: str = "all", clean_text: bool = True, pre
     
     try:
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-        from api import SharePointManager  # type: ignore
+        from sharepoint_api import SharePointManager  # type: ignore
         import PyPDF2
         from io import BytesIO
         
@@ -1999,9 +1999,9 @@ def extract_pdf_text(path: str, pages: str = "all", clean_text: bool = True, pre
 @mcp.prompt(title="Identifying the Documents")
 def Step1_Identifying_documents():
     """Browse SharePoint folders to identify and categorize RFP/RFI/RFQ documents from available folders."""
-    return f"""You are BroadAxis AI, and you need to analyze SharePoint folders to identify and categorize RFP/RFI/RFQ documents. 
+    return f"""You need to analyze SharePoint folders to identify and categorize RFP/RFI/RFQ documents. 
 
-**Step 3: Analyze Documents**
+**Analyze Documents**
 After user selecting the target folder, read ONLY the first 50 lines of each PDF file and categorize each PDF file using sharepoint_read_file with preview_lines=50 into:
 
 1. 📘 **Primary Documents** — PDFs containing RFP, RFQ, or RFI content (project scope, requirements, evaluation criteria)
@@ -2040,9 +2040,7 @@ ANALYSIS COMPLETE
 def Step2_summarize_documents():
     """Generate a clear, high-value summary of SharePoint RFP, RFQ, or RFI documents for executive decision-making."""
     return f"""
-You are **BroadAxis-AI**, an intelligent assistant that analyzes procurement documents (RFP, RFQ, RFI) to help vendor teams quickly understand the opportunity and make informed pursuit decisions.
-When analyzing documents from SharePoint folders, do the following **for each document, one at a time**:
-
+After categorizing the documents, do the following **for each document, one at a time**:
 ---
 
 ### 📄 Document: [Document Name]

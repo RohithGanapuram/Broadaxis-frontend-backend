@@ -20,14 +20,6 @@ export interface WebSocketStatusUpdate {
 export interface WebSocketResponseUpdate {
   type: 'response'
   message: string
-  tokens_used?: number
-  tokens_remaining?: number
-  usage?: {
-    session_used: number
-    session_limit: number
-    daily_used: number
-    daily_limit: number
-  }
 }
 
 export interface WebSocketErrorUpdate {

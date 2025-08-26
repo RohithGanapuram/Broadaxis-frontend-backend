@@ -31,7 +31,7 @@ const ChatInterface: React.FC = () => {
   const [showSubFolderSelection, setShowSubFolderSelection] = useState(false)
   const [activeProgress, setActiveProgress] = useState<ProgressTrackerType[]>([])
   const [statusUpdates, setStatusUpdates] = useState<WebSocketStatusUpdate[]>([])
-  const [rateLimitStatus, setRateLimitStatus] = useState<'normal' | 'throttled' | 'overloaded'>('normal')
+  // Rate limiting removed from backend
   
   // SharePoint caching state
   const [sharePointCache, setSharePointCache] = useState<{[key: string]: {folders: string[], timestamp: number}}>({})
@@ -100,9 +100,8 @@ const ChatInterface: React.FC = () => {
           ...msg, 
           content: data.message, 
           isLoading: false,
-          tokens_used: data.tokens_used,
-          tokens_remaining: data.tokens_remaining,
-          usage: data.usage
+                      // tokens_used removed - no longer tracked
+                      // token tracking removed
         } : msg
       ))
       setIsLoading(false)
@@ -161,14 +160,7 @@ const ChatInterface: React.FC = () => {
       }
     })
     
-    // Update rate limit status based on progress messages
-    if (progress.message.includes('Rate limit hit') || progress.message.includes('waiting')) {
-      setRateLimitStatus('throttled')
-    } else if (progress.message.includes('overloaded')) {
-      setRateLimitStatus('overloaded')
-    } else if (progress.message.includes('executing') || progress.message.includes('processing')) {
-      setRateLimitStatus('normal')
-    }
+    // Rate limiting status removed from backend
   }
 
   const handleStatusUpdate = (status: WebSocketStatusUpdate) => {
@@ -214,22 +206,8 @@ const ChatInterface: React.FC = () => {
     setIsLoading(true)
 
     try {
-      // Use hybrid document chat if files are uploaded
-      if (uploadedFiles.length > 0) {
-        const response = await apiClient.chatWithDocument(inputMessage, currentSessionId || 'default')
-        setMessages(prev => prev.map(msg => 
-          msg.isLoading ? { 
-            ...msg, 
-            content: response.response, 
-            isLoading: false,
-            tokens_used: response.tokens_used,
-            tokens_remaining: response.tokens_remaining,
-            usage: response.usage
-          } : msg
-        ))
-        setIsLoading(false)
-      } else if (globalWebSocket.getConnectionStatus()) {
-        // Use WebSocket for regular chat
+      // Use WebSocket for all chat (document chat removed)
+      if (globalWebSocket.getConnectionStatus()) {
         globalWebSocket.sendMessage({
           query: inputMessage,
           enabled_tools: settings.enabledTools,
@@ -883,24 +861,7 @@ const ChatInterface: React.FC = () => {
                       <ReactMarkdown className="prose prose-sm max-w-none">
                         {message.content}
                       </ReactMarkdown>
-                      {message.type === 'assistant' && message.tokens_used && (
-                        <div className="mt-3 pt-3 border-t border-blue-200/30">
-                          <div className="flex items-center justify-between text-xs text-blue-600">
-                            <div className="flex items-center space-x-4">
-                              <span>🔢 Tokens used: {message.tokens_used.toLocaleString()}</span>
-                              {message.tokens_remaining && (
-                                <span>📊 Remaining: {message.tokens_remaining.toLocaleString()}</span>
-                              )}
-                            </div>
-                            {message.usage && (
-                              <div className="flex items-center space-x-2">
-                                <span>Session: {message.usage.session_used.toLocaleString()}/{message.usage.session_limit.toLocaleString()}</span>
-                                <span>Daily: {message.usage.daily_used.toLocaleString()}/{message.usage.daily_limit.toLocaleString()}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      {/* Token usage display removed - no longer tracked */}
                     </>
                   )}
                 </div>
@@ -912,22 +873,7 @@ const ChatInterface: React.FC = () => {
 
         {/* Input Area with Integrated Buttons */}
         <div className="bg-white/70 backdrop-blur-md border-t border-blue-200/50 p-4 shadow-lg relative">
-          {/* Rate Limiting Status Indicator */}
-          {rateLimitStatus !== 'normal' && (
-            <div className="mb-3 p-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-2">
-              {rateLimitStatus === 'throttled' ? (
-                <>
-                  <span className="text-orange-600">⏳</span>
-                  <span className="text-orange-700">Rate limiting active - requests may be delayed</span>
-                </>
-              ) : rateLimitStatus === 'overloaded' ? (
-                <>
-                  <span className="text-red-600">🔄</span>
-                  <span className="text-red-700">Server overloaded - please wait before sending new requests</span>
-                </>
-              ) : null}
-            </div>
-          )}
+          {/* Rate limiting status indicator removed */}
           
           <div className="flex items-end space-x-3">
             {/* File Upload Button */}
@@ -1381,7 +1327,7 @@ const ChatInterface: React.FC = () => {
                    // Clear progress and status updates
                    setActiveProgress([])
                    setStatusUpdates([])
-                   setRateLimitStatus('normal')
+                   // Rate limiting status removed
                    toast.success('Operation stopped')
                  }}
                  className="px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl hover:from-red-700 hover:to-red-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
