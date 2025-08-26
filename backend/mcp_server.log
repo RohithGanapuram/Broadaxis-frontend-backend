@@ -582,3 +582,24 @@
 2025-08-26 10:55:21,760 - MCPServer - INFO - Tavily client initialized successfully
 2025-08-26 10:55:21,822 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
 2025-08-26 10:55:21,824 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-26 13:24:21,026 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-26 13:24:21,027 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-26 13:24:21,041 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-26 13:24:21,078 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-26 13:24:21,080 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-26 13:29:47,275 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-26 13:30:35,251 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-08-26 13:30:35,252 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-26 13:30:35,276 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-26 13:30:35,321 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-26 13:30:35,322 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
