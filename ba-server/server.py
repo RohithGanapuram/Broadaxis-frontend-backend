@@ -1998,39 +1998,33 @@ def extract_pdf_text(path: str, pages: str = "all", clean_text: bool = True, pre
 
 @mcp.prompt(title="Identifying the Documents")
 def Step1_Identifying_documents():
-    """Browse SharePoint folders to identify and categorize RFP/RFI/RFQ documents from available folders."""
-    return f"""You need to analyze SharePoint folders to identify and categorize RFP/RFI/RFQ documents. 
+    """Identify and categorize RFP/RFI/RFQ documents from SharePoint folders."""
+    return f"""Analyze the selected SharePoint folder:
 
-**Analyze Documents**
-After user selecting the target folder, read ONLY the first 50 lines of each PDF file and categorize each PDF file using sharepoint_read_file with preview_lines=50 into:
+- Use sharepoint_list_files to list files
+- Use sharepoint_read_file with preview_lines=50 for PDFs/text files (only first 50 lines)
 
-1. 📘 **Primary Documents** — PDFs containing RFP, RFQ, or RFI content (project scope, requirements, evaluation criteria)
-2. 📄 **Supporting Documents** — Attachments, appendices, specifications
-3. 📝 **Other Documents** — Forms, templates, or miscellaneous files
+Categorize each file into:
+1. 📘 **Primary Documents** — RFP/RFI/RFQ content (scope, requirements, evaluation criteria)  
+2. 📄 **Supporting Documents** — Appendices, attachments, specs  
+3. 📝 **Other Documents** — Forms, templates, misc files  
 
-**IMPORTANT:**
-- Use sharepoint_list_files to browse folders
-- Use sharepoint_read_file with preview_lines=50 to efficiently read ONLY the first 50 lines of PDF documents for identification
-- For text files, also use sharepoint_read_file with preview_lines=50
-- DO NOT read entire documents - use preview mode only
-- Do not make assumptions about folder structures or document content
-- Provide ONLY the three categories with filenames and single-line explanations
-- Do not include any other information, analysis, or commentary
-- After completing the analysis, clearly state "ANALYSIS COMPLETE" to indicate you have finished
+**Rules:**  
+- Read only previews (no full documents)  
+- No assumptions about structure/content  
+- Output filenames + one-line explanation only  
+- End with "ANALYSIS COMPLETE"  
 
-**RESPONSE FORMAT (EXACTLY AS SHOWN):**
+**Format:**  
 
-📘 **Primary Documents**
-- filename1.pdf - Contains RFP requirements and evaluation criteria
-- filename2.pdf - Main procurement document with project scope
+📘 **Primary Documents**  
+- filename1.pdf - Contains RFP requirements  
 
-📄 **Supporting Documents**
-- filename3.pdf - Technical specifications appendix
-- filename4.pdf - Supporting documentation for requirements
+📄 **Supporting Documents**  
+- filename2.pdf - Technical appendix  
 
-📝 **Other Documents**
-- filename5.pdf - Fillable response form template
-- filename6.pdf - Miscellaneous reference document
+📝 **Other Documents**  
+- filename3.pdf - Response form  
 
 ANALYSIS COMPLETE
 """
@@ -2038,138 +2032,71 @@ ANALYSIS COMPLETE
 
 @mcp.prompt(title="Step-2: Executive Summary of Procurement Document")
 def Step2_summarize_documents():
-    """Generate a clear, high-value summary of SharePoint RFP, RFQ, or RFI documents for executive decision-making."""
+    """Concise executive summary of RFP/RFQ/RFI documents."""
     return f"""
-After categorizing the documents, do the following **for each document, one at a time**:
----
+For each document, provide:
 
 ### 📄 Document: [Document Name]
 
-#### 🔹 What is This About?
-> A 3–5 sentence **plain-English overview** of the opportunity. Include:
-- Who issued it (organization)
-- What they need / are requesting
-- Why (the business problem or goal)
-- Type of response expected (proposal, quote, info)
+#### 🔹 Overview
+3–5 sentence plain-English summary: who issued it, what’s needed, why, and expected response.
 
----
+#### 🧩 Key Details
+- **Deadline:** [Date + Time]  
+- **Project Dates:** [Start/End]  
+- **Budget/Value:** [If stated]  
+- **Response Format:** [PDF, portal, etc.]  
+- **Location:** [Region/Remote]  
+- **Eligibility:** [Certs, licenses, limits]  
+- **Scope:** [Main tasks/deliverables]  
 
-#### 🧩 Key Opportunity Details
-List all of the following **if available** in the document:
-- **Submission Deadline:** [Date + Time]
-- **Project Start/End Dates:** [Dates or Duration]
-- **Estimated Value / Budget:** [If stated]
-- **Response Format:** (e.g., PDF proposal, online portal, pricing form, etc.)
-- **Delivery Location(s):** [City, Region, Remote, etc.]
-- **Eligibility Requirements:** (Certifications, licenses, location limits)
-- **Scope Summary:** (Bullet points or short paragraph outlining main tasks or deliverables)
+#### 📊 Evaluation
+How responses will be scored/selected (include weights if given).
 
----
+#### 📝 Notes
+- **Risks:** Red flags or challenges  
+- **Opportunities:** Competitive advantages / differentiators  
 
-#### 📊 Evaluation Criteria
-How will responses be scored or selected? Include weighting if provided (e.g., 40% price, 30% experience).
+#### 📞 Contact
+- **Contact:** [Name, role, email/phone]  
+- **Submission:** [Portal, email, etc.]  
 
----
+### 🤔 Next Step
+Ask: *Would you like a strategic assessment or Go/No-Go recommendation?*
 
-#### ⚠️ Notable Risks or Challenges
-Mention anything that could pose a red flag or require clarification (tight timeline, vague scope, legal constraints, strict eligibility).
-
----
-
-#### 💡 Potential Opportunities or Differentiators
-Highlight anything that could give a competitive edge or present upsell/cross-sell opportunities (e.g., optional services, innovation clauses, incumbent fatigue).
-
----
-
-#### 📞 Contact & Submission Info
-- **Primary Contact:** Name, title, email, phone (if listed)
-- **Submission Instructions:** Portal, email, physical, etc.
-
----
-
-### 🤔 Ready for Action?
-> Would you like a strategic assessment or a **Go/No-Go recommendation** for this opportunity?
-
-⚠️ Only summarize what is clearly and explicitly stated. Never guess or infer.
+⚠️ Only include what’s explicitly stated — no assumptions.
 """
+
 
 
 @mcp.prompt(title="Step-3 : Go/No-Go Recommendation")
 def Step3_go_no_go_recommendation() -> str:
-    """Evaluate RFP/RFQ/RFI opportunities for a Go/No-Go recommendation using BroadAxis's knowledge base."""
+    """Generate an exec-style Go/No-Go matrix using BroadAxis knowledge base."""
     return """
-You are BroadAxis-AI, an assistant trained to evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity.
-
-**CONTEXT:** You have already analyzed the RFP documents and generated summaries above. Now you need to evaluate BroadAxis's capability match using our internal knowledge base.
+You are BroadAxis-AI. You have already generated executive summaries (Step-2). Now evaluate BroadAxis’s fit using the knowledge base and present findings in a concise matrix.
 
 ---
 
-### 🧠 Step-by-Step Evaluation Framework
+### 📊 Capability Match Matrix
 
-#### 1. **Review RFP Requirements from Summaries**
-   - Extract key technical requirements, domain expertise needed, and evaluation criteria
-   - Identify critical success factors and mandatory qualifications
-   - Note any specialized skills, certifications, or experience requirements
-
-#### 2. **Search BroadAxis Knowledge Base for Relevant Experience**
-   Use the Broadaxis_knowledge_search tool to search for:
-   
-   **For Technical Requirements:**
-   - Search for specific technologies mentioned (e.g., "cybersecurity", "cloud infrastructure", "data analytics")
-   - Search for domain expertise (e.g., "healthcare IT", "government contracts", "financial services")
-   - Search for specific methodologies or frameworks mentioned
-   
-   **For Experience Requirements:**
-   - Search for similar project types or client industries
-   - Search for specific certifications or qualifications
-   - Search for team expertise in required areas
-   
-   **For Past Performance:**
-   - Search for relevant case studies or success stories
-   - Search for client testimonials in similar domains
-   - Search for project outcomes and metrics
-
-#### 3. **Evaluate Capability Match**
-   - **Strong Match (80%+):** Clear evidence of relevant experience and capabilities
-   - **Partial Match (50-79%):** Some relevant experience but gaps exist
-   - **Weak Match (<50%):** Limited relevant experience or significant gaps
-   
-   For each requirement, specify:
-   - ✅ **Match Found:** What specific experience/capability matches
-   - ⚠️ **Partial Match:** What's available vs. what's needed
-   - ❌ **Gap Identified:** What's missing or unclear
-
-#### 4. **Assess Resource Availability**
-   - Team availability for the project timeline
-   - Required certifications or qualifications
-   - Partner relationships if needed
-   - Technical infrastructure requirements
-
-#### 5. **Competitive Analysis**
-   - Based on known experience, would BroadAxis be competitive?
-   - What are our differentiators in this space?
-   - What risks exist in pursuing this opportunity?
+| Requirement              | BroadAxis Capability / Evidence        | Match Level (✅/⚠️/❌) | Notes / Gaps |
+|---------------------------|-----------------------------------------|------------------------|--------------|
+| [Requirement 1]           | [Relevant project/case study/skill]     | ✅                     | -            |
+| [Requirement 2]           | [Partial experience / limited coverage] | ⚠️                     | Needs partner support |
+| [Requirement 3]           | [No evidence found]                     | ❌                     | Missing certs |
 
 ---
 
-### 📋 **GO/NO-GO RECOMMENDATION**
-
-**RECOMMENDATION: [GO / NO-GO / NEED MORE INFO]**
-
-**Confidence Level:** [HIGH / MEDIUM / LOW]
-
-**Key Factors:**
-- [List top 3-5 factors driving the recommendation]
-
-**Required Actions (if GO):**
-- [List specific steps needed to complete submission]
-
-**Missing Information (if NEED MORE INFO):**
-- [List what additional information is needed]
+### 📋 GO/NO-GO RECOMMENDATION
+- **Recommendation:** [GO / NO-GO / NEED INFO]  
+- **Confidence:** [HIGH / MEDIUM / LOW]  
+- **Top Factors:** [3–5 key drivers]  
+- **Next Steps (if GO):** [Actions required]  
+- **Missing Info (if NEED INFO):** [What’s needed for decision]  
 
 ---
 
-**IMPORTANT:** Use only verified information from the BroadAxis knowledge base. Do not guess or assume capabilities. If information is missing, clearly state what else is needed for a confident decision.
+⚠️ Use only verified knowledge base results. Do not guess. Flag missing data clearly.
 """
 
 @mcp.prompt(title="Step-4 : Generate Proposal or Capability Statement")
