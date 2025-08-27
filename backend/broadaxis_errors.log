@@ -16,3 +16,194 @@
 2025-08-26 19:18:11,819 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
 2025-08-26 19:18:33,287 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
 2025-08-26 19:18:36,816 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-26 19:20:02,700 - BroadAxis - ERROR - Error occurred: {'error_type': 'WebSocketDisconnect', 'message': '(1012, None)', 'context': {'session_id': 'ws_1778750529776_1756253866', 'operation': 'websocket_message_handling'}, 'traceback': 'Traceback (most recent call last):\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\backend\\websocket_api.py", line 52, in websocket_chat\n    data = await asyncio.wait_for(websocket.receive_text(), timeout=300.0)  # 5 min timeout\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "C:\\Users\\rohka\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\asyncio\\tasks.py", line 507, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 120, in receive_text\n    self._raise_on_disconnect(message)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 114, in _raise_on_disconnect\n    raise WebSocketDisconnect(message["code"], message.get("reason"))\nstarlette.websockets.WebSocketDisconnect: (1012, None)\n'}
+2025-08-26 19:20:03,340 - asyncio - ERROR - an error occurred during closing of asynchronous generator <async_generator object stdio_client at 0x0000019E25B230D0>
+asyncgen: <async_generator object stdio_client at 0x0000019E25B230D0>
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | BaseExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 187, in stdio_client
+    |     yield read_stream, write_stream
+    | GeneratorExit
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 304, in __step_run_and_handle_result
+    result = coro.send(None)
+  File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 181, in stdio_client
+    anyio.create_task_group() as tg,
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 778, in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 457, in __exit__
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+2025-08-26 19:22:09,969 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-26 19:29:46,852 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-26 19:37:09,747 - BroadAxis - INFO - WebSocket disconnected gracefully: ws_2556640719760_1756255029
+2025-08-26 19:37:47,550 - BroadAxis - INFO - WebSocket disconnected gracefully: ws_2556639624720_1756255067
+2025-08-26 19:38:26,125 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-26 19:38:26,165 - BroadAxis - INFO - WebSocket disconnected during message send
+2025-08-26 19:38:26,165 - BroadAxis - WARNING - Attempted to send message to disconnected WebSocket
+2025-08-26 20:26:50,275 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-26 20:33:05,239 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-26 20:35:11,982 - asyncio - ERROR - an error occurred during closing of asynchronous generator <async_generator object stdio_client at 0x000001EEFA27D690>
+asyncgen: <async_generator object stdio_client at 0x000001EEFA27D690>
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | BaseExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\mcp\client\stdio\__init__.py", line 187, in stdio_client
+    |     yield read_stream, write_stream
+    | GeneratorExit
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\mcp\client\stdio\__init__.py", line 181, in stdio_client
+    anyio.create_task_group() as tg,
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 778, in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 457, in __exit__
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+2025-08-26 20:36:01,630 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-26 20:36:03,989 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-26 20:49:13,766 - asyncio - ERROR - an error occurred during closing of asynchronous generator <async_generator object stdio_client at 0x0000017E965D57E0>
+asyncgen: <async_generator object stdio_client at 0x0000017E965D57E0>
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | BaseExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\mcp\client\stdio\__init__.py", line 187, in stdio_client
+    |     yield read_stream, write_stream
+    | GeneratorExit
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\mcp\client\stdio\__init__.py", line 181, in stdio_client
+    anyio.create_task_group() as tg,
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 778, in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 457, in __exit__
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+2025-08-26 20:51:43,894 - asyncio - ERROR - an error occurred during closing of asynchronous generator <async_generator object stdio_client at 0x00000201761E57E0>
+asyncgen: <async_generator object stdio_client at 0x00000201761E57E0>
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | BaseExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\mcp\client\stdio\__init__.py", line 187, in stdio_client
+    |     yield read_stream, write_stream
+    | GeneratorExit
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\mcp\client\stdio\__init__.py", line 181, in stdio_client
+    anyio.create_task_group() as tg,
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 778, in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 457, in __exit__
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+2025-08-26 20:59:09,498 - asyncio - ERROR - an error occurred during closing of asynchronous generator <async_generator object stdio_client at 0x000002690E651690>
+asyncgen: <async_generator object stdio_client at 0x000002690E651690>
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | BaseExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\mcp\client\stdio\__init__.py", line 187, in stdio_client
+    |     yield read_stream, write_stream
+    | GeneratorExit
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\mcp\client\stdio\__init__.py", line 181, in stdio_client
+    anyio.create_task_group() as tg,
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 778, in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\site-packages\anyio\_backends\_asyncio.py", line 457, in __exit__
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+2025-08-26 20:59:33,135 - asyncio - ERROR - an error occurred during closing of asynchronous generator <async_generator object stdio_client at 0x0000024EE23D30D0>
+asyncgen: <async_generator object stdio_client at 0x0000024EE23D30D0>
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | BaseExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 187, in stdio_client
+    |     yield read_stream, write_stream
+    | GeneratorExit
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 304, in __step_run_and_handle_result
+    result = coro.send(None)
+  File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 181, in stdio_client
+    anyio.create_task_group() as tg,
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 778, in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 457, in __exit__
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+2025-08-26 21:00:18,037 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"

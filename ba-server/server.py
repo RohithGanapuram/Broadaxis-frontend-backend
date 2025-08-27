@@ -460,6 +460,34 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #create an MCP server
 mcp = FastMCP("Research-Demo")
 
+# Warm up connections on startup
+def warmup_connections():
+    """Pre-warm connections to avoid cold start timeouts"""
+    try:
+        logger.info("Warming up connections...")
+        
+        # Test Pinecone connection
+        if index:
+            try:
+                stats = index.describe_index_stats()
+                logger.info("✅ Pinecone connection warmed up")
+            except Exception as e:
+                logger.warning(f"Pinecone warmup failed: {e}")
+        
+        # Test OpenAI connection
+        try:
+            test_embedding = _embed_text("test")
+            logger.info("✅ OpenAI connection warmed up")
+        except Exception as e:
+            logger.warning(f"OpenAI warmup failed: {e}")
+            
+        logger.info("Connection warmup completed")
+    except Exception as e:
+        logger.error(f"Connection warmup error: {e}")
+
+# Run warmup on import
+warmup_connections()
+
 #Add an addition tool
 @mcp.tool()
 def sum(a: int, b: int) -> int:
@@ -467,8 +495,24 @@ def sum(a: int, b: int) -> int:
     return a+b
 
 
+# Connection state tracking
+_connections_initialized = False
+
+def _ensure_connections():
+    """Ensure all connections are initialized"""
+    global _connections_initialized
+    if not _connections_initialized:
+        try:
+            logger.info("Initializing connections for first query...")
+            warmup_connections()
+            _connections_initialized = True
+            logger.info("✅ Connections initialized")
+        except Exception as e:
+            logger.error(f"Connection initialization failed: {e}")
+            raise
+
 @mcp.tool()
-def Broadaxis_knowledge_search(query: str, top_k: int = 5, min_score: float = 0.2, include_scores: bool = False, source_filter: str = None):
+def Broadaxis_knowledge_search(query: str, top_k: int = 5, min_score: float = 0.0, include_scores: bool = False, source_filter: str = ""):
     """
     Retrieves the most relevant company's (Broadaxis) information from the internal knowledge base.
     Semantic search over Pinecone using OpenAI embeddings.
@@ -476,12 +520,18 @@ def Broadaxis_knowledge_search(query: str, top_k: int = 5, min_score: float = 0.
     Args:
         query: Search query string
         top_k: Number of top results to return (default: 5)
-        min_score: Minimum similarity score threshold (default: 0.7)
+        min_score: Minimum similarity score threshold (default: 0.0)
         include_scores: Whether to include similarity scores in response (default: False)
         source_filter: Optional source filter (e.g., "proposals", "case_studies") (default: None)
     """
     if not query or not query.strip():
         return json.dumps({"error": "Query cannot be empty"})
+
+    # Ensure connections are ready
+    try:
+        _ensure_connections()
+    except Exception as e:
+        return json.dumps({"error": f"Connection initialization failed: {str(e)}"})
 
     # Make sure we have an index
     if not index:
@@ -540,7 +590,7 @@ def Broadaxis_knowledge_search(query: str, top_k: int = 5, min_score: float = 0.
                 source = metadata.get('source', 'Unknown')
                 
                 # Apply source filter if specified
-                if source_filter and source_filter.lower() not in source.lower():
+                if source_filter and source_filter.strip() and source_filter.lower() not in source.lower():
                     logger.info(f"Match {i+1} filtered out: source '{source}' doesn't match filter '{source_filter}'")
                     continue
                 
@@ -583,7 +633,23 @@ def Broadaxis_knowledge_search(query: str, top_k: int = 5, min_score: float = 0.
     except Exception as e:
         logger.error(f"Knowledge search error: {e}")
         logger.error(f"Error traceback: {traceback.format_exc()}")
-        return f"Error searching BroadAxis knowledge base: {str(e)}"
+        
+        # Provide more specific error messages
+        if "timeout" in str(e).lower():
+            return json.dumps({
+                "error": "Request timed out. Please try again - the first query may take longer to establish connections.",
+                "suggestion": "Wait a moment and retry the query"
+            })
+        elif "connection" in str(e).lower():
+            return json.dumps({
+                "error": "Connection error. Please check your API keys and network connection.",
+                "suggestion": "Verify PINECONE_API_KEY and OPENAI_API_KEY are set correctly"
+            })
+        else:
+            return json.dumps({
+                "error": f"Error searching BroadAxis knowledge base: {str(e)}",
+                "suggestion": "Check the server logs for more details"
+            })
 
 # Initialize Tavily client with proper error handling
 try:
