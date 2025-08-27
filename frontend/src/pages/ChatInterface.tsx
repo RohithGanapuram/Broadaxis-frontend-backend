@@ -406,10 +406,10 @@ const ChatInterface: React.FC = () => {
   }
 
   const getToolsForPrompt = (prompt: any): string[] => {
-    // Check if this is Step 1 (document identification)
+    // Check if this is Step 1 (document identification - new interactive approach)
     const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
-                   prompt.name === 'Identifying the Documents' || 
-                   prompt.title === 'Identifying the Documents' || 
+                   prompt.name === 'Step-1: Document Identification Assistant' ||
+                   prompt.title === 'Step-1: Document Identification Assistant' ||
                    prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
     
     // Check if this is Step 2 (summary generation)
@@ -418,9 +418,11 @@ const ChatInterface: React.FC = () => {
                    prompt.description.includes('Generate a clear, high-value summary')
     
     if (isStep1) {
-      // For Step 1, disable extract_pdf_text to force use of sharepoint_read_file with preview
-      const disabledTools = ['extract_pdf_text']
-      return settings.enabledTools.filter(tool => !disabledTools.includes(tool))
+      // For Step 1, enable only specific tools for document categorization
+      const allowedTools = ['sharepoint_list_files', 'extract_pdf_text']
+      const filteredTools = settings.enabledTools.filter(tool => allowedTools.includes(tool))
+      console.log('Step 1 - Enabled tools:', filteredTools)
+      return filteredTools
     }
     
     if (isStep2) {
@@ -438,8 +440,8 @@ const ChatInterface: React.FC = () => {
     
     // Check if this is the Step1 or Step2 prompt template (both need folder selection)
     const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
-                   prompt.name === 'Identifying the Documents' || 
-                   prompt.title === 'Identifying the Documents' || 
+                   prompt.name === 'Step-1: Document Identification Assistant' ||
+                   prompt.title === 'Step-1: Document Identification Assistant' ||
                    prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
     
     const isStep2 = prompt.name === 'Step2_summarize_documents' || 
@@ -495,17 +497,23 @@ const ChatInterface: React.FC = () => {
 
   const handleFolderSelection = async (folderName: string) => {
     if (selectedPrompt) {
+      // Check if this is Step 1 (should work like Step 2 - with folder/file selection)
+      const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
+                     selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                     selectedPrompt.title === 'Step-1: Document Identification Assistant' ||
+                     selectedPrompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
+      
       // Check if this is Step 2 (needs file selection)
       const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
                      selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
-      if (isStep2) {
-        // For Step 2, first check if this folder has subfolders
+      if (isStep1 || isStep2) {
+        // For both Step 1 and Step 2, first check if this folder has subfolders
         const hasSubFolders = await fetchSubFolders(folderName)
         
         if (hasSubFolders) {
-          // Show subfolder selection first for Step 2
+          // Show subfolder selection first
           setSelectedParentFolder(folderName)
           setShowSubFolderSelection(true)
           setShowFolderSelection(false)
@@ -520,7 +528,7 @@ const ChatInterface: React.FC = () => {
         }
       }
       
-      // For Step 1, check if this folder has subfolders
+      // For other prompts, check if this folder has subfolders
       const hasSubFolders = await fetchSubFolders(folderName)
       
       if (hasSubFolders) {
@@ -569,13 +577,19 @@ const ChatInterface: React.FC = () => {
     if (selectedPrompt && selectedParentFolder) {
       const fullPath = `${selectedParentFolder}/${subFolderName}`
       
+      // Check if this is Step 1 (should work like Step 2 - with file selection)
+      const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
+                     selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                     selectedPrompt.title === 'Step-1: Document Identification Assistant' ||
+                     selectedPrompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
+      
       // Check if this is Step 2 (needs file selection)
       const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
                      selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
-      if (isStep2) {
-        // For Step 2, show file selection after subfolder selection
+      if (isStep1 || isStep2) {
+        // For both Step 1 and Step 2, show file selection after subfolder selection
         setSelectedFolder(fullPath)
         await fetchSharePointFiles(fullPath)
         setShowFileSelection(true)
@@ -583,7 +597,7 @@ const ChatInterface: React.FC = () => {
         return
       }
       
-      // For Step 1, proceed with analysis
+      // For other prompts, proceed with analysis
       const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${fullPath}`
       setInputMessage(promptMessage)
       setTimeout(() => {
@@ -622,10 +636,33 @@ const ChatInterface: React.FC = () => {
   const handleFileSelection = (selectedFile: any) => {
     if (selectedPrompt && selectedFolder) {
       const fullPath = `${selectedFolder}/${selectedFile.name}`
-      const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${selectedFolder}\n\nPlease select and summarize the document: ${selectedFile.name}`
+      
+      // Check if this is Step 1 or Step 2 to customize the message
+      const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
+                     selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                     selectedPrompt.title === 'Step-1: Document Identification Assistant' ||
+                     selectedPrompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
+      
+      const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
+                     selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
+                     selectedPrompt.description.includes('Generate a clear, high-value summary')
+      
+      let promptMessage = ''
+      let loadingMessage = ''
+      
+      if (isStep1) {
+        promptMessage = `${selectedPrompt.description}\n\nPlease categorize whether this document is a primary RFP document: ${selectedFile.name}\n\nFile path: ${fullPath}\n\nIMPORTANT: Use ONLY extract_pdf_text with pages="1" to read the first page. Do NOT use sharepoint_read_file.`
+        loadingMessage = `Categorizing document ${selectedFile.name}...`
+      } else if (isStep2) {
+        promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${selectedFolder}\n\nPlease select and summarize the document: ${selectedFile.name}`
+        loadingMessage = `Generating summary for ${selectedFile.name}...`
+      } else {
+        promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${selectedFolder}\n\nPlease select and summarize the document: ${selectedFile.name}`
+        loadingMessage = `Processing ${selectedFile.name}...`
+      }
       
       // Show loading toast
-      toast.loading(`Generating summary for ${selectedFile.name}...`, { id: 'file-summary' })
+      toast.loading(loadingMessage, { id: 'file-summary' })
       
       setInputMessage(promptMessage)
       setTimeout(() => {
@@ -647,9 +684,13 @@ const ChatInterface: React.FC = () => {
           addMessage(assistantMessage)
           setIsLoading(true)
           
+          const enabledTools = getToolsForPrompt(selectedPrompt)
+          console.log('Step 1 - Sending message with tools:', enabledTools)
+          console.log('Step 1 - Prompt message:', promptMessage)
+          
           globalWebSocket.sendMessage({
             query: promptMessage,
-            enabled_tools: getToolsForPrompt(selectedPrompt),
+            enabled_tools: enabledTools,
             model: settings.model
           })
           setInputMessage('')
@@ -943,6 +984,14 @@ const ChatInterface: React.FC = () => {
                           >
                             <div className="font-medium text-blue-800 text-sm">{prompt.name}</div>
                             <div className="text-xs text-blue-600 mt-1">{prompt.description}</div>
+                                                         {/* Add indicator for Step 1 */}
+                             {(prompt.name === 'Step1_Identifying_documents' || 
+                               prompt.name === 'Step-1: Document Identification Assistant' ||
+                               prompt.title === 'Step-1: Document Identification Assistant') && (
+                               <div className="text-xs text-green-600 mt-1 font-medium">
+                                 🎯 Primary RFP document categorization
+                               </div>
+                             )}
                           </button>
                         ))
                       ) : (
@@ -984,9 +1033,28 @@ const ChatInterface: React.FC = () => {
                      </div>
                    </div>
                    
-                   <p className="text-sm text-blue-600 mb-4">
-                     Choose the SharePoint folder you want to analyze for RFP/RFI/RFQ documents:
-                   </p>
+                                       <p className="text-sm text-blue-600 mb-4">
+                      Choose the SharePoint folder you want to 
+                      {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                       selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                       selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                        ? ' categorize primary RFP documents from:'
+                        : ' analyze for RFP/RFI/RFQ documents:'}
+                    </p>
+                   
+                                       {/* Show special message for Step 1 */}
+                    {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                      selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                      selectedPrompt.title === 'Step-1: Document Identification Assistant') && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                        <div className="flex items-start space-x-2">
+                          <span className="text-green-600 text-sm">📁</span>
+                                                 <div className="text-xs text-green-700">
+                         <strong>Primary RFP Categorization:</strong> Step 1 will categorize whether each document is a primary RFP document or not. Select files to analyze their content.
+                       </div>
+                        </div>
+                      </div>
+                    )}
                    
                    <div className="space-y-2 max-h-60 overflow-y-auto">
                      {availableFolders.length > 0 ? (
@@ -1032,13 +1100,17 @@ const ChatInterface: React.FC = () => {
                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                  <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
                    <div className="flex items-center justify-between mb-4">
-                     <h3 className="font-bold text-blue-800 text-lg">
-                       {selectedPrompt && (selectedPrompt.name === 'Step2_summarize_documents' || 
-                        selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
-                        selectedPrompt.description.includes('Generate a clear, high-value summary'))
-                         ? '📁 Select Project Folder' 
-                         : '📁 Select Project Folder'}
-                     </h3>
+                                           <h3 className="font-bold text-blue-800 text-lg">
+                        {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                         selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                         selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                          ? '📁 Select Project Folder' 
+                          : selectedPrompt && (selectedPrompt.name === 'Step2_summarize_documents' || 
+                           selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
+                           selectedPrompt.description.includes('Generate a clear, high-value summary'))
+                          ? '📁 Select Project Folder' 
+                          : '📁 Select Project Folder'}
+                      </h3>
                      <div className="flex items-center space-x-2">
                        <button
                          onClick={() => fetchSubFolders(selectedParentFolder, true)}
@@ -1061,14 +1133,18 @@ const ChatInterface: React.FC = () => {
                      </div>
                    </div>
                    
-                   <p className="text-sm text-blue-600 mb-4">
-                     {selectedPrompt && (selectedPrompt.name === 'Step2_summarize_documents' || 
-                      selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
-                      selectedPrompt.description.includes('Generate a clear, high-value summary'))
-                        ? `Choose a project folder within ${selectedParentFolder} to browse documents:`
-                        : `Choose a project folder within ${selectedParentFolder}:`
-                      }
-                   </p>
+                                       <p className="text-sm text-blue-600 mb-4">
+                      {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                       selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                       selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                         ? `Choose a project folder within ${selectedParentFolder} to browse documents:`
+                         : selectedPrompt && (selectedPrompt.name === 'Step2_summarize_documents' || 
+                          selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
+                          selectedPrompt.description.includes('Generate a clear, high-value summary'))
+                         ? `Choose a project folder within ${selectedParentFolder} to browse documents:`
+                         : `Choose a project folder within ${selectedParentFolder}:`
+                       }
+                    </p>
                    
                    <div className="space-y-2 max-h-60 overflow-y-auto">
                      {subFolders.length > 0 ? (
@@ -1120,12 +1196,18 @@ const ChatInterface: React.FC = () => {
                </div>
              )}
 
-             {/* File Selection Modal for Step 2 */}
-             {showFileSelection && (
-               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                 <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-2xl w-full mx-4">
-                   <div className="flex items-center justify-between mb-4">
-                     <h3 className="font-bold text-blue-800 text-lg">📄 Select Document to Summarize</h3>
+                           {/* File Selection Modal for Step 1 and Step 2 */}
+              {showFileSelection && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-2xl w-full mx-4">
+                    <div className="flex items-center justify-between mb-4">
+                                             <h3 className="font-bold text-blue-800 text-lg">
+                         {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                          selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                          selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                           ? '📄 Select Document to Categorize' 
+                           : '📄 Select Document to Summarize'}
+                       </h3>
                      <div className="flex items-center space-x-2">
                        <button
                          onClick={() => fetchSharePointFiles(selectedFolder, true)}
@@ -1149,9 +1231,14 @@ const ChatInterface: React.FC = () => {
                      </div>
                    </div>
                    
-                   <p className="text-sm text-blue-600 mb-4">
-                     Choose a document from <span className="font-medium">{selectedFolder}</span> to generate an executive summary:
-                   </p>
+                                                            <p className="text-sm text-blue-600 mb-4">
+                       Choose a document from <span className="font-medium">{selectedFolder}</span> to 
+                       {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                        selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                        selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                         ? ' categorize as primary RFP document or not:'
+                         : ' generate an executive summary:'}
+                     </p>
                    
                    <div className="space-y-2 max-h-80 overflow-y-auto">
                      {availableFiles.length > 0 ? (
@@ -1176,9 +1263,13 @@ const ChatInterface: React.FC = () => {
                                  </div>
                                </div>
                              </div>
-                             <div className="text-blue-600 text-sm">
-                               Click to summarize →
-                             </div>
+                                                           <div className="text-blue-600 text-sm">
+                                {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                                 selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
+                                 selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                                  ? 'Click to categorize →'
+                                  : 'Click to summarize →'}
+                              </div>
                            </div>
                          </button>
                        ))

@@ -2062,37 +2062,63 @@ def extract_pdf_text(path: str, pages: str = "all", clean_text: bool = True, pre
 
 
 
-@mcp.prompt(title="Identifying the Documents")
+@mcp.prompt(title="Step-1: Document Identification Assistant")
 def Step1_Identifying_documents():
-    """Identify and categorize RFP/RFI/RFQ documents from SharePoint folders."""
-    return f"""Analyze the selected SharePoint folder:
+    """Categorize whether a document is a primary RFP document or not."""
+    return f"""You are a document categorization assistant. Your task is simple:
 
-- Use sharepoint_list_files to list files
-- Use sharepoint_read_file with preview_lines=50 for PDFs/text files (only first 50 lines)
+## 🎯 **Your Task:**
+Categorize whether the selected document is a **Primary RFP Document** or **Not Primary**.
 
-Categorize each file into:
-1. 📘 **Primary Documents** — RFP/RFI/RFQ content (scope, requirements, evaluation criteria)  
-2. 📄 **Supporting Documents** — Appendices, attachments, specs  
-3. 📝 **Other Documents** — Forms, templates, misc files  
+## 📋 **How to Analyze:**
+1. Use `extract_pdf_text(path="file_path", pages="1")` to read ONLY the first page
+2. DO NOT use `extract_pdf_text` with pages="all" - only use pages="1"
+3. DO NOT use `sharepoint_read_file` - only use `extract_pdf_text`
+4. The file path will be provided in the format: "folder/subfolder/filename.pdf"
+5. Analyze the content to determine if it's a primary RFP document
 
-**Rules:**  
-- Read only previews (no full documents)  
-- No assumptions about structure/content  
-- Output filenames + one-line explanation only  
-- End with "ANALYSIS COMPLETE"  
+## 📊 **Primary RFP Document Criteria:**
+**✅ PRIMARY** if the document contains:
+- Main RFP/RFQ/RFI requirements
+- Scope of work or statement of work
+- Evaluation criteria or selection process
+- Submission instructions or response guidelines
+- Project objectives or deliverables
+- Contract terms or conditions
 
-**Format:**  
+**❌ NOT PRIMARY** if the document is:
+- Supporting documentation (specs, appendices, forms)
+- Administrative files (certifications, templates)
+- Reference materials or background info
+- Response forms or templates
+- Miscellaneous or unrelated content
 
-📘 **Primary Documents**  
-- filename1.pdf - Contains RFP requirements  
+## 📝 **Response Format:**
 
-📄 **Supporting Documents**  
-- filename2.pdf - Technical appendix  
+```
+📄 **Document:** [filename]
 
-📝 **Other Documents**  
-- filename3.pdf - Response form  
+**Category:** [PRIMARY RFP DOCUMENT / NOT PRIMARY]
 
-ANALYSIS COMPLETE
+**Analysis:** [2-3 sentences explaining why based on first page content]
+
+**Key Indicators:** [What specific elements led to this categorization]
+```
+
+## ⚠️ **Rules:**
+- Read ONLY the first page using `extract_pdf_text` with pages="1"
+- DO NOT use `extract_pdf_text` with pages="all"
+- DO NOT use `sharepoint_read_file` tool
+- Be decisive - either PRIMARY or NOT PRIMARY
+- Keep analysis concise and focused
+- Base judgment on document content, not filename
+
+**Ready to categorize the selected document.**
+
+**IMPORTANT TOOL USAGE:**
+- Use ONLY: `extract_pdf_text(path="exact_file_path", pages="1")`
+- Do NOT use: `sharepoint_read_file` or `extract_pdf_text` with `pages="all"`
+- The file path will be provided in the user's message
 """
 
 
