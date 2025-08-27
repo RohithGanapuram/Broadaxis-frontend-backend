@@ -72,25 +72,7 @@ const Email: React.FC = () => {
     }
   };
 
-  const handleTestAuth = async () => {
-    setTestStatus('🧪 Testing Microsoft Graph API authentication...');
-    
-    try {
-      const result = await apiClient.testGraphAuth();
-      
-      if (result.status === 'success') {
-        setTestStatus('✅ Microsoft Graph API authentication working!');
-      } else if (result.step === 'permissions') {
-        const instructions = result.fix_instructions || [];
-        const instructionText = instructions.join('\n');
-        setTestStatus(`❌ ${result.message}\n\n🔧 How to fix:\n${instructionText}`);
-      } else {
-        setTestStatus(`❌ Auth test failed: ${result.message}`);
-      }
-    } catch (error) {
-      setTestStatus(`❌ Auth test error: ${error}`);
-    }
-  };
+  
 
   const handleFetchEmails = async () => {
     setIsLoading(true);
@@ -199,12 +181,7 @@ const Email: React.FC = () => {
           Automatically download PDFs from emails containing RFP, RFI, or RFQ keywords
         </p>
         <div className="flex space-x-4 mb-4">
-          <button
-            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg"
-            onClick={handleTestAuth}
-          >
-            🧪 Test Auth
-          </button>
+          
           <button
             className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
               isLoading
@@ -220,16 +197,7 @@ const Email: React.FC = () => {
 
 
 
-        {testStatus && (
-          <div className={`mb-4 p-3 rounded-lg text-sm ${
-            testStatus.includes('failed') || testStatus.includes('error')
-              ? 'bg-red-50 text-red-700 border border-red-200'
-              : 'bg-green-50 text-green-700 border border-green-200'
-          }`}>
-            {testStatus}
-          </div>
-        )}
-        
+    
         {fetchStatus && (
           <div className={`mt-4 p-3 rounded-lg text-sm ${
             fetchStatus.includes('Error')

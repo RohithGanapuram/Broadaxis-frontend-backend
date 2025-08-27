@@ -6,7 +6,7 @@ const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // Increased to 30 seconds for complex operations
+  timeout: 600000, // Increased to 30 seconds for complex operations
   headers: {
     'Content-Type': 'application/json',
   },
@@ -128,7 +128,7 @@ export const apiClient = {
         email_accounts: emailAccounts,
         use_real_email: useRealEmail,
         use_graph_api: useGraphApi
-      }, { timeout: 30000 })
+      }, { timeout: 600000})
       return response.data
     } catch (error: any) {
       console.error('Failed to fetch emails:', error)
@@ -162,21 +162,6 @@ export const apiClient = {
       return {
         email_id: emailId,
         attachments: []
-      }
-    }
-  },
-
-  // Test Microsoft Graph API authentication
-  async testGraphAuth(): Promise<{ status: string; message: string; step?: string }> {
-    try {
-      const response = await api.get('/api/test-graph-auth', { timeout: 15000 })
-      return response.data
-    } catch (error) {
-      console.error('Failed to test Graph API auth:', error)
-      return {
-        status: 'error',
-        message: 'Failed to test Microsoft Graph API authentication',
-        step: 'network_error'
       }
     }
   },

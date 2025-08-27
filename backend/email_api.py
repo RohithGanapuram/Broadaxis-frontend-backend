@@ -17,6 +17,17 @@ from urllib.parse import urlparse
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+import nest_asyncio
+from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exception_handlers import http_exception_handler
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+from pydantic import BaseModel, ValidationError as PydanticValidationError
+from dotenv import load_dotenv
+from datetime import datetime, timedelta, timezone
+
 from error_handler import error_handler
 
 # Create router for email endpoints
@@ -24,6 +35,160 @@ email_router = APIRouter(prefix="/api", tags=["email"])
 
 # Import SharePointManager from sharepoint_api.py
 from sharepoint_api import SharePointManager
+
+
+import json
+from pathlib import Path
+from datetime import datetime, timedelta
+
+PROCESSED_INDEX_PATH = Path("processed_attachments.json")
+
+def load_processed_index() -> dict[str, set]:
+    try:
+        raw = json.loads(PROCESSED_INDEX_PATH.read_text(encoding="utf-8"))
+        # convert lists -> sets
+        return {acct: set(items) for acct, items in raw.items()}
+    except Exception:
+        return {}
+
+def save_processed_index(idx: dict[str, set]) -> None:
+    # convert sets -> lists for json
+    clean = {acct: sorted(list(items)) for acct, items in idx.items()}
+    PROCESSED_INDEX_PATH.write_text(json.dumps(clean, indent=2), encoding="utf-8")
+def _norm_url(u: str) -> str:
+    if not u:
+        return ""
+    u = u.strip()
+    # simple normalizer: lowercase scheme+host, trim trailing slash
+    try:
+        from urllib.parse import urlsplit, urlunsplit
+        sp = urlsplit(u)
+        host = (sp.hostname or "").lower()
+        scheme = (sp.scheme or "").lower()
+        rebuilt = urlunsplit((scheme, host + (f":{sp.port}" if sp.port else ""), sp.path or "", sp.query or "", sp.fragment or ""))
+        return rebuilt.rstrip("/")
+    except Exception:
+        return u.rstrip("/")
+
+
+
+
+REAL_EMAILS_PATH = Path("real_fetched_emails.json")
+
+def load_real_emails_from_file() -> list:
+    try:
+        if REAL_EMAILS_PATH.exists():
+            return json.loads(REAL_EMAILS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return []
+
+def save_real_emails_to_file(data: list) -> None:
+    try:
+        REAL_EMAILS_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+def _att_key(att: dict) -> str:
+    t = (att.get('type') or 'file').lower()
+
+    # Links: normalize URL so the same link always hashes to the same key
+    if t == 'link':
+        return f"link|{_norm_url(att.get('url', ''))}"
+
+    # Files: prefer sharepoint_path + filename (most stable across runs)
+    name = (att.get('filename') or '').strip().lower()
+    sp_path = (att.get('sharepoint_path') or '').strip().lower()
+
+    # coerce size to int if present; may be missing or a string
+    size_val = att.get('file_size')
+    try:
+        size = int(size_val) if size_val is not None and str(size_val).strip() != '' else None
+    except Exception:
+        size = None
+
+    if sp_path:
+        # same folder + same filename => same file
+        return f"file|{sp_path}|{name}"
+    if size is not None:
+        # fallback when we don’t have sharepoint_path
+        return f"file|{name}|{size}"
+    # last resort: name only
+    return f"file|{name}"
+
+
+def _merge_email_batches(existing: list, new: list) -> list:
+    by_key = {(e.get('account'), e.get('email_id')): e for e in existing}
+    for e in new:
+        k = (e.get('account'), e.get('email_id'))
+        if k not in by_key:
+            by_key[k] = e
+            continue
+        curr = by_key[k]
+        curr_atts = curr.get('attachments', [])
+        seen_keys = {_att_key(a) for a in curr_atts}
+        for a in e.get('attachments', []):
+            ak = _att_key(a)
+            if ak in seen_keys:
+                continue
+            curr_atts.append(a)
+            seen_keys.add(ak)
+        curr['attachments'] = curr_atts
+    return list(by_key.values())
+
+def _get_cache_emails() -> list:
+    # unified cache reader for GET endpoints
+    global real_fetched_emails
+    return real_fetched_emails if real_fetched_emails else load_real_emails_from_file()
+
+def _dedup_attachments(att_list: list[dict]) -> list[dict]:
+    out, seen = [], set()
+    for a in att_list or []:
+        k = _att_key(a)
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(a)
+    return out
+
+from datetime import datetime, timezone
+
+def _parse_dt(s: str) -> datetime:
+    if not s:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        # handle Graph's 'Z'
+        return datetime.fromisoformat(s.replace('Z', '+00:00'))
+    except Exception:
+        return datetime.min.replace(tzinfo=timezone.utc)
+
+def _ordered_accounts(emails):
+    """
+    Group emails by account and return a list of (account, emails_list)
+    sorted by account for stable IDs.
+    """
+    per_acct = {}
+    for em in emails or []:
+        acct = em.get('account', 'unknown@example.com')
+        per_acct.setdefault(acct, []).append(em)
+
+    # stable order (alphabetical, case-insensitive)
+    ordered = []
+    for acct in sorted(per_acct.keys(), key=lambda x: (x or '').lower()):
+        ordered.append((acct, per_acct[acct]))
+    return ordered
+
+nest_asyncio.apply()
+
+app = FastAPI(title="BroadAxis API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class EmailFetchRequest(BaseModel):
     email_accounts: List[str] = []  # Optional: specific accounts to fetch from
@@ -60,12 +225,12 @@ class EmailFetcher:
         self.attachments_dir = Path("email_attachments")
         self.attachments_dir.mkdir(exist_ok=True)
 
-        # RFP/RFI/RFQ keywords to search for - using set for O(1) lookup
-        self.rfp_keywords = {
+        # RFP/RFI/RFQ keywords to search for
+        self.rfp_keywords = [
             'rfp', 'rfi', 'rfq', 'request for proposal', 'request for information',
             'request for quotation', 'proposal', 'bid', 'tender', 'procurement',
             'solicitation', 'quote', 'quotation'
-        }
+        ]
 
         # Microsoft Graph API configuration
         self.graph_config = {
@@ -79,7 +244,7 @@ class EmailFetcher:
             ]
         }
 
-        # Filter out None values efficiently
+        # Filter out None values
         self.graph_config['user_emails'] = [email for email in self.graph_config['user_emails'] if email]
 
         # Email configurations from environment
@@ -103,16 +268,9 @@ class EmailFetcher:
                 'imap_port': int(os.getenv('CORPORATE_IMAP_PORT', 993))
             }
         }
-        
-        # Cache for Graph API token
-        self._token_cache = {'token': None, 'expires_at': 0}
-        self._session = requests.Session()
-        self._session.timeout = 15
 
     def has_rfp_keywords(self, text: str) -> bool:
-        """Check if text contains RFP/RFI/RFQ related keywords - optimized with set lookup"""
-        if not text:
-            return False
+        """Check if text contains RFP/RFI/RFQ related keywords"""
         text_lower = text.lower()
         return any(keyword in text_lower for keyword in self.rfp_keywords)
 
@@ -253,13 +411,7 @@ class EmailFetcher:
             return None
 
     def get_graph_access_token(self) -> str:
-        """Get access token for Microsoft Graph API with caching"""
-        now = time.time()
-        
-        # Return cached token if still valid (with 5 min buffer)
-        if self._token_cache['token'] and now < self._token_cache['expires_at'] - 300:
-            return self._token_cache['token']
-        
+        """Get access token for Microsoft Graph API"""
         try:
             token_url = f"https://login.microsoftonline.com/{self.graph_config['tenant_id']}/oauth2/v2.0/token"
 
@@ -270,29 +422,23 @@ class EmailFetcher:
                 'scope': 'https://graph.microsoft.com/.default'
             }
 
-            response = self._session.post(token_url, data=token_data)
+            response = requests.post(token_url, data=token_data, timeout=10)
             response.raise_for_status()
-            
-            token_response = response.json()
-            access_token = token_response['access_token']
-            
-            # Cache token with expiration
-            self._token_cache['token'] = access_token
-            self._token_cache['expires_at'] = now + token_response.get('expires_in', 3600)
-            
-            return access_token
+
+            return response.json()['access_token']
         except requests.exceptions.Timeout:
-            error_handler.log_error(Exception("Timeout getting Graph access token"), {'operation': 'get_graph_access_token'})
+            print("Timeout getting Graph access token")
             return None
         except requests.exceptions.RequestException as e:
-            error_handler.log_error(e, {'operation': 'get_graph_access_token'})
+            print(f"Request error getting Graph access token: {e}")
             return None
         except Exception as e:
-            error_handler.log_error(e, {'operation': 'get_graph_access_token'})
+            print(f"Error getting Graph access token: {e}")
             return None
 
     def fetch_emails_graph(self) -> dict:
-        """Fetch emails using Microsoft Graph API from multiple accounts"""
+   
+    # Config checks
         if not self.graph_config['client_id'] or not self.graph_config['client_secret'] or not self.graph_config['tenant_id']:
             return {
                 "status": "error",
@@ -301,7 +447,6 @@ class EmailFetcher:
                 "attachments_downloaded": 0,
                 "fetched_emails": []
             }
-
         if not self.graph_config['user_emails']:
             return {
                 "status": "error",
@@ -312,7 +457,7 @@ class EmailFetcher:
             }
 
         try:
-            # Get access token
+            # Token
             access_token = self.get_graph_access_token()
             if not access_token:
                 return {
@@ -328,137 +473,156 @@ class EmailFetcher:
                 'Content-Type': 'application/json'
             }
 
-            fetched_emails = []
-            total_attachments = 0
+            # Last 90 days (tz-aware UTC)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=2)
+            cutoff_iso = cutoff.strftime("%Y-%m-%dT%H:%M:%SZ")  # Graph $filter needs Z
 
-            # Process all email accounts efficiently
+            # De-dupe state + existing UI cache
+            processed = load_processed_index() or {}  # { mailbox: set(keys) }
+            existing_cache = _get_cache_emails() or []  # your persisted UI cache
+            existing_map = {
+                (e.get('account'), e.get('email_id')): (e.get('attachments') or [])
+                for e in existing_cache
+            }
+
+            batch_all = []                # ALL matching emails for UI
+            total_new_attachments = 0
+            total_scanned_emails = 0
+
             for user_email in self.graph_config['user_emails']:
-                # Get emails from the last 30 days for this account
-                graph_url = f"https://graph.microsoft.com/v1.0/users/{user_email}/messages"
+                seen = processed.setdefault(user_email, set())
+
+                url = f"https://graph.microsoft.com/v1.0/users/{user_email}/messages"
                 params = {
-                    '$top': 50,  # Get more emails to filter through
+                    '$filter': f"receivedDateTime ge {cutoff_iso}",
+                    '$orderby': 'receivedDateTime desc',
                     '$select': 'id,subject,sender,receivedDateTime,hasAttachments,body',
-                    '$orderby': 'receivedDateTime desc'
+                    '$top': 50
                 }
 
-                try:
-                    response = self._session.get(graph_url, headers=headers, params=params)
-                    response.raise_for_status()
-                    emails_data = response.json()
-                except requests.exceptions.Timeout:
-                    error_handler.log_error(Exception(f"Timeout fetching emails from {user_email}"), 
-                                          {'operation': 'fetch_emails_graph', 'user_email': user_email})
-                    continue  # Skip this account and try the next one
-                except requests.exceptions.RequestException as e:
-                    error_handler.log_error(e, {'operation': 'fetch_emails_graph', 'user_email': user_email})
-                    continue  # Skip this account and try the next one
+                while True:
+                    resp = requests.get(url, headers=headers, params=params, timeout=15)
+                    resp.raise_for_status()
+                    data = resp.json()
 
-                # Process each email and filter for RFP/RFI/RFQ keywords
-                for email_item in emails_data.get('value', []):
-                    # Check if email has RFP keywords first
-                    has_keywords = self.has_rfp_keywords(email_item.get('subject', ''))
+                    for email_item in data.get('value', []):
+                        total_scanned_emails += 1
 
-                    if has_keywords:
-                        attachments = []
+                        rcv_iso = email_item.get('receivedDateTime')
+                        if not rcv_iso:
+                            continue
+                        # Normalize to aware UTC datetime, then enforce cutoff
+                        rcv_dt = datetime.fromisoformat(rcv_iso.replace('Z', '+00:00')).astimezone(timezone.utc)
+                        if rcv_dt < cutoff:
+                            continue
 
-                        # Extract email content for link detection
+                        # Keyword filter
+                        if not self.has_rfp_keywords(email_item.get('subject', '')):
+                            continue
+
+                        # Existing attachments (from prior runs) for this email
+                        existing_atts = list(existing_map.get((user_email, email_item['id']), []))
+                        new_attachments = []
+
+                        # Build SharePoint folder for this email
+                        date_str = email_item['receivedDateTime'][:10]  # YYYY-MM-DD
+                        subject_clean = self.clean_filename(email_item['subject'])
+                        sp_folder = f"Emails/{user_email}/{date_str}_{subject_clean}"
+                        spm = SharePointManager()
+
+                        # ---- LINKS (upload only if NEW) ----
                         email_content = ""
                         if email_item.get('body') and email_item['body'].get('content'):
                             email_content = email_item['body']['content']
-
-                        # Extract links from email content
                         extracted_links = self.extract_links_from_email(email_content)
 
-                        # Create SharePoint folder path for this email
-                        email_date = email_item['receivedDateTime'][:10]  # YYYY-MM-DD
-                        email_subject_clean = self.clean_filename(email_item['subject'])
-                        email_folder_name = f"{email_date}_{email_subject_clean}"
-                        sharepoint_folder_path = f"Emails/{user_email}/{email_folder_name}"
-
-                        # Initialize SharePoint manager for uploads
-                        sharepoint_manager = SharePointManager()
-
-                        # Add links as "link attachments" and save to SharePoint
+                        seen_links_this_email = set()
                         for link in extracted_links:
-                            # Save link to SharePoint
-                            link_result = sharepoint_manager.save_link_to_sharepoint(
-                                link['url'],
-                                link['title'],
-                                sharepoint_folder_path
-                            )
+                            norm_url = _norm_url(link['url'])
+                            if not norm_url or norm_url in seen_links_this_email:
+                                continue
+                            seen_links_this_email.add(norm_url)
 
-                            # Link saved to SharePoint
+                            uniq = f"{email_item['id']}|link|{norm_url}"
+                            if uniq in seen:
+                                continue  # previously processed
 
-                            link_attachment = {
-                                'filename': link['title'],
-                                'file_path': '',  # Empty string for links
-                                'file_size': 0,   # Zero for links
-                                'url': link['url'],
-                                'domain': link['domain'],
-                                'type': 'link',
-                                'download_date': datetime.now().isoformat(),
-                                'sharepoint_path': sharepoint_folder_path
-                            }
-                            attachments.append(link_attachment)
-                            total_attachments += 1
+                            link_res = spm.save_link_to_sharepoint(link['url'], link.get('title') or norm_url, sp_folder)
+                            if link_res and link_res.get('status') == 'success':
+                                new_attachments.append({
+                                    'filename': link.get('title') or norm_url,
+                                    'file_path': '',
+                                    'file_size': 0,
+                                    'url': link['url'],
+                                    'domain': link.get('domain'),
+                                    'type': 'link',
+                                    'download_date': datetime.now(timezone.utc).isoformat(),
+                                    'sharepoint_path': sp_folder
+                                })
+                                total_new_attachments += 1
+                                seen.add(uniq)
 
-                        # Process file attachments efficiently
+                        # ---- FILES (upload only if NEW) ----
                         if email_item.get('hasAttachments'):
-                            # Get attachments for this specific user account
-                            attachments_url = f"https://graph.microsoft.com/v1.0/users/{user_email}/messages/{email_item['id']}/attachments"
-                            attachments_response = self._session.get(attachments_url, headers=headers)
+                            att_url = f"https://graph.microsoft.com/v1.0/users/{user_email}/messages/{email_item['id']}/attachments"
+                            att_resp = requests.get(att_url, headers=headers, timeout=10)
+                            if att_resp.status_code == 200:
+                                for a in att_resp.json().get('value', []):
+                                    if a.get('@odata.type') != '#microsoft.graph.fileAttachment':
+                                        continue
+                                    att_id = a.get('id')
+                                    uniq = f"{email_item['id']}|att|{att_id or a.get('name')}"
+                                    if uniq in seen:
+                                        continue
 
-                            if attachments_response.status_code == 200:
-                                attachments_data = attachments_response.json()
-                                date_str = email_item['receivedDateTime'][:10]  # Get YYYY-MM-DD part
+                                    try:
+                                        blob = base64.b64decode(a['contentBytes'])
+                                    except Exception:
+                                        continue
 
-                                for attachment in attachments_data.get('value', []):
-                                    if attachment.get('@odata.type') == '#microsoft.graph.fileAttachment':
-                                        # Download attachment
-                                        attachment_content = base64.b64decode(attachment['contentBytes'])
+                                    saved = self.save_attachment(blob, a['name'], date_str)
+                                    up = spm.upload_file_to_sharepoint(blob, self.clean_filename(a['name']), sp_folder)
+                                    if saved and up and up.get('status') == 'success':
+                                        saved['type'] = 'file'
+                                        saved['sharepoint_path'] = sp_folder
+                                        saved['download_date'] = datetime.now(timezone.utc).isoformat()
+                                        new_attachments.append(saved)
+                                        total_new_attachments += 1
+                                        seen.add(uniq)
 
-                                        # Save to local storage and SharePoint in parallel
-                                        saved_attachment = self.save_attachment(
-                                            attachment_content,
-                                            attachment['name'],
-                                            date_str
-                                        )
-
-                                        if saved_attachment:
-                                            # Upload to SharePoint
-                                            clean_filename = self.clean_filename(attachment['name'])
-                                            sharepoint_manager.upload_file_to_sharepoint(
-                                                attachment_content,
-                                                clean_filename,
-                                                sharepoint_folder_path
-                                            )
-
-                                            saved_attachment['type'] = 'file'  # Mark as file attachment
-                                            saved_attachment['sharepoint_path'] = sharepoint_folder_path
-                                            attachments.append(saved_attachment)
-                                            total_attachments += 1
-
-                        # Make a deep copy of attachments to avoid reference sharing
-                        import copy
-                        email_attachments = copy.deepcopy(attachments)
-
-                        fetched_emails.append({
+                        # Combine existing + new so UI shows everything
+                        all_atts = _dedup_attachments(existing_atts + new_attachments)
+                        batch_all.append({
                             "email_id": email_item['id'],
                             "sender": email_item['sender']['emailAddress']['address'],
                             "subject": email_item['subject'],
                             "date": email_item['receivedDateTime'],
-                            "account": user_email,  # Use the current user_email being processed
-                            "attachments": email_attachments,
-                            "has_rfp_keywords": has_keywords
+                            "account": user_email,
+                            "attachments": all_atts,
+                            "has_rfp_keywords": True
                         })
 
-            account_count = len(self.graph_config['user_emails'])
+                    # Pagination
+                    next_link = data.get('@odata.nextLink')
+                    if next_link:
+                        url = next_link
+                        params = None  # nextLink already carries query
+                    else:
+                        break
+
+            # Persist de-dupe state
+            save_processed_index(processed)
+
             return {
                 "status": "success",
-                "message": f"Successfully fetched {len(fetched_emails)} RFP/RFI/RFQ emails from {account_count} email accounts using Microsoft Graph API",
-                "emails_found": len(fetched_emails),
-                "attachments_downloaded": total_attachments,
-                "fetched_emails": fetched_emails
+                "message": (
+                    f"Scanned {len(self.graph_config['user_emails'])} accounts • "
+                    f"{total_scanned_emails} emails in last 3 months • "
+                    f"{total_new_attachments} new attachments/links uploaded."
+                ),
+                "emails_found": len(batch_all),                 # ALL matching emails
+                "attachments_downloaded": total_new_attachments, # only new uploads
+                "fetched_emails": batch_all
             }
 
         except requests.exceptions.RequestException as e:
@@ -477,6 +641,7 @@ class EmailFetcher:
                 "attachments_downloaded": 0,
                 "fetched_emails": []
             }
+
         
     def fetch_emails_real(self, email_account: str = 'gmail') -> dict:
         """Fetch emails from real email account"""
@@ -598,86 +763,9 @@ class EmailFetcher:
                 "fetched_emails": []
             }
 
-    async def fetch_emails_demo(self) -> EmailFetchResponse:
-        """Demo implementation - simulates email fetching"""
-        # Simulate finding RFP-related emails
-        demo_emails = [
-            {
-                "email_id": "email_001",
-                "sender": "procurement@techcorp.com",
-                "subject": "RFP for Cloud Infrastructure Services - Due March 15",
-                "date": "2025-01-15 10:30:00",
-                "account": "proposals@broadaxis.com",
-                "attachments": [
-                    {
-                        "filename": "RFP_Cloud_Infrastructure_2025.pdf",
-                        "file_path": "email_attachments/2025-01-15/RFP_Cloud_Infrastructure_2025.pdf",
-                        "file_size": 2048576,
-                        "download_date": datetime.now().isoformat()
-                    }
-                ],
-                "has_rfp_keywords": True
-            },
-            {
-                "email_id": "email_002",
-                "sender": "sourcing@govagency.gov",
-                "subject": "RFI - Software Development Services",
-                "date": "2025-01-14 14:20:00",
-                "account": "rfp.team@broadaxis.com",
-                "attachments": [
-                    {
-                        "filename": "RFI_Software_Development.docx",
-                        "file_path": "email_attachments/2025-01-14/RFI_Software_Development.docx",
-                        "file_size": 1024000,
-                        "download_date": datetime.now().isoformat()
-                    }
-                ],
-                "has_rfp_keywords": True
-            },
-            {
-                "email_id": "email_003",
-                "sender": "purchasing@enterprise.com",
-                "subject": "RFQ for Hardware Procurement - Urgent",
-                "date": "2025-01-13 09:15:00",
-                "account": "business@broadaxis.com",
-                "attachments": [
-                    {
-                        "filename": "Hardware_RFQ_Specifications.pdf",
-                        "file_path": "email_attachments/2025-01-13/Hardware_RFQ_Specifications.pdf",
-                        "file_size": 3072000,
-                        "download_date": datetime.now().isoformat()
-                    }
-                ],
-                "has_rfp_keywords": True
-            }
-        ]
+    
 
-        # Create demo attachment files
-        for email_data in demo_emails:
-            for attachment in email_data["attachments"]:
-                file_path = Path(attachment["file_path"])
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-
-                # Create demo file content
-                demo_content = f"""Demo {attachment['filename']}
-
-This is a simulated RFP/RFI/RFQ document downloaded from email.
-Email: {email_data['sender']}
-Subject: {email_data['subject']}
-Date: {email_data['date']}
-
-[This would contain the actual RFP/RFI/RFQ content in a real scenario]
-"""
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(demo_content)
-
-        return {
-            "status": "success",
-            "message": f"Successfully fetched {len(demo_emails)} RFP/RFI/RFQ emails",
-            "emails_found": len(demo_emails),
-            "attachments_downloaded": sum(len(email_data["attachments"]) for email_data in demo_emails),
-            "fetched_emails": demo_emails
-        }
+                
 
 # Initialize email fetcher
 email_fetcher = EmailFetcher()
@@ -707,307 +795,153 @@ def load_real_emails_from_file():
 real_fetched_emails = load_real_emails_from_file()
 
 # Email API Endpoints
-@email_router.get("/test-graph-auth")
-async def test_graph_auth():
-    """Test Microsoft Graph API authentication"""
+from fastapi.responses import JSONResponse
+
+
+@email_router.post("/fetch-emails")
+async def fetch_emails(request: EmailFetchRequest = EmailFetchRequest()):
+
+    """Fetch RFP/RFI/RFQ emails and download attachments (Graph only)."""
     try:
-        print("🧪 Testing Microsoft Graph API authentication...")
-        
-        # Test access token
+        print("📧 Starting email fetch process...")
+
         token = email_fetcher.get_graph_access_token()
         if not token:
             return {
                 "status": "error",
-                "message": "Failed to get access token",
-                "step": "authentication"
+                "message": "Microsoft Graph authentication failed. Check GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET and admin consent.",
+                "emails_found": 0,
+                "attachments_downloaded": 0,
+                "fetched_emails": []
             }
-        
-        print("✅ Access token obtained")
-        
-        # Test basic Graph API call using application permissions
-        headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-        
-        # Test with first configured email account
-        user_emails = [
-            os.getenv('GRAPH_USER_EMAIL_1'),
-            os.getenv('GRAPH_USER_EMAIL_2'),
-            os.getenv('GRAPH_USER_EMAIL_3')
-        ]
-        user_emails = [email for email in user_emails if email]
-        
-        if not user_emails:
-            return {
-                "status": "error",
-                "message": "No email accounts configured. Check GRAPH_USER_EMAIL_1, GRAPH_USER_EMAIL_2, GRAPH_USER_EMAIL_3 in .env file.",
-                "step": "config_check"
-            }
-        
-        test_email = user_emails[0]
-        test_url = f"https://graph.microsoft.com/v1.0/users/{test_email}"
-        
-        response = requests.get(test_url, headers=headers, timeout=10)
-        
-        if response.status_code == 200:
-            user_info = response.json()
-            return {
-                "status": "success",
-                "message": f"Microsoft Graph API authentication working! Connected to {user_info.get('displayName', test_email)}",
-                "user_info": {
-                    "email": user_info.get('mail', test_email),
-                    "displayName": user_info.get('displayName', 'Unknown'),
-                    "configured_accounts": len(user_emails)
-                }
-            }
-        elif response.status_code == 403:
-            return {
-                "status": "error",
-                "message": "Microsoft Graph API permissions insufficient. Your app needs 'Mail.Read' and 'User.Read.All' application permissions. Contact your Azure admin to grant these permissions.",
-                "step": "permissions",
-                "test_email": test_email,
-                "fix_instructions": [
-                    "1. Go to Azure Portal > App Registrations",
-                    "2. Find your app and go to API Permissions",
-                    "3. Add Microsoft Graph Application permissions:",
-                    "   - Mail.Read (to read emails)",
-                    "   - User.Read.All (to access user info)",
-                    "4. Click 'Grant admin consent'",
-                    "5. Wait 5-10 minutes for permissions to propagate"
-                ]
-            }
-        else:
-            return {
-                "status": "error",
-                "message": f"Graph API test failed: {response.status_code} - {response.text[:200]}",
-                "step": "api_test",
-                "test_email": test_email
-            }
-            
+
+        # Directly fetch via Graph (no auth pre-tests)
+        result = email_fetcher.fetch_emails_graph() or {
+            "status": "error",
+            "message": "fetch_emails_graph returned no data",
+            "emails_found": 0,
+            "attachments_downloaded": 0,
+            "fetched_emails": []
+        }
+
+        if result.get('status') == 'success':
+            global real_fetched_emails
+            real_fetched_emails = result['fetched_emails']
+            save_real_emails_to_file(real_fetched_emails)
+
+        return JSONResponse(content=result)
+
+
     except Exception as e:
-        print(f"❌ Graph API test failed: {e}")
+        print(f"Error fetching emails: {e}")
         return {
             "status": "error",
             "message": str(e),
-            "step": "exception"
+            "emails_found": 0,
+            "attachments_downloaded": 0,
+            "fetched_emails": []
         }
 
-@email_router.post("/fetch-emails", response_model=EmailFetchResponse)
-async def fetch_emails(request: EmailFetchRequest = EmailFetchRequest()):
-    """Fetch RFP/RFI/RFQ emails and download attachments"""
-    try:
-        print("📧 Starting email fetch process...")
-        
-        # Quick auth test first
-        token = email_fetcher.get_graph_access_token()
-        if not token:
-            print("⚠️ Authentication failed, using demo mode")
-            return await email_fetcher.fetch_emails_demo()
-        
-        print("✅ Authentication successful, testing permissions...")
-        
-        # Test permissions with a simple API call
-        headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-        user_emails = [os.getenv('GRAPH_USER_EMAIL_1'), os.getenv('GRAPH_USER_EMAIL_2'), os.getenv('GRAPH_USER_EMAIL_3')]
-        user_emails = [email for email in user_emails if email]
-        
-        if user_emails:
-            test_url = f"https://graph.microsoft.com/v1.0/users/{user_emails[0]}"
-            test_response = requests.get(test_url, headers=headers, timeout=5)
-            
-            if test_response.status_code == 403:
-                print("⚠️ Insufficient permissions, using demo mode")
-                demo_result = await email_fetcher.fetch_emails_demo()
-                demo_result['message'] += " (Demo mode - Microsoft Graph API permissions needed)"
-                return demo_result
-        
-        # Try real email fetching
-        result = email_fetcher.fetch_emails_graph()
-        
-        # If real fetching fails, fall back to demo
-        if result['status'] == 'error' and ('403' in result['message'] or 'Authorization' in result['message']):
-            print("⚠️ Real email fetch failed due to permissions, using demo mode")
-            demo_result = await email_fetcher.fetch_emails_demo()
-            demo_result['message'] += " (Demo mode - Microsoft Graph API permissions needed)"
-            return demo_result
 
-        # Store real fetched emails for display
-        if result['status'] == 'success':
-            global real_fetched_emails
-            real_fetched_emails = result['fetched_emails']
-            # Save to file for persistence
-            save_real_emails_to_file(real_fetched_emails)
-
-        return EmailFetchResponse(**result)
-    except Exception as e:
-        print(f"Error fetching emails: {e}")
-        print("⚠️ Falling back to demo mode")
-        demo_result = await email_fetcher.fetch_emails_demo()
-        demo_result['message'] += " (Demo mode - Error occurred)"
-        return demo_result
+from datetime import datetime, timedelta, timezone
 
 @email_router.get("/fetched-emails")
 async def get_fetched_emails():
-    """Get list of previously fetched emails"""
+    """Get list of previously fetched emails (real-only, stable IDs)."""
     try:
-        # Check if we have real fetched emails from Graph API or IMAP
         global real_fetched_emails
-        if real_fetched_emails:
-            # Return real fetched emails
-            email_accounts = {}
-            for email in real_fetched_emails:
-                account = email.get('account', 'unknown@example.com')
-                if account not in email_accounts:
-                    email_accounts[account] = {
-                        'count': 0,
-                        'emails': [],
-                        'latest_subject': '',
-                        'latest_date': '',
-                        'total_files': 0
-                    }
+        if not real_fetched_emails:
+            # No real data yet — return empty (no demo)
+            return {"emails": [], "total_count": 0, "total_files": 0}
 
-                email_accounts[account]['count'] += 1
-                email_accounts[account]['emails'].append(email)
-                email_accounts[account]['latest_subject'] = email.get('subject', 'No Subject')
-                email_accounts[account]['latest_date'] = email.get('date', '')
-                email_accounts[account]['total_files'] += len(email.get('attachments', []))
+        emails_out = []
+        total_files = 0
 
-            # Convert to the expected format
-            emails = []
-            for i, (account, data) in enumerate(email_accounts.items(), 1):
-                emails.append({
-                    'id': i,
-                    'email': account,
-                    'count': data['count'],
-                    'latest_subject': data['latest_subject'],
-                    'latest_date': data['latest_date'],
-                    'latest_files': data['total_files'],
-                    'emails': data['emails']
-                })
+        for i, (acct, lst) in enumerate(_ordered_accounts(real_fetched_emails), 1):
+            # sort account's emails by date desc
+            lst_sorted = sorted(lst, key=lambda e: _parse_dt(e.get('date', '')), reverse=True)
+            latest = lst_sorted[0] if lst_sorted else {}
+            latest_date = latest.get('date', '')
+            latest_subject = latest.get('subject', 'No Subject')
+            files_count = sum(len(e.get('attachments') or []) for e in lst)
 
-            return {
-                'total_count': len(real_fetched_emails),
-                'total_files': sum(len(email.get('attachments', [])) for email in real_fetched_emails),
-                'emails': emails
-            }
-
-        # Fallback to demo data if no real emails fetched
-        attachments_dir = Path("email_attachments")
-        if not attachments_dir.exists():
-            return {"emails": [], "total_count": 0}
-
-        # Count files in attachments directory
-        total_files = sum(1 for file_path in attachments_dir.rglob("*") if file_path.is_file())
-
-        demo_emails = [
-            {
-                "id": 1,
-                "email": "proposals@broadaxis.com",
-                "count": 8,
-                "latest_subject": "RFP for Cloud Infrastructure Services",
-                "latest_date": "2025-01-15 10:30:00",
-                "latest_file": "RFP_Cloud_Infrastructure_2025.pdf"
-            },
-            {
-                "id": 2,
-                "email": "rfp.team@broadaxis.com",
-                "count": 5,
-                "latest_subject": "RFI - Software Development Services",
-                "latest_date": "2025-01-14 14:20:00",
-                "latest_file": "RFI_Software_Development.docx"
-            },
-            {
-                "id": 3,
-                "email": "business@broadaxis.com",
-                "count": 3,
-                "latest_subject": "RFQ for Hardware Procurement",
-                "latest_date": "2025-01-13 09:15:00",
-                "latest_file": "Hardware_RFQ_Specifications.pdf"
-            }
-        ]
+            emails_out.append({
+                "id": i,                         # STABLE id based on sorted order
+                "email": acct,
+                "count": len(lst),
+                "latest_subject": latest_subject,
+                "latest_date": latest_date,
+                "latest_files": files_count,
+                "emails": lst_sorted,            # keep for debugging if needed
+            })
+            total_files += files_count
 
         return {
-            "emails": demo_emails,
-            "total_count": sum(email["count"] for email in demo_emails),
-            "total_files": total_files
+            "emails": emails_out,
+            "total_count": len(real_fetched_emails),
+            "total_files": total_files,
         }
+
     except Exception as e:
         print(f"Error getting fetched emails: {e}")
         return {"emails": [], "total_count": 0, "total_files": 0}
 
+
+
+from datetime import datetime, timedelta, timezone
+
+def _human_size(n: int) -> str:
+    try:
+        n = int(n)
+    except Exception:
+        return "0 Bytes"
+    units = ["Bytes", "KB", "MB", "GB", "TB"]
+    i = 0
+    while n >= 1024 and i < len(units) - 1:
+        n /= 1024.0
+        i += 1
+    return f"{n:.2f} {units[i]}" if units[i] != "Bytes" else f"{int(n)} Bytes"
+
 @email_router.get("/email-attachments/{email_id}")
 async def get_email_attachments(email_id: int):
-    """Get attachments for a specific email account"""
+    """Get attachments for a specific email account (stable IDs match fetched-emails)."""
     try:
-        # Check if we have real fetched emails
         global real_fetched_emails
-        if real_fetched_emails:
-            # Group emails by account first
-            email_accounts = {}
-            for email in real_fetched_emails:
-                account = email.get('account', 'unknown@example.com')
-                if account not in email_accounts:
-                    email_accounts[account] = []
-                email_accounts[account].append(email)
+        if not real_fetched_emails:
+            return {"email_id": email_id, "attachments": []}
 
-            # Convert to list with IDs (same logic as fetched-emails endpoint)
-            account_list = []
-            for i, (account, emails) in enumerate(email_accounts.items(), 1):
-                account_list.append({
-                    'id': i,
-                    'account': account,
-                    'emails': emails
-                })
+        # Use the SAME ordering as /api/fetched-emails
+        ordered = _ordered_accounts(real_fetched_emails)
 
-            # Find the specific account for this email_id
-            target_account = None
-            for account_data in account_list:
-                if account_data['id'] == email_id:
-                    target_account = account_data
-                    break
+        # Map 1..N IDs to accounts using the same stable order
+        target = None
+        for i, (acct, lst) in enumerate(ordered, 1):
+            if i == email_id:
+                target = {"account": acct, "emails": lst}
+                break
 
-            if target_account:
-                # Return attachments only for this specific account
-                account_attachments = []
-                for email in target_account['emails']:
-                    attachments = email.get('attachments', [])
-                    email_subject = email.get('subject', 'No Subject')
-                    email_sender = email.get('sender', 'Unknown Sender')
-                    email_date = email.get('date', '')
+        if not target:
+            return {"email_id": email_id, "attachments": []}
 
-                    # Add email context to each attachment
-                    for attachment in attachments:
-                        attachment_with_context = attachment.copy()
-                        attachment_with_context['email_subject'] = email_subject
-                        attachment_with_context['email_sender'] = email_sender
-                        attachment_with_context['email_date'] = email_date
-                        account_attachments.append(attachment_with_context)
+        out_attachments = []
+        for em in target["emails"]:
+            email_subject = em.get("subject", "No Subject")
+            email_sender  = em.get("sender", "Unknown Sender")
+            email_date    = em.get("date", "")
 
-                return {
-                    "email_id": email_id,
-                    "account": target_account['account'],
-                    "attachments": account_attachments
-                }
-
-        # Fallback to demo data if no real emails
-        attachments_data = {
-            1: [
-                {"filename": "RFP_Cloud_Infrastructure_2025.pdf", "date": "2025-01-15", "size": "2.0 MB"},
-                {"filename": "Technical_Requirements.docx", "date": "2025-01-14", "size": "1.5 MB"},
-                {"filename": "Budget_Guidelines.xlsx", "date": "2025-01-13", "size": "0.8 MB"}
-            ],
-            2: [
-                {"filename": "RFI_Software_Development.docx", "date": "2025-01-14", "size": "1.0 MB"},
-                {"filename": "Vendor_Questionnaire.pdf", "date": "2025-01-12", "size": "0.5 MB"}
-            ],
-            3: [
-                {"filename": "Hardware_RFQ_Specifications.pdf", "date": "2025-01-13", "size": "3.0 MB"}
-            ]
-        }
+            for att in em.get("attachments") or []:
+                a = dict(att)  # shallow copy
+                a.setdefault("email_subject", email_subject)
+                a.setdefault("email_sender",  email_sender)
+                a.setdefault("email_date",    email_date)
+                out_attachments.append(a)
 
         return {
             "email_id": email_id,
-            "attachments": attachments_data.get(email_id, [])
+            "account": target["account"],
+            "attachments": out_attachments,
         }
+
     except Exception as e:
         print(f"Error getting email attachments: {e}")
         return {"email_id": email_id, "attachments": []}
-
