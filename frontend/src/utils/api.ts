@@ -284,6 +284,17 @@ export const apiClient = {
     return { message: "Session cleared (session management disabled)" }
   },
 
+  // Session management endpoints
+  async getSessionInfo(sessionId: string): Promise<any> {
+    const response = await api.get(`/api/session/${sessionId}`)
+    return response.data
+  },
+
+  async getRedisStatus(): Promise<any> {
+    const response = await api.get('/api/redis/status')
+    return response.data
+  }
+
 }
 
 // WebSocket utility

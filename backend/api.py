@@ -37,6 +37,15 @@ from websocket_api import websocket_chat
 from email_api import email_router
 from sharepoint_api import sharepoint_router
 
+# Import session manager (optional for now)
+try:
+    from session_manager import session_manager
+    SESSION_MANAGER_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Session manager not available: {e}")
+    SESSION_MANAGER_AVAILABLE = False
+    session_manager = None
+
 
 
 nest_asyncio.apply()
@@ -123,7 +132,7 @@ class EmailFetchResponse(BaseModel):
     attachments_downloaded: int
     fetched_emails: List[FetchedEmail]
 
-# Session file storage
+# Session file storage (keeping for backward compatibility)
 session_files = {}
 
 # run_mcp_query is now imported from mcp_interface.py
@@ -268,6 +277,142 @@ async def initialize_mcp():
 async def websocket_chat_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time chat communication."""
     await websocket_chat(websocket)
+
+
+@app.post("/api/chat")
+async def chat_with_context(request: ChatRequest, session_id: str = None):
+    """Chat endpoint with Redis session management"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            # Fallback to basic chat without session management
+            result = await run_mcp_query(
+                request.query, 
+                request.enabled_tools, 
+                request.model, 
+                session_id or "default"
+            )
+            return {
+                "response": result["response"],
+                "session_id": session_id or "default",
+                "conversation_length": 1,
+                "status": "success",
+                "note": "Session management not available"
+            }
+        
+        # Create new session if none provided
+        if not session_id:
+            session_id = await session_manager.create_session()
+            print(f"🆕 Created new session: {session_id}")
+        
+        # Get conversation history
+        conversation_history = await session_manager.get_conversation_context(session_id)
+        
+        # Add user message to history
+        user_message = {
+            "role": "user",
+            "content": request.query,
+            "timestamp": datetime.now().isoformat()
+        }
+        await session_manager.add_message(session_id, user_message)
+        
+        # Include conversation history in AI prompt
+        context_prompt = ""
+        if conversation_history:
+            context_prompt = "Previous conversation:\n"
+            for msg in conversation_history[-10:]:  # Last 10 messages
+                context_prompt += f"{msg['role']}: {msg['content']}\n"
+            context_prompt += "\nCurrent question: "
+        
+        # Process with AI (include context)
+        result = await run_mcp_query(
+            context_prompt + request.query, 
+            request.enabled_tools, 
+            request.model, 
+            session_id
+        )
+        
+        # Add AI response to history
+        ai_message = {
+            "role": "assistant", 
+            "content": result["response"],
+            "timestamp": datetime.now().isoformat()
+        }
+        await session_manager.add_message(session_id, ai_message)
+        
+        return {
+            "response": result["response"],
+            "session_id": session_id,
+            "conversation_length": len(conversation_history) + 2,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'chat_with_context', 'session_id': session_id})
+        raise
+
+
+@app.get("/api/session/{session_id}")
+async def get_session_info(session_id: str):
+    """Get session information and conversation history"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "session_id": session_id,
+                "error": "Session management not available",
+                "status": "error"
+            }
+        
+        session = await session_manager.get_session(session_id)
+        if session:
+            return {
+                "session_id": session_id,
+                "messages": session.get("messages", []),
+                "created_at": session.get("created_at"),
+                "updated_at": session.get("updated_at"),
+                "message_count": len(session.get("messages", [])),
+                "status": "success"
+            }
+        else:
+            return {
+                "session_id": session_id,
+                "error": "Session not found",
+                "status": "error"
+            }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_session_info', 'session_id': session_id})
+        raise
+
+
+@app.get("/api/redis/status")
+async def get_redis_status():
+    """Get Redis connection and storage status"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "status": "not_available",
+                "error": "Session management not available"
+            }
+        
+        usage = await session_manager.get_storage_usage()
+        
+        # Test creating a session
+        test_session_id = await session_manager.create_session()
+        test_session = await session_manager.get_session(test_session_id)
+        await session_manager.delete_session(test_session_id)
+        
+        return {
+            "status": "connected",
+            "storage_usage": usage,
+            "usage_percentage": (usage['used_memory'] / usage['max_memory']) * 100 if usage['max_memory'] > 0 else 0,
+            "test_session_created": test_session_id,
+            "test_session_retrieved": test_session is not None
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_redis_status'})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 
 if __name__ == "__main__":

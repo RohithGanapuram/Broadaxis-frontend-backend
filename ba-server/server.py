@@ -2165,30 +2165,27 @@ Ask: *Would you like a strategic assessment or Go/No-Go recommendation?*
 def Step3_go_no_go_recommendation() -> str:
     """Generate an exec-style Go/No-Go matrix using BroadAxis knowledge base."""
     return """
-You are BroadAxis-AI. You have already generated executive summaries (Step-2). Now evaluate BroadAxis’s fit using the knowledge base and present findings in a concise matrix.
-
----
-
-### 📊 Capability Match Matrix
-
-| Requirement              | BroadAxis Capability / Evidence        | Match Level (✅/⚠️/❌) | Notes / Gaps |
-|---------------------------|-----------------------------------------|------------------------|--------------|
-| [Requirement 1]           | [Relevant project/case study/skill]     | ✅                     | -            |
-| [Requirement 2]           | [Partial experience / limited coverage] | ⚠️                     | Needs partner support |
-| [Requirement 3]           | [No evidence found]                     | ❌                     | Missing certs |
-
----
-
-### 📋 GO/NO-GO RECOMMENDATION
-- **Recommendation:** [GO / NO-GO / NEED INFO]  
-- **Confidence:** [HIGH / MEDIUM / LOW]  
-- **Top Factors:** [3–5 key drivers]  
-- **Next Steps (if GO):** [Actions required]  
-- **Missing Info (if NEED INFO):** [What’s needed for decision]  
-
----
-
-⚠️ Use only verified knowledge base results. Do not guess. Flag missing data clearly.
+"You are BroadAxis-AI, an assistant trained to evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity. "
+        "The user has uploaded one or more opportunity documents. You have already summarized them RFP/RFI documents above. Now perform a structured **Go/No-Go analysis** using the following steps:\n"
+        "---\n"
+        "### 🧠 Step-by-Step Evaluation Framework\n"
+        "1. **Review the RFP Requirements**\n"
+        "- Highlight the most critical needs and evaluation criteria.\n"
+        "2. **Search Internal Knowledge** (via Broadaxis_knowledge_search)\n"
+        "- Identify relevant past projects\n"
+        "- Retrieve proof of experience in similar domains\n"
+        "- Surface known strengths or capability gaps\n"
+        "3. **Evaluate Capability Alignment**\n"
+        "- Estimate percentage match (e.g., \"BroadAxis meets ~85% of the requirements\")\n"
+        "- Note any missing capabilities or unclear requirements\n"
+        "4. **Assess Resource Requirements**\n"
+        "- Are there any specialized skills, timelines, or staffing needs?\n"
+        "- Does BroadAxis have the necessary team or partners?\n"
+        "5. **Evaluate Competitive Positioning**\n"
+        "- Based on known experience and domain, would BroadAxis be competitive?\n"
+        "Use only verified internal information (via Broadaxis_knowledge_search) and the summaries of the RFP/RFI documents. Do not guess or hallucinate capabilities. "
+        "If information is missing, clearly state what else is needed for a confident decision.\n"
+        "if your recommendation is a Go, list down the things to the user of the tasks he need to complete to finish the submission of RFP/RFI/RFQ."
 """
 
 @mcp.prompt(title="Step-4 : Generate Proposal or Capability Statement")
@@ -2210,7 +2207,7 @@ The user has either uploaded an opportunity document or requested a formal propo
 - Leave placeholders where personal or business info is not available.
 - Maintain professional, confident, and compliant tone.
 
-If this proposal is meant to be saved, offer to generate a PDF or Word version using the appropriate tool.
+**IMPORTANT: Present all content directly in the chat interface. DO NOT automatically generate PDF or Word documents unless specifically requested by the user.**
 
 """
 

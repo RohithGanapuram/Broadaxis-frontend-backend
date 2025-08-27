@@ -13,6 +13,15 @@ from error_handler import BroadAxisError, ExternalAPIError, error_handler
 # Import the MCP interface and manager from mcp_interface.py
 from mcp_interface import mcp_interface, run_mcp_query
 
+# Import session manager (optional for now)
+try:
+    from session_manager import session_manager
+    SESSION_MANAGER_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Session manager not available: {e}")
+    SESSION_MANAGER_AVAILABLE = False
+    session_manager = None
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -38,7 +47,7 @@ manager = ConnectionManager()
 
 async def websocket_chat(websocket: WebSocket):
     """WebSocket endpoint for real-time chat communication."""
-    session_id = f"ws_{id(websocket)}_{int(time.time())}"
+    session_id = None  # Will be set from message or created new
     # NEW: per-socket gate to avoid overlapping requests from one client
     if not hasattr(websocket, "__gate"):
         websocket.__gate = asyncio.Semaphore(1)
@@ -98,6 +107,20 @@ async def websocket_chat(websocket: WebSocket):
                 enabled_tools = message_data.get("enabled_tools", [])
                 model = message_data.get("model", "claude-3-7-sonnet-20250219")
                 
+                # Extract or create session_id
+                session_id = message_data.get("session_id")
+                print(f"🔍 Received session_id from frontend: {session_id}")
+                
+                if not session_id:
+                    if SESSION_MANAGER_AVAILABLE:
+                        session_id = await session_manager.create_session()
+                        print(f"🆕 Created new Redis session: {session_id}")
+                    else:
+                        session_id = f"ws_{id(websocket)}_{int(time.time())}"
+                        print(f"🆕 Created fallback session: {session_id}")
+                else:
+                    print(f"⚠️ Frontend sent session_id: {session_id} - this should not happen initially")
+                
                 if not query:
                     # Log the message that caused the error for debugging
                     print(f"Received message without query: {message_data}")
@@ -130,6 +153,7 @@ async def websocket_chat(websocket: WebSocket):
                         json.dumps({
                             "type": "response",
                             "message": simple_queries[query_lower],
+                            "session_id": session_id,
                             "status": "success"
                         }),
                         websocket
@@ -148,20 +172,60 @@ async def websocket_chat(websocket: WebSocket):
                 )
 
                 try:
+                    # Get conversation history for context (if session manager available)
+                    conversation_history = []
+                    context_prompt = ""
+                    
+                    if SESSION_MANAGER_AVAILABLE:
+                        # First, get existing conversation history
+                        conversation_history = await session_manager.get_conversation_context(session_id)
+                        
+                        # Include conversation history in AI prompt
+                        if conversation_history:
+                            context_prompt = "Previous conversation:\n"
+                            for msg in conversation_history[-10:]:  # Last 10 messages
+                                context_prompt += f"{msg['role']}: {msg['content']}\n"
+                            context_prompt += "\nCurrent question: "
+                            print(f"🧠 Including {len(conversation_history)} previous messages in context")
+                            print(f"📝 Context prompt: {context_prompt[:200]}...")
+                        else:
+                            print(f"🧠 No previous conversation history for session {session_id}")
+                        
+                        # Add user message to history AFTER getting context
+                        user_message = {
+                            "role": "user",
+                            "content": query,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                        await session_manager.add_message(session_id, user_message)
+                    
                     # Process query with enabled tools (guarded per-socket)
+                    full_prompt = context_prompt + query
+                    print(f"🤖 Sending to AI: {full_prompt[:300]}...")
+                    
                     async with websocket.__gate:
                         result = await run_mcp_query(
-                            query, enabled_tools, model, session_id, websocket, manager.send_personal_message
+                            full_prompt, enabled_tools, model, session_id, websocket, manager.send_personal_message
                         )
                     
                     if not isinstance(result, dict) or "response" not in result:
                         raise ExternalAPIError("Invalid response from query processor")
                     
-                    # Send response
+                    # Add AI response to history (if session manager available)
+                    if SESSION_MANAGER_AVAILABLE:
+                        ai_message = {
+                            "role": "assistant",
+                            "content": result["response"],
+                            "timestamp": datetime.now().isoformat()
+                        }
+                        await session_manager.add_message(session_id, ai_message)
+                    
+                    # Send response with session_id
                     await manager.send_personal_message(
                         json.dumps({
                             "type": "response",
                             "message": result["response"],
+                            "session_id": session_id,
                             "status": "success",
                             "tokens_used": result.get("tokens_used", 0)
                         }),

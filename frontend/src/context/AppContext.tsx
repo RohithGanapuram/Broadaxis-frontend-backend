@@ -16,6 +16,7 @@ interface AppContextType {
   createNewSession: () => string
   switchToSession: (sessionId: string) => void
   deleteSession: (sessionId: string) => void
+  updateSessionId: (newSessionId: string) => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -44,18 +45,26 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   useEffect(() => {
     const savedSessions = localStorage.getItem('broadaxis-chat-sessions')
     if (savedSessions) {
-      const sessions = JSON.parse(savedSessions).map((s: any) => ({
-        ...s,
-        createdAt: new Date(s.createdAt),
-        updatedAt: new Date(s.updatedAt),
-        messages: s.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
-      }))
-      setChatSessions(sessions)
-      if (sessions.length > 0) {
-        const lastSession = sessions[sessions.length - 1]
-        setCurrentSessionId(lastSession.id)
-        setMessages(lastSession.messages)
+      try {
+        const sessions = JSON.parse(savedSessions).map((s: any) => ({
+          ...s,
+          createdAt: new Date(s.createdAt),
+          updatedAt: new Date(s.updatedAt),
+          messages: s.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+        }))
+        setChatSessions(sessions)
+        if (sessions.length > 0) {
+          const lastSession = sessions[sessions.length - 1]
+          setCurrentSessionId(lastSession.id)
+          setMessages(lastSession.messages)
+        }
+        console.log('📂 Loaded sessions from localStorage')
+      } catch (error) {
+        console.error('Error loading sessions:', error)
+        setChatSessions([])
       }
+    } else {
+      console.log('🔄 Starting fresh with Redis session management')
     }
   }, [])
 
@@ -63,6 +72,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   useEffect(() => {
     if (chatSessions.length > 0) {
       localStorage.setItem('broadaxis-chat-sessions', JSON.stringify(chatSessions))
+      console.log('💾 Saved sessions to localStorage')
     }
   }, [chatSessions])
 
@@ -71,7 +81,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (currentSessionId && messages.length > 0) {
       setChatSessions(prev => prev.map(session => 
         session.id === currentSessionId 
-          ? { ...session, messages, updatedAt: new Date(), title: generateSessionTitle(messages) }
+          ? { 
+              ...session, 
+              messages, 
+              updatedAt: new Date(), 
+              title: generateSessionTitle(messages) 
+            }
           : session
       ))
     }
@@ -86,17 +101,33 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   }
 
   const createNewSession = (): string => {
+    // Create a new session in the sidebar (Redis session will be created by backend)
     const newSession: ChatSession = {
-      id: Date.now().toString(),
+      id: `temp_${Date.now()}`, // Temporary ID until backend assigns real one
       title: `New Chat ${new Date().toLocaleTimeString()}`,
       messages: [],
       createdAt: new Date(),
       updatedAt: new Date()
     }
+    
     setChatSessions(prev => [...prev, newSession])
     setCurrentSessionId(newSession.id)
     setMessages([])
+    
+    console.log('🆕 Created new frontend session, backend will assign Redis session_id')
     return newSession.id
+  }
+
+  // Add function to update session ID from backend
+  const updateSessionId = (newSessionId: string) => {
+    // Update the current session with the real Redis session ID
+    setChatSessions(prev => prev.map(session => 
+      session.id === currentSessionId 
+        ? { ...session, id: newSessionId }
+        : session
+    ))
+    setCurrentSessionId(newSessionId)
+    console.log(`🔄 Updated session ID from ${currentSessionId} to: ${newSessionId}`)
   }
 
   const switchToSession = (sessionId: string) => {
@@ -139,7 +170,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       currentSessionId,
       createNewSession,
       switchToSession,
-      deleteSession
+      deleteSession,
+      updateSessionId
     }}>
       {children}
     </AppContext.Provider>

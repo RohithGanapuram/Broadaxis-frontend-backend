@@ -13,7 +13,7 @@ const ChatInterface: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<FileInfo[]>([])
-  const { tools: availableTools, prompts: availablePrompts, isConnected, messages, setMessages, addMessage, chatSessions, currentSessionId, createNewSession, switchToSession, deleteSession } = useAppContext()
+  const { tools: availableTools, prompts: availablePrompts, isConnected, messages, setMessages, addMessage, chatSessions, currentSessionId, createNewSession, switchToSession, deleteSession, updateSessionId } = useAppContext()
   const [settings, setSettings] = useState<AppSettings>({
     model: 'claude-3-7-sonnet-20250219',
     enabledTools: [],
@@ -95,6 +95,12 @@ const ChatInterface: React.FC = () => {
 
   const handleWebSocketMessage = (data: any) => {
     if (data.type === 'response') {
+      // Always update session ID if provided in response (for Redis testing)
+      if (data.session_id) {
+        console.log(`🆕 Session ID from backend: ${data.session_id}`)
+        updateSessionId(data.session_id)
+      }
+      
       setMessages(prev => prev.map(msg => 
         msg.isLoading ? { 
           ...msg, 
@@ -208,11 +214,21 @@ const ChatInterface: React.FC = () => {
     try {
       // Use WebSocket for all chat (document chat removed)
       if (globalWebSocket.getConnectionStatus()) {
-        globalWebSocket.sendMessage({
+        // Send session_id if we have one, otherwise let backend create new session
+        const messageData: any = {
           query: inputMessage,
           enabled_tools: settings.enabledTools,
           model: settings.model
-        })
+        }
+        
+        if (currentSessionId) {
+          messageData.session_id = currentSessionId
+          console.log(`📤 Sending message with session_id: ${currentSessionId}`)
+        } else {
+          console.log(`📤 Sending message without session_id - backend will create new session`)
+        }
+        
+        globalWebSocket.sendMessage(messageData)
       } else {
         toast.error('Not connected to server. Please refresh the page.')
         setIsLoading(false)
@@ -409,13 +425,15 @@ const ChatInterface: React.FC = () => {
     // Check if this is Step 1 (document identification - new interactive approach)
     const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
                    prompt.name === 'Step-1: Document Identification Assistant' ||
-                   prompt.title === 'Step-1: Document Identification Assistant' ||
                    prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
     
     // Check if this is Step 2 (summary generation)
     const isStep2 = prompt.name === 'Step2_summarize_documents' || 
-                   prompt.title === 'Step-2: Executive Summary of Procurement Document' ||
                    prompt.description.includes('Generate a clear, high-value summary')
+    
+    // Check if this is Step 3 (Go/No-Go recommendation)
+    const isStep3 = prompt.name === 'Step3_go_no_go_recommendation' || 
+                   prompt.description.includes('Generate an exec-style Go/No-Go matrix')
     
     if (isStep1) {
       // For Step 1, enable only specific tools for document categorization
@@ -431,6 +449,14 @@ const ChatInterface: React.FC = () => {
       return settings.enabledTools.filter(tool => !documentGenerationTools.includes(tool))
     }
     
+    if (isStep3) {
+      // For Step 3, disable document generation tools to force analysis in chat
+      const documentGenerationTools = ['generate_pdf_document', 'generate_word_document']
+      const filteredTools = settings.enabledTools.filter(tool => !documentGenerationTools.includes(tool))
+      console.log('Step 3 - Disabled document generation tools, enabled tools:', filteredTools)
+      return filteredTools
+    }
+    
     // For all other prompts, use all enabled tools
     return settings.enabledTools
   }
@@ -441,11 +467,9 @@ const ChatInterface: React.FC = () => {
     // Check if this is the Step1 or Step2 prompt template (both need folder selection)
     const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
                    prompt.name === 'Step-1: Document Identification Assistant' ||
-                   prompt.title === 'Step-1: Document Identification Assistant' ||
                    prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
     
     const isStep2 = prompt.name === 'Step2_summarize_documents' || 
-                   prompt.title === 'Step-2: Executive Summary of Procurement Document' ||
                    prompt.description.includes('Generate a clear, high-value summary')
     
     if (isStep1 || isStep2) {
@@ -458,7 +482,44 @@ const ChatInterface: React.FC = () => {
       // For other prompts (including Step 3), use the description as the query
       console.log('Other prompt detected - executing directly')
       
-      const promptMessage = prompt.description || prompt.name || 'Please execute this prompt template.'
+      // For Step-3, send the full prompt content instead of just description
+      let promptMessage
+      if (prompt.name === 'Step3_go_no_go_recommendation') {
+        promptMessage = `You are BroadAxis-AI, an assistant trained to evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity. 
+
+The user has uploaded one or more opportunity documents. You have already summarized them RFP/RFI documents above. Now perform a structured **Go/No-Go analysis** using the following steps:
+
+---
+
+### 🧠 Step-by-Step Evaluation Framework
+
+1. **Review the RFP Requirements**
+   - Highlight the most critical needs and evaluation criteria.
+
+2. **Search Internal Knowledge** (via Broadaxis_knowledge_search)
+   - Identify relevant past projects
+   - Retrieve proof of experience in similar domains
+   - Surface known strengths or capability gaps
+
+3. **Evaluate Capability Alignment**
+   - Estimate percentage match (e.g., "BroadAxis meets ~85% of the requirements")
+   - Note any missing capabilities or unclear requirements
+
+4. **Assess Resource Requirements**
+   - Are there any specialized skills, timelines, or staffing needs?
+   - Does BroadAxis have the necessary team or partners?
+
+5. **Evaluate Competitive Positioning**
+   - Based on known experience and domain, would BroadAxis be competitive?
+
+**IMPORTANT: Present all analysis directly in the chat interface. DO NOT generate PDF or Word documents.**
+
+Use only verified internal information (via Broadaxis_knowledge_search) and the summaries of the RFP/RFI documents. Do not guess or hallucinate capabilities. If information is missing, clearly state what else is needed for a confident decision.
+
+If your recommendation is a Go, list down the things the user needs to complete to finish the submission of RFP/RFI/RFQ.`
+      } else {
+        promptMessage = prompt.description || prompt.name || 'Please execute this prompt template.'
+      }
       
       setInputMessage(promptMessage)
       setTimeout(() => {
@@ -500,12 +561,10 @@ const ChatInterface: React.FC = () => {
       // Check if this is Step 1 (should work like Step 2 - with folder/file selection)
       const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
                      selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                     selectedPrompt.title === 'Step-1: Document Identification Assistant' ||
                      selectedPrompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
       
       // Check if this is Step 2 (needs file selection)
       const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
-                     selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
       if (isStep1 || isStep2) {
@@ -580,12 +639,10 @@ const ChatInterface: React.FC = () => {
       // Check if this is Step 1 (should work like Step 2 - with file selection)
       const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
                      selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                     selectedPrompt.title === 'Step-1: Document Identification Assistant' ||
                      selectedPrompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
       
       // Check if this is Step 2 (needs file selection)
       const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
-                     selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
       if (isStep1 || isStep2) {
@@ -640,11 +697,9 @@ const ChatInterface: React.FC = () => {
       // Check if this is Step 1 or Step 2 to customize the message
       const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
                      selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                     selectedPrompt.title === 'Step-1: Document Identification Assistant' ||
                      selectedPrompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
       
       const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
-                     selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
       let promptMessage = ''
@@ -986,10 +1041,16 @@ const ChatInterface: React.FC = () => {
                             <div className="text-xs text-blue-600 mt-1">{prompt.description}</div>
                                                          {/* Add indicator for Step 1 */}
                              {(prompt.name === 'Step1_Identifying_documents' || 
-                               prompt.name === 'Step-1: Document Identification Assistant' ||
-                               prompt.title === 'Step-1: Document Identification Assistant') && (
+                               prompt.name === 'Step-1: Document Identification Assistant') && (
                                <div className="text-xs text-green-600 mt-1 font-medium">
                                  🎯 Primary RFP document categorization
+                               </div>
+                             )}
+                             
+                             {/* Add indicator for Step 3 */}
+                             {(prompt.name === 'Step3_go_no_go_recommendation') && (
+                               <div className="text-xs text-orange-600 mt-1 font-medium">
+                                 📊 Go/No-Go analysis in chat
                                </div>
                              )}
                           </button>
@@ -1036,16 +1097,14 @@ const ChatInterface: React.FC = () => {
                                        <p className="text-sm text-blue-600 mb-4">
                       Choose the SharePoint folder you want to 
                       {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
-                       selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                       selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                       selectedPrompt.name === 'Step-1: Document Identification Assistant')
                         ? ' categorize primary RFP documents from:'
                         : ' analyze for RFP/RFI/RFQ documents:'}
                     </p>
                    
                                        {/* Show special message for Step 1 */}
                     {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
-                      selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                      selectedPrompt.title === 'Step-1: Document Identification Assistant') && (
+                      selectedPrompt.name === 'Step-1: Document Identification Assistant') && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                         <div className="flex items-start space-x-2">
                           <span className="text-green-600 text-sm">📁</span>
@@ -1102,11 +1161,9 @@ const ChatInterface: React.FC = () => {
                    <div className="flex items-center justify-between mb-4">
                                            <h3 className="font-bold text-blue-800 text-lg">
                         {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
-                         selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                         selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                         selectedPrompt.name === 'Step-1: Document Identification Assistant')
                           ? '📁 Select Project Folder' 
                           : selectedPrompt && (selectedPrompt.name === 'Step2_summarize_documents' || 
-                           selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
                            selectedPrompt.description.includes('Generate a clear, high-value summary'))
                           ? '📁 Select Project Folder' 
                           : '📁 Select Project Folder'}
@@ -1135,11 +1192,9 @@ const ChatInterface: React.FC = () => {
                    
                                        <p className="text-sm text-blue-600 mb-4">
                       {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
-                       selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                       selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                       selectedPrompt.name === 'Step-1: Document Identification Assistant')
                          ? `Choose a project folder within ${selectedParentFolder} to browse documents:`
                          : selectedPrompt && (selectedPrompt.name === 'Step2_summarize_documents' || 
-                          selectedPrompt.title === 'Step-2: Executive Summary of Procurement Document' ||
                           selectedPrompt.description.includes('Generate a clear, high-value summary'))
                          ? `Choose a project folder within ${selectedParentFolder} to browse documents:`
                          : `Choose a project folder within ${selectedParentFolder}:`
@@ -1203,8 +1258,7 @@ const ChatInterface: React.FC = () => {
                     <div className="flex items-center justify-between mb-4">
                                              <h3 className="font-bold text-blue-800 text-lg">
                          {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
-                          selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                          selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                          selectedPrompt.name === 'Step-1: Document Identification Assistant')
                            ? '📄 Select Document to Categorize' 
                            : '📄 Select Document to Summarize'}
                        </h3>
@@ -1234,8 +1288,7 @@ const ChatInterface: React.FC = () => {
                                                             <p className="text-sm text-blue-600 mb-4">
                        Choose a document from <span className="font-medium">{selectedFolder}</span> to 
                        {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
-                        selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                        selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                        selectedPrompt.name === 'Step-1: Document Identification Assistant')
                          ? ' categorize as primary RFP document or not:'
                          : ' generate an executive summary:'}
                      </p>
@@ -1265,8 +1318,7 @@ const ChatInterface: React.FC = () => {
                              </div>
                                                            <div className="text-blue-600 text-sm">
                                 {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
-                                 selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                                 selectedPrompt.title === 'Step-1: Document Identification Assistant')
+                                 selectedPrompt.name === 'Step-1: Document Identification Assistant')
                                   ? 'Click to categorize →'
                                   : 'Click to summarize →'}
                               </div>
