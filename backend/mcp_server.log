@@ -1,605 +1,994 @@
-2025-08-26 00:41:57,355 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-26 16:33:45,459 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-26 00:41:57,356 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:41:57,379 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:42:03,031 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:42:03,032 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:42:03,051 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:42:03,090 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:42:03,095 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 00:42:06,743 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:42:08,243 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 00:42:09,092 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:42:11,775 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:42:11,775 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/14-Special Requirements.pdf
-2025-08-26 00:42:13,237 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/14-Special Requirements.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:42:17,001 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:42:17,002 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/15-Specifications.pdf
-2025-08-26 00:42:18,669 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/15-Specifications.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:42:22,589 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:42:22,590 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/5-General Requirements for Proposals (1).pdf
-2025-08-26 00:42:23,780 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:42:28,535 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:42:28,536 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/dpsapp.pdf
-2025-08-26 00:42:29,631 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/dpsapp.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:42:32,973 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:42:32,974 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/eval_metrics.pdf
-2025-08-26 00:42:35,011 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/eval_metrics.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:42:38,648 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:42:38,648 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/MoneyQuest.pdf
-2025-08-26 00:42:39,880 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/MoneyQuest.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:45:48,759 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:45:48,759 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:45:48,778 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:45:54,693 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:45:54,694 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:45:54,725 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:45:54,794 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:45:54,796 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 00:45:58,279 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:45:59,922 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 00:46:00,759 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:47:21,767 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:47:21,768 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:47:21,811 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:47:29,207 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:47:29,208 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:47:29,243 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:47:29,307 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:47:29,309 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 00:47:33,057 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:47:34,912 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 00:47:35,662 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:51:45,548 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:51:45,549 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:51:45,573 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:51:51,607 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:51:51,609 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:51:51,662 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:51:51,708 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:51:51,711 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 00:51:54,532 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:51:56,222 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 00:51:56,927 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:51:59,280 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:51:59,280 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/14-Special Requirements.pdf
-2025-08-26 00:52:00,597 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/14-Special Requirements.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:52:03,509 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:52:03,510 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/15-Specifications.pdf
-2025-08-26 00:52:04,802 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/15-Specifications.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:52:17,097 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:52:17,097 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/5-General Requirements for Proposals (1).pdf
-2025-08-26 00:52:18,234 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:52:22,315 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:52:22,315 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/dpsapp.pdf
-2025-08-26 00:52:23,314 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/dpsapp.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:52:26,422 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:52:26,423 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/eval_metrics.pdf
-2025-08-26 00:52:28,390 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/eval_metrics.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:52:34,896 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:52:34,897 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/MoneyQuest.pdf
-2025-08-26 00:52:36,533 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/MoneyQuest.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:57:07,330 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:57:07,334 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:57:07,386 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:57:13,353 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:57:13,354 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:57:13,374 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:57:13,410 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:57:13,411 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 00:57:16,209 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:57:17,972 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 00:57:18,814 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:57:21,878 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:57:21,879 - MCPServer - INFO - PDF preview: path='RFP/Harris county/14-Special Requirements.pdf', preview_lines=50
-2025-08-26 00:57:25,721 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:57:25,722 - MCPServer - INFO - PDF preview: path='RFP/Harris county/15-Specifications.pdf', preview_lines=50
-2025-08-26 00:57:29,228 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:57:29,228 - MCPServer - INFO - PDF preview: path='RFP/Harris county/5-General Requirements for Proposals (1).pdf', preview_lines=50
-2025-08-26 00:57:33,387 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:57:33,387 - MCPServer - INFO - PDF preview: path='RFP/Harris county/dpsapp.pdf', preview_lines=50
-2025-08-26 00:57:37,296 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:57:37,297 - MCPServer - INFO - PDF preview: path='RFP/Harris county/eval_metrics.pdf', preview_lines=50
-2025-08-26 00:57:41,366 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:57:41,366 - MCPServer - INFO - PDF preview: path='RFP/Harris county/MoneyQuest.pdf', preview_lines=50
-2025-08-26 00:58:05,747 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:58:05,750 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/dpsapp.pdf
-2025-08-26 00:58:06,975 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/dpsapp.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:58:28,516 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 00:58:28,516 - MCPServer - INFO - Reading file from SharePoint: RFP/Harris county/eval_metrics.pdf
-2025-08-26 00:58:29,781 - MCPServer - INFO - PDF text extraction: path='RFP/Harris county/eval_metrics.pdf', pages='first', clean_text=True, preserve_structure=True, extract_tables=False, max_pages=1
-2025-08-26 00:59:49,560 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:59:49,569 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:59:49,598 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:59:55,784 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 00:59:55,784 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 00:59:55,809 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 00:59:55,855 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 00:59:55,856 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 00:59:58,722 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 01:00:00,343 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 01:00:01,002 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:11:08,607 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:11:08,607 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:11:08,631 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:11:15,216 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:11:15,217 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:11:15,244 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:11:15,312 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:11:18,450 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 01:11:20,003 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 01:11:20,699 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:11:39,687 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:11:39,687 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:11:39,717 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:11:46,604 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:11:46,604 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:11:46,626 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:11:46,673 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:11:49,382 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 01:11:50,908 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 01:11:51,596 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:12:35,493 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:12:35,493 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:12:35,527 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:12:41,233 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:12:41,233 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:12:41,259 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:12:41,316 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:12:44,628 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 01:12:46,167 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 01:12:46,937 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:13:25,185 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:13:25,186 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:13:25,239 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:13:31,546 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:13:31,547 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:13:31,569 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:13:31,616 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:13:34,193 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 01:13:35,658 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 01:13:36,401 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:14:29,815 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:14:29,815 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:14:29,834 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:14:35,677 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 01:14:35,678 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 01:14:35,697 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 01:14:35,731 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 01:14:38,453 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 01:14:39,990 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 01:14:40,646 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 10:40:03,218 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 10:40:03,219 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 10:40:03,235 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 10:40:03,269 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 10:40:03,271 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 10:40:38,120 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 10:40:38,121 - MCPServer - INFO - Searching for: AI engineer job duties responsibilities at Broadaxis
-2025-08-26 10:40:38,122 - MCPServer - INFO - Embedding text of length: 52
-2025-08-26 10:40:40,006 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-2025-08-26 10:40:40,009 - MCPServer - INFO - Generated embedding with dimension: 1536
-2025-08-26 10:40:40,009 - MCPServer - INFO - Query embedding dimension: 1536
-2025-08-26 10:40:40,218 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
-2025-08-26 10:40:40,222 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_service_63_dbd9ab4d3c93',
+2025-08-26 16:33:45,459 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-26 16:33:45,470 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-26 16:33:45,498 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-26 16:33:45,499 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-26 16:34:02,336 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-26 16:34:02,727 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
+2025-08-26 16:34:17,586 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-26 16:34:17,587 - MCPServer - INFO - Searching for: what is BroadAxis company information overview history services
+2025-08-26 16:34:17,588 - MCPServer - INFO - Embedding text of length: 63
+2025-08-26 16:34:18,709 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-08-26 16:37:30,174 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-08-26 16:37:30,174 - MCPServer - INFO - Query embedding dimension: 1536
+2025-08-26 16:37:31,084 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
+2025-08-26 16:37:31,092 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_service_0_34fb671c6c7c',
               'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Detailed Job Duties:  \n'
-                                   '\uf0b7 Design, devel op, and maintain '
-                                   'robust, scalable ETL pipelines to support '
-                                   'AI -driven recruitment and \n'
-                                   'operational analytics within BroadAxis.  \n'
-                                   '\uf0b7 Architect high -performance data '
-                                   'systems using cloud platforms like AWS, '
-                                   'Azure, and GCP to ensure \n'
-                                   'secure and reliable access to stru ctured '
-                                   'and unstructured data.  \n'
-                                   '\uf0b7 Build and manage modern data '
-                                   'architectures incorporating S3, Snowflake, '
-                                   'EMR, EC2, and Airflow to \n'
-                                   'support machine learning models and '
-                                   'enterprise analytics.  \n'
-                                   '\uf0b7 Perform data extraction, '
-                                   'transformation, and loading (ETL) from '
-                                   'various  SOR (Sources of Record) into \n'
-                                   'centralized repositories including '
-                                   'Snowflake and Oracle.  \n'
-                                   '\uf0b7 Collaborate with data scientists '
-                                   'and analysts to enable data -driven '
-                                   'decision -making by ensuring \n'
-                                   'accessibility, consistency, and timeliness '
-                                   'of datasets.  \n'
-                                   '\uf0b7 Implement rigorou s data quality '
-                                   'checks and monitoring protocols to '
-                                   'maintain the accuracy and \n'
-                                   'integrity of data used across '
-                                   'departments.  \n'
-                                   '\uf0b7 Lead cloud migration initiatives, '
-                                   'including transitioning data warehouses '
-                                   'from Teradata to Snowflake, \n'
-                                   'optimizing performance and reducing  '
-                                   'infrastructure costs.  \n'
-                                   '\uf0b7 Use PySpark and Linux -based '
-                                   'scripting to automate large -scale data '
-                                   'ingestion workflows, ensuring \n'
-                                   'efficiency in daily operations and '
-                                   'reporting.  \n'
-                                   '\uf0b7 Participate in production support '
-                                   'by managing incident tickets via '
-                                   'ServiceNow, coordinatin g with \n'
-                                   'development, infrastructure, and business '
-                                   'teams to resolve critical issues.'},
-              'score': 0.676791489,
+                           'text': 'Who We Are – BroadAxis, Inc.  \n'
+                                   'BroadAxis, Inc. is a Texas -based, '
+                                   'minority -owned IT services and consulting '
+                                   'company with over six years of \n'
+                                   'experience delivering innovative '
+                                   'technology solutions. Headquartered in '
+                                   'Plano, Texas, we serve a wide range \n'
+                                   'of clients across industries including '
+                                   'government, healthcare, finance, '
+                                   'education, retail, and energy.  \n'
+                                   'Our mission is to empower businesses by '
+                                   'providing tailored, cutting -edge IT '
+                                   'services that drive digital \n'
+                                   'transformation, operational efficiency, '
+                                   "and long -term growth . Whether it's "
+                                   'modernizing legacy systems, \n'
+                                   'building intelligent cloud '
+                                   'infrastructures, or staffing specialized '
+                                   'talent for mission -critical roles, '
+                                   'BroadAxis is \n'
+                                   'built to solve complex challenges.  \n'
+                                   'We take pride in our client -centric '
+                                   'approach, where every enga gement is '
+                                   'guided by a focus on quality, speed, \n'
+                                   'transparency, and measurable results.'},
+              'score': 0.781143,
               'values': []},
-             {'id': 'infoDoc.pdf_service_9_f61c51169b47',
+             {'id': 'infoDoc.pdf_service_16_558d2b6e8966',
               'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'controls for sensitive state data.  \n'
-                                   '\uf0b7 America 250  – Supported security '
-                                   'program development, user training, and '
-                                   'compliance readiness.  \n'
-                                   'Artificial Intelligence (AI)  \n'
-                                   'BroadAxis leverages artificial intellig '
-                                   'ence to unlock new levels of efficiency, '
-                                   'automation, and strategic insight. \n'
-                                   'Our AI offerings combine top -tier talent, '
-                                   'technical capability, and real -world '
-                                   'application to help organizations \n'
-                                   'adopt AI responsibly and effectively.  \n'
-                                   'Our Services Include:  \n'
-                                   '\uf0b7 Excelle nce in AI Delivery  \n'
-                                   'Deploying advanced AI/ML/NLP solutions '
-                                   'that drive automation, boost accuracy, and '
-                                   'uncover hidden \n'
-                                   'insights.  \n'
-                                   '\uf0b7 AI Guidance & Enablement  \n'
-                                   'Providing expert -led training, strategic '
-                                   'planning, and advisory support to help '
-                                   'clients navigate the \n'
-                                   'evol ving AI landscape.  \n'
-                                   '\uf0b7 Strategic AI Implementation  \n'
-                                   'Designing step -by-step roadmaps —from '
-                                   'initial AI readiness assessments to proof '
-                                   '-of-concept (PoC) \n'
-                                   'deployments and scalable production '
-                                   'rollouts.  \n'
-                                   '\uf0b7 Access to Elite AI Talent  \n'
-                                   'Offering a highly skilled team of AI engi '
-                                   'neers, data scientists, and solution '
-                                   'architects ready to build \n'
-                                   'transformative solutions across '
-                                   'industries.  \n'
-                                   'Recent Successful Past Performance:  \n'
-                                   '\uf0b7 Internal Platform Development  – '
-                                   'BroadAxis successfully built and deployed '
-                                   'a proprietary AI/ML/NLP -\n'
-                                   'driven talent a cquisition engine, '
-                                   'streamlining recruitment and improving '
-                                   'operational efficiency \n'
-                                   'through automation.  \n'
-                                   'IT Consulting Services'},
-              'score': 0.663679659,
+                           'text': 'Relationships with top -tier technology '
+                                   'providers and internal frameworks that '
+                                   'accelerate time -to-\n'
+                                   'value.  \n'
+                                   '\uf0b7 End-to-End Services  \n'
+                                   'From strategic consulting to hands -on '
+                                   'implementation —we support the full '
+                                   'technology lifecycle \n'
+                                   'under one roof.  \n'
+                                   'In-House Inf rastructure  \n'
+                                   'At BroadAxis, we back our service delivery '
+                                   'with a strong, reliable in -house '
+                                   'infrastructure designed to support \n'
+                                   'performance, security, and scalability.  \n'
+                                   'Our Internal Capabilities Include:  \n'
+                                   '\uf0b7 State -of-the-Art Facilities  \n'
+                                   'Equipped with enterprise -grade  systems '
+                                   'that enable seamless execution of complex '
+                                   'IT projects.  \n'
+                                   '\uf0b7 High -Speed Connectivity & '
+                                   'Networking  \n'
+                                   'Redundant high -speed internet and '
+                                   'advanced networking hardware ensure '
+                                   'uninterrupted operations \n'
+                                   'and real -time client collaboration.  \n'
+                                   '\uf0b7 Modern Computing Environ ment  \n'
+                                   'Robust server infrastructure, secure VPN '
+                                   'access, and virtualized environments that '
+                                   'mirror enterprise \n'
+                                   'client setups.  \n'
+                                   '\uf0b7 Secure Data Centers  \n'
+                                   'Internal data storage, backup systems, and '
+                                   'compliance -driven security protocols to '
+                                   'ensure data \n'
+                                   'protection and opera tional continuity.  \n'
+                                   'This infrastructure allows BroadAxis to '
+                                   'meet demanding client expectations '
+                                   '—supporting projects with speed, \n'
+                                   'resilience, and confidence.  \n'
+                                   'Cloud & Cyber Security Expertise  \n'
+                                   'BroadAxis, Inc. is a trusted provider of '
+                                   'advanced cloud and cybersecu rity '
+                                   'solutions. Our expert team delivers \n'
+                                   'tailored, enterprise -grade services that '
+                                   'help organizations modernize securely and '
+                                   'operate with confidence.'},
+              'score': 0.750285506,
               'values': []},
-             {'id': 'infoDoc.pdf_chunk_34_f493ae081d22',
+             {'id': 'infoDoc.pdf_service_15_b4862a748c0c',
               'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'Position Title:  Data Engineer  \n'
-                                   'Detailed Job Duties:  \n'
-                                   '\uf0b7 Design, devel op, and maintain '
-                                   'robust, scalable ETL pipelines to support '
-                                   'AI -driven recruitment and \n'
-                                   'operational analytics within BroadAxis.  \n'
-                                   '\uf0b7 Architect high -performance data '
-                                   'systems using cloud platforms like AWS, '
-                                   'Azure, and GCP to ensure \n'
-                                   'secure and reliable access to stru ctured '
-                                   'and unstructured data.  \n'
-                                   '\uf0b7 Build and manage modern data '
-                                   'architectures incorporating S3, Snowflake, '
-                                   'EMR, EC2, and Airflow to \n'
-                                   'support machine learning models and '
-                                   'enterprise analytics.  \n'
-                                   '\uf0b7 Perform data extraction, '
-                                   'transformation, and loading (ETL) from '
-                                   'various  SOR (Sources of Record) into \n'
-                                   'centralized repositories including '
-                                   'Snowflake and Oracle.  \n'
-                                   '\uf0b7 Collaborate with data scientists '
-                                   'and analysts to enable data -driven '
-                                   'decision -making by ensuring \n'
-                                   'accessibility, consistency, and timeliness '
-                                   'of datasets.  \n'
-                                   '\uf0b7 Implement rigorou s data quality '
-                                   'checks and monitoring protocols to '
-                                   'maintain the accuracy and \n'
-                                   'integrity of data used across '
-                                   'departments.  \n'
-                                   '\uf0b7 Lead cloud migration initiatives, '
-                                   'including transitioning data warehouses '
-                                   'from Teradata to Snowflake, \n'
-                                   'optimizing performance and reducing  '
-                                   'infrastructure costs.  \n'
-                                   '\uf0b7 Use PySpark and Linux -based '
-                                   'scripting to automate large -scale data '
-                                   'ingestion workflows, ensuring \n'
-                                   'efficiency in daily operations and '
-                                   'reporting.  \n'
-                                   '\uf0b7 Participate in production support '
-                                   'by managing incident tickets via '
-                                   'ServiceNow, coordinatin g with \n'
-                                   'development, infrastructure, and business '
-                                   'teams to resolve critical issues.  \n'
-                                   '\uf0b7 Serve as the single point of '
-                                   'contact for development and production '
-                                   'teams during migration and \n'
-                                   'transformation projects, ensuring SLA and '
-                                   'SLE compliance.  \n'
-                                   '\uf0b7 Document data workfl ows, business '
-                                   'logic, and lineage to promote governance, '
-                                   'internal knowledge \n'
-                                   'sharing, and long -term maintainability.'},
-              'score': 0.658675492,
+                           'text': '\uf0b7 Energy  – Infrastructure '
+                                   'modernization, reporting systems, and '
+                                   'operational dashboards  \n'
+                                   'This wide -ranging expertise enables us to '
+                                   'deliver tailored solutions that align with '
+                                   'industry standards and \n'
+                                   'regulatory requirements.  \n'
+                                   'Why Choose BroadAxis, Inc.  \n'
+                                   'At BroadAxis, we don’t just deliver '
+                                   'services —we build lasting partnerships '
+                                   'rooted in trust, performan ce, and \n'
+                                   'innovation. Our team is committed to '
+                                   'helping clients succeed by delivering '
+                                   'measurable results and long -term \n'
+                                   'value.  \n'
+                                   'What Sets Us Apart:  \n'
+                                   '\uf0b7 Experienced & Skilled '
+                                   'Professionals  \n'
+                                   'A diverse team with deep expertise across '
+                                   'cloud, data, cybersecurity, software '
+                                   'development, and \n'
+                                   'project management.  \n'
+                                   '\uf0b7 Uncompromising Quality & Customer '
+                                   'Focus  \n'
+                                   'Every engagement is guided by clear goals, '
+                                   'open communication, and a drive for '
+                                   'excellence.  \n'
+                                   '\uf0b7 Flexible & Competitive Models  \n'
+                                   'We offer scalable engagement options, '
+                                   'transparent  pricing, and customized '
+                                   'solutions for every client \n'
+                                   'type —startups, enterprises, or public '
+                                   'agencies.  \n'
+                                   '\uf0b7 Proven Track Record  \n'
+                                   'Consistent delivery across state agencies '
+                                   '(DIR, HHSC, TEA, TWC), nonprofits, and '
+                                   'commercial \n'
+                                   'organizations.  \n'
+                                   '\uf0b7 Strong Partnerships & Technol ogy '
+                                   'Stack  \n'
+                                   'Relationships with top -tier technology '
+                                   'providers and internal frameworks that '
+                                   'accelerate time -to-\n'
+                                   'value.  \n'
+                                   '\uf0b7 End-to-End Services  \n'
+                                   'From strategic consulting to hands -on '
+                                   'implementation —we support the full '
+                                   'technology lifecycle \n'
+                                   'under one roof.  \n'
+                                   'In-House Inf rastructure'},
+              'score': 0.738123715,
               'values': []},
-             {'id': 'infoDoc.pdf_chunk_11_d09d45d36589',
+             {'id': 'infoDoc.pdf_service_17_e43ece68ad79',
               'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'insights.  \n'
-                                   '\uf0b7 AI Guidance & Enablement  \n'
-                                   'Providing expert -led training, strategic '
-                                   'planning, and advisory support to help '
-                                   'clients navigate the \n'
-                                   'evol ving AI landscape.  \n'
-                                   '\uf0b7 Strategic AI Implementation  \n'
-                                   'Designing step -by-step roadmaps —from '
-                                   'initial AI readiness assessments to proof '
-                                   '-of-concept (PoC) \n'
-                                   'deployments and scalable production '
-                                   'rollouts.  \n'
-                                   '\uf0b7 Access to Elite AI Talent  \n'
-                                   'Offering a highly skilled team of AI engi '
-                                   'neers, data scientists, and solution '
-                                   'architects ready to build \n'
-                                   'transformative solutions across '
-                                   'industries.  \n'
-                                   'Recent Successful Past Performance:  \n'
-                                   '\uf0b7 Internal Platform Development  – '
-                                   'BroadAxis successfully built and deployed '
-                                   'a proprietary AI/ML/NLP -\n'
-                                   'driven talent a cquisition engine, '
-                                   'streamlining recruitment and improving '
-                                   'operational efficiency \n'
-                                   'through automation.  \n'
-                                   'IT Consulting Services  \n'
-                                   'BroadAxis provides expert IT consulting to '
-                                   'help organizations plan strategically, '
-                                   'execute effectively, and scale \n'
-                                   'securely. Whether a dvising on enterprise '
-                                   'architecture or overseeing project '
-                                   'delivery, our consultants align \n'
-                                   'technology with business outcomes.  \n'
-                                   'Our Services Include:  \n'
-                                   '\uf0b7 Technology Strategy & Planning'},
-              'score': 0.656076908,
+                           'text': 'resilience, and confidence.  \n'
+                                   'Cloud & Cyber Security Expertise  \n'
+                                   'BroadAxis, Inc. is a trusted provider of '
+                                   'advanced cloud and cybersecu rity '
+                                   'solutions. Our expert team delivers \n'
+                                   'tailored, enterprise -grade services that '
+                                   'help organizations modernize securely and '
+                                   'operate with confidence.  \n'
+                                   'What We Offer:  \n'
+                                   '\uf0b7 End-to-End Cloud Services  \n'
+                                   'From cloud migration to infrastructure '
+                                   'management (AWS, Azure, GCP ), we enable '
+                                   'seamless, \n'
+                                   'scalable, and cost -effective '
+                                   'operations.  \n'
+                                   '\uf0b7 Enterprise -Grade Cybersecurity  \n'
+                                   'We build multilayered defense systems that '
+                                   'include threat detection, compliance '
+                                   'management, \n'
+                                   'identity protection, and incident '
+                                   'response.  \n'
+                                   '\uf0b7 Customized Solutions  \n'
+                                   'Ever y client engagement is approached '
+                                   'uniquely —ensuring cloud and security '
+                                   'strategies align with \n'
+                                   'business needs, compliance frameworks, and '
+                                   'technical requirements.  \n'
+                                   '\uf0b7 Business Enablement Through '
+                                   'Security  \n'
+                                   'By securing systems, data, and networks, '
+                                   'we empower organiz ations to focus on '
+                                   'growth, agility, and \n'
+                                   'innovation —without compromising '
+                                   'safety.  \n'
+                                   'Why BroadAxis?  \n'
+                                   'We combine technical excellence, rapid '
+                                   'implementation, and continuous support to '
+                                   'deliver cloud and security \n'
+                                   'solutions that protect what matters '
+                                   'most.  \n'
+                                   'Business Intelligence & Data Warehousing '
+                                   'Expertise  \n'
+                                   'BroadAxis, Inc. offers end -to-end '
+                                   'Business Intelligence (BI) and data '
+                                   'integration services designed to empower \n'
+                                   'decision -makers with real -time, '
+                                   'actionable insights. As a Texas -based MBE '
+                                   'HUB -certified firm with extensive'},
+              'score': 0.71435672,
               'values': []},
-             {'id': 'infoDoc.pdf_chunk_53_d737d1c67d2f',
+             {'id': 'infoDoc.pdf_experience_13_1b5f96e78c8f',
               'metadata': {'source': 'infoDoc.pdf',
-                           'text': 'efficient batch processing.  \n'
-                                   '\uf0b7 Perform performance tuning and root '
-                                   'cause analysis to improve ETL process '
-                                   'efficiency, reduce system \n'
-                                   'load, and eliminate  bottlenecks.  \n'
-                                   '\uf0b7 Contribute to the development of '
-                                   'centralized data models and enterprise '
-                                   'data lakes, supporting \n'
-                                   'analytics for recruitment, finance, and '
-                                   'delivery teams.  \n'
-                                   '\uf0b7 Document data workflows, data '
-                                   'lineage, and transformation logic to '
-                                   'support audit readiness and \n'
-                                   'promote internal knowledge sharing.  \n'
-                                   '\uf0b7 Lead and mentor junior ETL '
-                                   'developers on best practices, and '
-                                   'participate in data governance and \n'
-                                   'compliance initiatives across enterprise '
-                                   'data systems.  \n'
-                                   'Position Title:  Data Engineer  \n'
-                                   'Detailed Job Duties:  \n'
-                                   '\uf0b7 Design, devel op, and maintain '
-                                   'robust, scalable ETL pipelines to support '
-                                   'AI -driven recruitment and \n'
-                                   'operational analytics within BroadAxis.  \n'
-                                   '\uf0b7 Architect high -performance data '
-                                   'systems using cloud platforms like AWS, '
-                                   'Azure, and GCP to ensure \n'
-                                   'secure and reliable access to stru ctured '
-                                   'and unstructured data.  \n'
-                                   '\uf0b7 Build and manage modern data '
-                                   'architectures incorporating S3, Snowflake, '
-                                   'EMR, EC2, and Airflow to \n'
-                                   'support machine learning models and '
-                                   'enterprise analytics.'},
-              'score': 0.645782769,
+                           'text': 'We excel in placing top -tier profess '
+                                   'ionals in cybersecurity, cloud '
+                                   'architecture, data engineering, \n'
+                                   'software development, and infrastructure '
+                                   'roles.  \n'
+                                   '\uf0b7 AI-Powered Talent Matching  \n'
+                                   'Our proprietary in -house AI algorithms '
+                                   'accelerate candidate screening, eliminate '
+                                   'unconscious bias, \n'
+                                   'and enhance the quality of hires.  \n'
+                                   '\uf0b7 End-to-End Technical Support  \n'
+                                   'From requirement gathering to onboarding '
+                                   'and delivery oversight, we provide full '
+                                   'lifecycle support to \n'
+                                   'ensure technical and cultural '
+                                   'alignment.  \n'
+                                   "BroadAxis doesn't just fill roles —we "
+                                   'deliver expertise that drives  results.  \n'
+                                   'Logistic Support  \n'
+                                   'BroadAxis goes beyond technical delivery '
+                                   '—we also provide flexible logistical and '
+                                   'financial support to help \n'
+                                   'clients manage project timelines, budgets, '
+                                   'and resource onboarding with ease.  \n'
+                                   'Our Support Includes:  \n'
+                                   '\uf0b7 Flexible Payment Terms  \n'
+                                   'We offer customizable billing plans to '
+                                   'accommodate client budget cycles and '
+                                   'financial workflows.  \n'
+                                   '\uf0b7 Project Financing  \n'
+                                   'Through our financing partners, clients '
+                                   'can spread the cost of IT projects over '
+                                   'time —making \n'
+                                   'innovation more accessible and '
+                                   'sustainable.  \n'
+                                   '\uf0b7 Cand idate Sponsorship  \n'
+                                   'We handle visa sponsorship and compliance '
+                                   'for specialized talent, ensuring seamless '
+                                   'onboarding and \n'
+                                   'delivery continuity.  \n'
+                                   'This combination of financial flexibility '
+                                   'and operational agility enables our '
+                                   'clients to move faster without \n'
+                                   'compromis ing control or compliance.  \n'
+                                   'Industries We Serve'},
+              'score': 0.710375726,
               'values': []}],
  'namespace': 'broadaxis-index',
  'usage': {'read_units': 1}}
-2025-08-26 10:40:40,224 - MCPServer - INFO - Found 5 matches
-2025-08-26 10:40:40,224 - MCPServer - INFO - Match 1: score=0.6768, source=infoDoc.pdf, text_len=1453
-2025-08-26 10:40:40,224 - MCPServer - INFO - Match 2: score=0.6637, source=infoDoc.pdf, text_len=1409
-2025-08-26 10:40:40,225 - MCPServer - INFO - Match 3: score=0.6587, source=infoDoc.pdf, text_len=1786
-2025-08-26 10:40:40,225 - MCPServer - INFO - Match 4: score=0.6561, source=infoDoc.pdf, text_len=1135
-2025-08-26 10:40:40,225 - MCPServer - INFO - Match 5: score=0.6458, source=infoDoc.pdf, text_len=1143
-2025-08-26 10:41:32,070 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 10:41:32,080 - MCPServer - INFO - Performing web search for query: Bahubali The Conclusion release date box office collections
-2025-08-26 10:41:37,069 - MCPServer - INFO - Web search completed successfully. Found 5 results
-2025-08-26 10:41:41,252 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 10:41:41,252 - MCPServer - INFO - Performing web search for query: Baahubali 2 The Conclusion worldwide box office final collections total
-2025-08-26 10:41:45,486 - MCPServer - INFO - Web search completed successfully. Found 5 results
-2025-08-26 10:42:28,424 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 10:42:57,447 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 10:42:59,023 - MCPServer - ERROR - SharePoint list files error: cannot import name 'SharePointManager' from 'api' (C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\backend\api.py)
-2025-08-26 10:43:01,751 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 10:48:01,191 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 10:48:01,191 - MCPServer - ERROR - SharePoint list files error: cannot import name 'SharePointManager' from 'api' (C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\backend\api.py)
-2025-08-26 10:48:04,163 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 10:48:04,163 - MCPServer - ERROR - SharePoint list files error: cannot import name 'SharePointManager' from 'api' (C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\backend\api.py)
-2025-08-26 10:51:31,811 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+2025-08-26 16:37:31,093 - MCPServer - INFO - Found 5 matches
+2025-08-26 16:37:31,093 - MCPServer - INFO - Match 1: score=0.7811, source=infoDoc.pdf, text_len=871
+2025-08-26 16:37:31,093 - MCPServer - INFO - Match 2: score=0.7503, source=infoDoc.pdf, text_len=1486
+2025-08-26 16:37:31,093 - MCPServer - INFO - Match 3: score=0.7381, source=infoDoc.pdf, text_len=1443
+2025-08-26 16:37:31,094 - MCPServer - INFO - Match 4: score=0.7144, source=infoDoc.pdf, text_len=1471
+2025-08-26 16:37:31,094 - MCPServer - INFO - Match 5: score=0.7104, source=infoDoc.pdf, text_len=1417
+2025-08-26 16:38:10,914 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
  'index_fullness': 0.0,
  'metric': 'cosine',
  'namespaces': {'broadaxis-index': {'vector_count': 226}},
  'total_vector_count': 226,
  'vector_type': 'dense'}
-2025-08-26 10:51:31,811 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 10:51:31,849 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 10:52:53,782 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 10:52:53,783 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 10:52:53,802 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 10:52:53,849 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 10:52:53,851 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 10:53:06,581 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 10:53:07,782 - MCPServer - INFO - Listing files from SharePoint: RFP/Harris county
-2025-08-26 10:55:21,738 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 10:55:21,739 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 10:55:21,760 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 10:55:21,822 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 10:55:21,824 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 13:24:21,026 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 13:24:21,027 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 13:24:21,041 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 13:24:21,078 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 13:24:21,080 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
-2025-08-26 13:29:47,275 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
-2025-08-26 13:30:35,251 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
- 'index_fullness': 0.0,
- 'metric': 'cosine',
- 'namespaces': {'broadaxis-index': {'vector_count': 226}},
- 'total_vector_count': 226,
- 'vector_type': 'dense'}
-2025-08-26 13:30:35,252 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
-2025-08-26 13:30:35,276 - MCPServer - INFO - Tavily client initialized successfully
-2025-08-26 13:30:35,321 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
-2025-08-26 13:30:35,322 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-26 16:38:10,914 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-08-26 16:38:10,927 - MCPServer - INFO - Tavily client initialized successfully
+2025-08-26 16:38:10,965 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-08-26 16:38:10,966 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-08-26 16:38:24,410 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-26 16:38:24,410 - MCPServer - INFO - Searching for: BroadAxis company information overview history services
+2025-08-26 16:38:24,411 - MCPServer - INFO - Embedding text of length: 55
+2025-08-26 16:38:25,314 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-08-26 19:18:02,181 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-08-26 19:18:02,182 - MCPServer - INFO - Query embedding dimension: 1536
+2025-08-26 19:18:03,132 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
+2025-08-26 19:18:03,142 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_service_0_34fb671c6c7c',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Who We Are – BroadAxis, Inc.  \n'
+                                   'BroadAxis, Inc. is a Texas -based, '
+                                   'minority -owned IT services and consulting '
+                                   'company with over six years of \n'
+                                   'experience delivering innovative '
+                                   'technology solutions. Headquartered in '
+                                   'Plano, Texas, we serve a wide range \n'
+                                   'of clients across industries including '
+                                   'government, healthcare, finance, '
+                                   'education, retail, and energy.  \n'
+                                   'Our mission is to empower businesses by '
+                                   'providing tailored, cutting -edge IT '
+                                   'services that drive digital \n'
+                                   'transformation, operational efficiency, '
+                                   "and long -term growth . Whether it's "
+                                   'modernizing legacy systems, \n'
+                                   'building intelligent cloud '
+                                   'infrastructures, or staffing specialized '
+                                   'talent for mission -critical roles, '
+                                   'BroadAxis is \n'
+                                   'built to solve complex challenges.  \n'
+                                   'We take pride in our client -centric '
+                                   'approach, where every enga gement is '
+                                   'guided by a focus on quality, speed, \n'
+                                   'transparency, and measurable results.'},
+              'score': 0.768362522,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_16_558d2b6e8966',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Relationships with top -tier technology '
+                                   'providers and internal frameworks that '
+                                   'accelerate time -to-\n'
+                                   'value.  \n'
+                                   '\uf0b7 End-to-End Services  \n'
+                                   'From strategic consulting to hands -on '
+                                   'implementation —we support the full '
+                                   'technology lifecycle \n'
+                                   'under one roof.  \n'
+                                   'In-House Inf rastructure  \n'
+                                   'At BroadAxis, we back our service delivery '
+                                   'with a strong, reliable in -house '
+                                   'infrastructure designed to support \n'
+                                   'performance, security, and scalability.  \n'
+                                   'Our Internal Capabilities Include:  \n'
+                                   '\uf0b7 State -of-the-Art Facilities  \n'
+                                   'Equipped with enterprise -grade  systems '
+                                   'that enable seamless execution of complex '
+                                   'IT projects.  \n'
+                                   '\uf0b7 High -Speed Connectivity & '
+                                   'Networking  \n'
+                                   'Redundant high -speed internet and '
+                                   'advanced networking hardware ensure '
+                                   'uninterrupted operations \n'
+                                   'and real -time client collaboration.  \n'
+                                   '\uf0b7 Modern Computing Environ ment  \n'
+                                   'Robust server infrastructure, secure VPN '
+                                   'access, and virtualized environments that '
+                                   'mirror enterprise \n'
+                                   'client setups.  \n'
+                                   '\uf0b7 Secure Data Centers  \n'
+                                   'Internal data storage, backup systems, and '
+                                   'compliance -driven security protocols to '
+                                   'ensure data \n'
+                                   'protection and opera tional continuity.  \n'
+                                   'This infrastructure allows BroadAxis to '
+                                   'meet demanding client expectations '
+                                   '—supporting projects with speed, \n'
+                                   'resilience, and confidence.  \n'
+                                   'Cloud & Cyber Security Expertise  \n'
+                                   'BroadAxis, Inc. is a trusted provider of '
+                                   'advanced cloud and cybersecu rity '
+                                   'solutions. Our expert team delivers \n'
+                                   'tailored, enterprise -grade services that '
+                                   'help organizations modernize securely and '
+                                   'operate with confidence.'},
+              'score': 0.75237596,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_15_b4862a748c0c',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': '\uf0b7 Energy  – Infrastructure '
+                                   'modernization, reporting systems, and '
+                                   'operational dashboards  \n'
+                                   'This wide -ranging expertise enables us to '
+                                   'deliver tailored solutions that align with '
+                                   'industry standards and \n'
+                                   'regulatory requirements.  \n'
+                                   'Why Choose BroadAxis, Inc.  \n'
+                                   'At BroadAxis, we don’t just deliver '
+                                   'services —we build lasting partnerships '
+                                   'rooted in trust, performan ce, and \n'
+                                   'innovation. Our team is committed to '
+                                   'helping clients succeed by delivering '
+                                   'measurable results and long -term \n'
+                                   'value.  \n'
+                                   'What Sets Us Apart:  \n'
+                                   '\uf0b7 Experienced & Skilled '
+                                   'Professionals  \n'
+                                   'A diverse team with deep expertise across '
+                                   'cloud, data, cybersecurity, software '
+                                   'development, and \n'
+                                   'project management.  \n'
+                                   '\uf0b7 Uncompromising Quality & Customer '
+                                   'Focus  \n'
+                                   'Every engagement is guided by clear goals, '
+                                   'open communication, and a drive for '
+                                   'excellence.  \n'
+                                   '\uf0b7 Flexible & Competitive Models  \n'
+                                   'We offer scalable engagement options, '
+                                   'transparent  pricing, and customized '
+                                   'solutions for every client \n'
+                                   'type —startups, enterprises, or public '
+                                   'agencies.  \n'
+                                   '\uf0b7 Proven Track Record  \n'
+                                   'Consistent delivery across state agencies '
+                                   '(DIR, HHSC, TEA, TWC), nonprofits, and '
+                                   'commercial \n'
+                                   'organizations.  \n'
+                                   '\uf0b7 Strong Partnerships & Technol ogy '
+                                   'Stack  \n'
+                                   'Relationships with top -tier technology '
+                                   'providers and internal frameworks that '
+                                   'accelerate time -to-\n'
+                                   'value.  \n'
+                                   '\uf0b7 End-to-End Services  \n'
+                                   'From strategic consulting to hands -on '
+                                   'implementation —we support the full '
+                                   'technology lifecycle \n'
+                                   'under one roof.  \n'
+                                   'In-House Inf rastructure'},
+              'score': 0.739330351,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_17_e43ece68ad79',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'resilience, and confidence.  \n'
+                                   'Cloud & Cyber Security Expertise  \n'
+                                   'BroadAxis, Inc. is a trusted provider of '
+                                   'advanced cloud and cybersecu rity '
+                                   'solutions. Our expert team delivers \n'
+                                   'tailored, enterprise -grade services that '
+                                   'help organizations modernize securely and '
+                                   'operate with confidence.  \n'
+                                   'What We Offer:  \n'
+                                   '\uf0b7 End-to-End Cloud Services  \n'
+                                   'From cloud migration to infrastructure '
+                                   'management (AWS, Azure, GCP ), we enable '
+                                   'seamless, \n'
+                                   'scalable, and cost -effective '
+                                   'operations.  \n'
+                                   '\uf0b7 Enterprise -Grade Cybersecurity  \n'
+                                   'We build multilayered defense systems that '
+                                   'include threat detection, compliance '
+                                   'management, \n'
+                                   'identity protection, and incident '
+                                   'response.  \n'
+                                   '\uf0b7 Customized Solutions  \n'
+                                   'Ever y client engagement is approached '
+                                   'uniquely —ensuring cloud and security '
+                                   'strategies align with \n'
+                                   'business needs, compliance frameworks, and '
+                                   'technical requirements.  \n'
+                                   '\uf0b7 Business Enablement Through '
+                                   'Security  \n'
+                                   'By securing systems, data, and networks, '
+                                   'we empower organiz ations to focus on '
+                                   'growth, agility, and \n'
+                                   'innovation —without compromising '
+                                   'safety.  \n'
+                                   'Why BroadAxis?  \n'
+                                   'We combine technical excellence, rapid '
+                                   'implementation, and continuous support to '
+                                   'deliver cloud and security \n'
+                                   'solutions that protect what matters '
+                                   'most.  \n'
+                                   'Business Intelligence & Data Warehousing '
+                                   'Expertise  \n'
+                                   'BroadAxis, Inc. offers end -to-end '
+                                   'Business Intelligence (BI) and data '
+                                   'integration services designed to empower \n'
+                                   'decision -makers with real -time, '
+                                   'actionable insights. As a Texas -based MBE '
+                                   'HUB -certified firm with extensive'},
+              'score': 0.715857506,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_19_543c330b70c8',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'BroadAxis follows a structured, agile '
+                                   'methodology to deliver Business '
+                                   'Intelligence solutions with precision, \n'
+                                   'transparency, and eff iciency. Each phase '
+                                   'is designed to align with client goals, '
+                                   'ensure data integrity, and \n'
+                                   'support long -term scalability.  \n'
+                                   '1. Discovery & Design  \n'
+                                   '\uf0b7 Conduct detailed workshops with '
+                                   'stakeholders to gather business and '
+                                   'technical requirements  \n'
+                                   '\uf0b7 Perform source -to-target mapping '
+                                   'and security assessments  \n'
+                                   '\uf0b7 Develop high -level and detailed '
+                                   'architecture diagrams including data flow, '
+                                   'storage layers, and tooling \n'
+                                   'strategy  \n'
+                                   '2. Data Ingestion & ETL Development  \n'
+                                   '\uf0b7 Build metadata -driven ETL/ELT '
+                                   'pipelines using tools like Informatica, '
+                                   'IBM DataStage, Python, \n'
+                                   'Databricks, or SSIS  \n'
+                                   '\uf0b7 Configure batch or CDC -based data '
+                                   'loads with logging, audit trails, and '
+                                   'automated error alerts  \n'
+                                   '\uf0b7 Establish staging layers, '
+                                   'transformation logic, and reconciliation '
+                                   'checkpoints  \n'
+                                   '3. Data Modeling  \n'
+                                   '\uf0b7 Design and implement dimen sional '
+                                   'models using star schemas with conformed '
+                                   'dimensions  \n'
+                                   '\uf0b7 Build and populate fact tables and '
+                                   'slowly changing dimensions (Type 1 and '
+                                   'Type 2)  \n'
+                                   '\uf0b7 Optimize performance through '
+                                   'indexing, partitioning, and '
+                                   'parallelization strategies  \n'
+                                   '4. Visualization & Reporting  \n'
+                                   '\uf0b7 Create executive dashboards with '
+                                   'embedded KPIs, geospatial maps, and drill '
+                                   '-down capabilities  \n'
+                                   '\uf0b7 Develop self -service data marts to '
+                                   'empower power users and analysts  \n'
+                                   '\uf0b7 Customize reporting layers for '
+                                   'finance, operations, compliance, and other '
+                                   'business domains'},
+              'score': 0.715155661,
+              'values': []}],
+ 'namespace': 'broadaxis-index',
+ 'usage': {'read_units': 1}}
+2025-08-26 19:18:03,143 - MCPServer - INFO - Found 5 matches
+2025-08-26 19:18:03,144 - MCPServer - INFO - Match 1: score=0.7684, source=infoDoc.pdf, text_len=871
+2025-08-26 19:18:03,144 - MCPServer - INFO - Match 2: score=0.7524, source=infoDoc.pdf, text_len=1486
+2025-08-26 19:18:03,144 - MCPServer - INFO - Match 3: score=0.7393, source=infoDoc.pdf, text_len=1443
+2025-08-26 19:18:03,145 - MCPServer - INFO - Match 4: score=0.7159, source=infoDoc.pdf, text_len=1471
+2025-08-26 19:18:03,145 - MCPServer - INFO - Match 5: score=0.7152, source=infoDoc.pdf, text_len=1471
+2025-08-26 19:18:03,154 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-26 19:18:03,155 - MCPServer - INFO - Searching for: BroadAxis company information overview history services
+2025-08-26 19:18:03,155 - MCPServer - INFO - Embedding text of length: 55
+2025-08-26 19:18:03,821 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-08-26 19:18:03,823 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-08-26 19:18:03,823 - MCPServer - INFO - Query embedding dimension: 1536
+2025-08-26 19:18:03,890 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
+2025-08-26 19:18:03,895 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_service_0_34fb671c6c7c',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Who We Are – BroadAxis, Inc.  \n'
+                                   'BroadAxis, Inc. is a Texas -based, '
+                                   'minority -owned IT services and consulting '
+                                   'company with over six years of \n'
+                                   'experience delivering innovative '
+                                   'technology solutions. Headquartered in '
+                                   'Plano, Texas, we serve a wide range \n'
+                                   'of clients across industries including '
+                                   'government, healthcare, finance, '
+                                   'education, retail, and energy.  \n'
+                                   'Our mission is to empower businesses by '
+                                   'providing tailored, cutting -edge IT '
+                                   'services that drive digital \n'
+                                   'transformation, operational efficiency, '
+                                   "and long -term growth . Whether it's "
+                                   'modernizing legacy systems, \n'
+                                   'building intelligent cloud '
+                                   'infrastructures, or staffing specialized '
+                                   'talent for mission -critical roles, '
+                                   'BroadAxis is \n'
+                                   'built to solve complex challenges.  \n'
+                                   'We take pride in our client -centric '
+                                   'approach, where every enga gement is '
+                                   'guided by a focus on quality, speed, \n'
+                                   'transparency, and measurable results.'},
+              'score': 0.768431664,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_16_558d2b6e8966',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Relationships with top -tier technology '
+                                   'providers and internal frameworks that '
+                                   'accelerate time -to-\n'
+                                   'value.  \n'
+                                   '\uf0b7 End-to-End Services  \n'
+                                   'From strategic consulting to hands -on '
+                                   'implementation —we support the full '
+                                   'technology lifecycle \n'
+                                   'under one roof.  \n'
+                                   'In-House Inf rastructure  \n'
+                                   'At BroadAxis, we back our service delivery '
+                                   'with a strong, reliable in -house '
+                                   'infrastructure designed to support \n'
+                                   'performance, security, and scalability.  \n'
+                                   'Our Internal Capabilities Include:  \n'
+                                   '\uf0b7 State -of-the-Art Facilities  \n'
+                                   'Equipped with enterprise -grade  systems '
+                                   'that enable seamless execution of complex '
+                                   'IT projects.  \n'
+                                   '\uf0b7 High -Speed Connectivity & '
+                                   'Networking  \n'
+                                   'Redundant high -speed internet and '
+                                   'advanced networking hardware ensure '
+                                   'uninterrupted operations \n'
+                                   'and real -time client collaboration.  \n'
+                                   '\uf0b7 Modern Computing Environ ment  \n'
+                                   'Robust server infrastructure, secure VPN '
+                                   'access, and virtualized environments that '
+                                   'mirror enterprise \n'
+                                   'client setups.  \n'
+                                   '\uf0b7 Secure Data Centers  \n'
+                                   'Internal data storage, backup systems, and '
+                                   'compliance -driven security protocols to '
+                                   'ensure data \n'
+                                   'protection and opera tional continuity.  \n'
+                                   'This infrastructure allows BroadAxis to '
+                                   'meet demanding client expectations '
+                                   '—supporting projects with speed, \n'
+                                   'resilience, and confidence.  \n'
+                                   'Cloud & Cyber Security Expertise  \n'
+                                   'BroadAxis, Inc. is a trusted provider of '
+                                   'advanced cloud and cybersecu rity '
+                                   'solutions. Our expert team delivers \n'
+                                   'tailored, enterprise -grade services that '
+                                   'help organizations modernize securely and '
+                                   'operate with confidence.'},
+              'score': 0.752695322,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_15_b4862a748c0c',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': '\uf0b7 Energy  – Infrastructure '
+                                   'modernization, reporting systems, and '
+                                   'operational dashboards  \n'
+                                   'This wide -ranging expertise enables us to '
+                                   'deliver tailored solutions that align with '
+                                   'industry standards and \n'
+                                   'regulatory requirements.  \n'
+                                   'Why Choose BroadAxis, Inc.  \n'
+                                   'At BroadAxis, we don’t just deliver '
+                                   'services —we build lasting partnerships '
+                                   'rooted in trust, performan ce, and \n'
+                                   'innovation. Our team is committed to '
+                                   'helping clients succeed by delivering '
+                                   'measurable results and long -term \n'
+                                   'value.  \n'
+                                   'What Sets Us Apart:  \n'
+                                   '\uf0b7 Experienced & Skilled '
+                                   'Professionals  \n'
+                                   'A diverse team with deep expertise across '
+                                   'cloud, data, cybersecurity, software '
+                                   'development, and \n'
+                                   'project management.  \n'
+                                   '\uf0b7 Uncompromising Quality & Customer '
+                                   'Focus  \n'
+                                   'Every engagement is guided by clear goals, '
+                                   'open communication, and a drive for '
+                                   'excellence.  \n'
+                                   '\uf0b7 Flexible & Competitive Models  \n'
+                                   'We offer scalable engagement options, '
+                                   'transparent  pricing, and customized '
+                                   'solutions for every client \n'
+                                   'type —startups, enterprises, or public '
+                                   'agencies.  \n'
+                                   '\uf0b7 Proven Track Record  \n'
+                                   'Consistent delivery across state agencies '
+                                   '(DIR, HHSC, TEA, TWC), nonprofits, and '
+                                   'commercial \n'
+                                   'organizations.  \n'
+                                   '\uf0b7 Strong Partnerships & Technol ogy '
+                                   'Stack  \n'
+                                   'Relationships with top -tier technology '
+                                   'providers and internal frameworks that '
+                                   'accelerate time -to-\n'
+                                   'value.  \n'
+                                   '\uf0b7 End-to-End Services  \n'
+                                   'From strategic consulting to hands -on '
+                                   'implementation —we support the full '
+                                   'technology lifecycle \n'
+                                   'under one roof.  \n'
+                                   'In-House Inf rastructure'},
+              'score': 0.739501595,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_17_e43ece68ad79',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'resilience, and confidence.  \n'
+                                   'Cloud & Cyber Security Expertise  \n'
+                                   'BroadAxis, Inc. is a trusted provider of '
+                                   'advanced cloud and cybersecu rity '
+                                   'solutions. Our expert team delivers \n'
+                                   'tailored, enterprise -grade services that '
+                                   'help organizations modernize securely and '
+                                   'operate with confidence.  \n'
+                                   'What We Offer:  \n'
+                                   '\uf0b7 End-to-End Cloud Services  \n'
+                                   'From cloud migration to infrastructure '
+                                   'management (AWS, Azure, GCP ), we enable '
+                                   'seamless, \n'
+                                   'scalable, and cost -effective '
+                                   'operations.  \n'
+                                   '\uf0b7 Enterprise -Grade Cybersecurity  \n'
+                                   'We build multilayered defense systems that '
+                                   'include threat detection, compliance '
+                                   'management, \n'
+                                   'identity protection, and incident '
+                                   'response.  \n'
+                                   '\uf0b7 Customized Solutions  \n'
+                                   'Ever y client engagement is approached '
+                                   'uniquely —ensuring cloud and security '
+                                   'strategies align with \n'
+                                   'business needs, compliance frameworks, and '
+                                   'technical requirements.  \n'
+                                   '\uf0b7 Business Enablement Through '
+                                   'Security  \n'
+                                   'By securing systems, data, and networks, '
+                                   'we empower organiz ations to focus on '
+                                   'growth, agility, and \n'
+                                   'innovation —without compromising '
+                                   'safety.  \n'
+                                   'Why BroadAxis?  \n'
+                                   'We combine technical excellence, rapid '
+                                   'implementation, and continuous support to '
+                                   'deliver cloud and security \n'
+                                   'solutions that protect what matters '
+                                   'most.  \n'
+                                   'Business Intelligence & Data Warehousing '
+                                   'Expertise  \n'
+                                   'BroadAxis, Inc. offers end -to-end '
+                                   'Business Intelligence (BI) and data '
+                                   'integration services designed to empower \n'
+                                   'decision -makers with real -time, '
+                                   'actionable insights. As a Texas -based MBE '
+                                   'HUB -certified firm with extensive'},
+              'score': 0.71597,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_19_543c330b70c8',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'BroadAxis follows a structured, agile '
+                                   'methodology to deliver Business '
+                                   'Intelligence solutions with precision, \n'
+                                   'transparency, and eff iciency. Each phase '
+                                   'is designed to align with client goals, '
+                                   'ensure data integrity, and \n'
+                                   'support long -term scalability.  \n'
+                                   '1. Discovery & Design  \n'
+                                   '\uf0b7 Conduct detailed workshops with '
+                                   'stakeholders to gather business and '
+                                   'technical requirements  \n'
+                                   '\uf0b7 Perform source -to-target mapping '
+                                   'and security assessments  \n'
+                                   '\uf0b7 Develop high -level and detailed '
+                                   'architecture diagrams including data flow, '
+                                   'storage layers, and tooling \n'
+                                   'strategy  \n'
+                                   '2. Data Ingestion & ETL Development  \n'
+                                   '\uf0b7 Build metadata -driven ETL/ELT '
+                                   'pipelines using tools like Informatica, '
+                                   'IBM DataStage, Python, \n'
+                                   'Databricks, or SSIS  \n'
+                                   '\uf0b7 Configure batch or CDC -based data '
+                                   'loads with logging, audit trails, and '
+                                   'automated error alerts  \n'
+                                   '\uf0b7 Establish staging layers, '
+                                   'transformation logic, and reconciliation '
+                                   'checkpoints  \n'
+                                   '3. Data Modeling  \n'
+                                   '\uf0b7 Design and implement dimen sional '
+                                   'models using star schemas with conformed '
+                                   'dimensions  \n'
+                                   '\uf0b7 Build and populate fact tables and '
+                                   'slowly changing dimensions (Type 1 and '
+                                   'Type 2)  \n'
+                                   '\uf0b7 Optimize performance through '
+                                   'indexing, partitioning, and '
+                                   'parallelization strategies  \n'
+                                   '4. Visualization & Reporting  \n'
+                                   '\uf0b7 Create executive dashboards with '
+                                   'embedded KPIs, geospatial maps, and drill '
+                                   '-down capabilities  \n'
+                                   '\uf0b7 Develop self -service data marts to '
+                                   'empower power users and analysts  \n'
+                                   '\uf0b7 Customize reporting layers for '
+                                   'finance, operations, compliance, and other '
+                                   'business domains'},
+              'score': 0.715199,
+              'values': []}],
+ 'namespace': 'broadaxis-index',
+ 'usage': {'read_units': 1}}
+2025-08-26 19:18:03,896 - MCPServer - INFO - Found 5 matches
+2025-08-26 19:18:03,896 - MCPServer - INFO - Match 1: score=0.7684, source=infoDoc.pdf, text_len=871
+2025-08-26 19:18:03,897 - MCPServer - INFO - Match 2: score=0.7527, source=infoDoc.pdf, text_len=1486
+2025-08-26 19:18:03,897 - MCPServer - INFO - Match 3: score=0.7395, source=infoDoc.pdf, text_len=1443
+2025-08-26 19:18:03,897 - MCPServer - INFO - Match 4: score=0.7160, source=infoDoc.pdf, text_len=1471
+2025-08-26 19:18:03,897 - MCPServer - INFO - Match 5: score=0.7152, source=infoDoc.pdf, text_len=1471
+2025-08-26 19:18:33,293 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-08-26 19:18:33,294 - MCPServer - INFO - Searching for: BroadAxis headquarters location office base
+2025-08-26 19:18:33,295 - MCPServer - INFO - Embedding text of length: 43
+2025-08-26 19:18:33,821 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-08-26 19:18:33,825 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-08-26 19:18:33,826 - MCPServer - INFO - Query embedding dimension: 1536
+2025-08-26 19:18:33,891 - MCPServer - INFO - Pinecone query result type: <class 'pinecone.core.openapi.db_data.model.query_response.QueryResponse'>
+2025-08-26 19:18:33,893 - MCPServer - INFO - Raw query result: {'matches': [{'id': 'infoDoc.pdf_service_0_34fb671c6c7c',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Who We Are – BroadAxis, Inc.  \n'
+                                   'BroadAxis, Inc. is a Texas -based, '
+                                   'minority -owned IT services and consulting '
+                                   'company with over six years of \n'
+                                   'experience delivering innovative '
+                                   'technology solutions. Headquartered in '
+                                   'Plano, Texas, we serve a wide range \n'
+                                   'of clients across industries including '
+                                   'government, healthcare, finance, '
+                                   'education, retail, and energy.  \n'
+                                   'Our mission is to empower businesses by '
+                                   'providing tailored, cutting -edge IT '
+                                   'services that drive digital \n'
+                                   'transformation, operational efficiency, '
+                                   "and long -term growth . Whether it's "
+                                   'modernizing legacy systems, \n'
+                                   'building intelligent cloud '
+                                   'infrastructures, or staffing specialized '
+                                   'talent for mission -critical roles, '
+                                   'BroadAxis is \n'
+                                   'built to solve complex challenges.  \n'
+                                   'We take pride in our client -centric '
+                                   'approach, where every enga gement is '
+                                   'guided by a focus on quality, speed, \n'
+                                   'transparency, and measurable results.'},
+              'score': 0.556993663,
+              'values': []},
+             {'id': 'infoDoc.pdf_chunk_21_a406360672e0',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Why BroadAxis?  \n'
+                                   'We combine technical excellence, rapid '
+                                   'implementation, and continuous support to '
+                                   'deliver cloud and security \n'
+                                   'solutions that protect what matters '
+                                   'most.  \n'
+                                   'Business Intelligence & Data Warehousing '
+                                   'Expertise  \n'
+                                   'BroadAxis, Inc. offers end -to-end '
+                                   'Business Intelligence (BI) and data '
+                                   'integration services designed to empower \n'
+                                   'decision -makers with real -time, '
+                                   'actionable insights. As a Texas -based MBE '
+                                   'HUB -certified firm with extensive \n'
+                                   'experience across public, non -profit, and '
+                                   'commercial sectors, we combine the right '
+                                   'talent, tools, and \n'
+                                   'processes to deliver secure, scalable, and '
+                                   'user -centric BI solutions.  \n'
+                                   'Project Understanding & Capabilities  \n'
+                                   'We provide full lifecycle BI solution s '
+                                   'that:  \n'
+                                   '\uf0b7 Ingest, transform, model, and '
+                                   'visualize data from diverse sources  \n'
+                                   '\uf0b7 Ensure data quality, scalability, '
+                                   'and security  \n'
+                                   '\uf0b7 Deliver executive dashboards, '
+                                   'operational KPIs, and ad -hoc reporting  \n'
+                                   '\uf0b7 Support data governance, access '
+                                   'controls, and user enablement  \n'
+                                   'Key Deliverables Include:  \n'
+                                   '\uf0b7 Centralized enterprise data '
+                                   'warehouse (on -prem, cloud, or hybrid)  \n'
+                                   '\uf0b7 Metadata -driven ETL/ELT pipelines '
+                                   'with robust error handling and audit logs'},
+              'score': 0.528917253,
+              'values': []},
+             {'id': 'infoDoc.pdf_service_16_558d2b6e8966',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'Relationships with top -tier technology '
+                                   'providers and internal frameworks that '
+                                   'accelerate time -to-\n'
+                                   'value.  \n'
+                                   '\uf0b7 End-to-End Services  \n'
+                                   'From strategic consulting to hands -on '
+                                   'implementation —we support the full '
+                                   'technology lifecycle \n'
+                                   'under one roof.  \n'
+                                   'In-House Inf rastructure  \n'
+                                   'At BroadAxis, we back our service delivery '
+                                   'with a strong, reliable in -house '
+                                   'infrastructure designed to support \n'
+                                   'performance, security, and scalability.  \n'
+                                   'Our Internal Capabilities Include:  \n'
+                                   '\uf0b7 State -of-the-Art Facilities  \n'
+                                   'Equipped with enterprise -grade  systems '
+                                   'that enable seamless execution of complex '
+                                   'IT projects.  \n'
+                                   '\uf0b7 High -Speed Connectivity & '
+                                   'Networking  \n'
+                                   'Redundant high -speed internet and '
+                                   'advanced networking hardware ensure '
+                                   'uninterrupted operations \n'
+                                   'and real -time client collaboration.  \n'
+                                   '\uf0b7 Modern Computing Environ ment  \n'
+                                   'Robust server infrastructure, secure VPN '
+                                   'access, and virtualized environments that '
+                                   'mirror enterprise \n'
+                                   'client setups.  \n'
+                                   '\uf0b7 Secure Data Centers  \n'
+                                   'Internal data storage, backup systems, and '
+                                   'compliance -driven security protocols to '
+                                   'ensure data \n'
+                                   'protection and opera tional continuity.  \n'
+                                   'This infrastructure allows BroadAxis to '
+                                   'meet demanding client expectations '
+                                   '—supporting projects with speed, \n'
+                                   'resilience, and confidence.  \n'
+                                   'Cloud & Cyber Security Expertise  \n'
+                                   'BroadAxis, Inc. is a trusted provider of '
+                                   'advanced cloud and cybersecu rity '
+                                   'solutions. Our expert team delivers \n'
+                                   'tailored, enterprise -grade services that '
+                                   'help organizations modernize securely and '
+                                   'operate with confidence.'},
+              'score': 0.525011361,
+              'values': []},
+             {'id': 'infoDoc.pdf_experience_13_1b5f96e78c8f',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'We excel in placing top -tier profess '
+                                   'ionals in cybersecurity, cloud '
+                                   'architecture, data engineering, \n'
+                                   'software development, and infrastructure '
+                                   'roles.  \n'
+                                   '\uf0b7 AI-Powered Talent Matching  \n'
+                                   'Our proprietary in -house AI algorithms '
+                                   'accelerate candidate screening, eliminate '
+                                   'unconscious bias, \n'
+                                   'and enhance the quality of hires.  \n'
+                                   '\uf0b7 End-to-End Technical Support  \n'
+                                   'From requirement gathering to onboarding '
+                                   'and delivery oversight, we provide full '
+                                   'lifecycle support to \n'
+                                   'ensure technical and cultural '
+                                   'alignment.  \n'
+                                   "BroadAxis doesn't just fill roles —we "
+                                   'deliver expertise that drives  results.  \n'
+                                   'Logistic Support  \n'
+                                   'BroadAxis goes beyond technical delivery '
+                                   '—we also provide flexible logistical and '
+                                   'financial support to help \n'
+                                   'clients manage project timelines, budgets, '
+                                   'and resource onboarding with ease.  \n'
+                                   'Our Support Includes:  \n'
+                                   '\uf0b7 Flexible Payment Terms  \n'
+                                   'We offer customizable billing plans to '
+                                   'accommodate client budget cycles and '
+                                   'financial workflows.  \n'
+                                   '\uf0b7 Project Financing  \n'
+                                   'Through our financing partners, clients '
+                                   'can spread the cost of IT projects over '
+                                   'time —making \n'
+                                   'innovation more accessible and '
+                                   'sustainable.  \n'
+                                   '\uf0b7 Cand idate Sponsorship  \n'
+                                   'We handle visa sponsorship and compliance '
+                                   'for specialized talent, ensuring seamless '
+                                   'onboarding and \n'
+                                   'delivery continuity.  \n'
+                                   'This combination of financial flexibility '
+                                   'and operational agility enables our '
+                                   'clients to move faster without \n'
+                                   'compromis ing control or compliance.  \n'
+                                   'Industries We Serve'},
+              'score': 0.522386312,
+              'values': []},
+             {'id': 'infoDoc.pdf_chunk_19_b85b952586fa',
+              'metadata': {'source': 'infoDoc.pdf',
+                           'text': 'under one roof.  \n'
+                                   'In-House Inf rastructure  \n'
+                                   'At BroadAxis, we back our service delivery '
+                                   'with a strong, reliable in -house '
+                                   'infrastructure designed to support \n'
+                                   'performance, security, and scalability.  \n'
+                                   'Our Internal Capabilities Include:  \n'
+                                   '\uf0b7 State -of-the-Art Facilities  \n'
+                                   'Equipped with enterprise -grade  systems '
+                                   'that enable seamless execution of complex '
+                                   'IT projects.  \n'
+                                   '\uf0b7 High -Speed Connectivity & '
+                                   'Networking  \n'
+                                   'Redundant high -speed internet and '
+                                   'advanced networking hardware ensure '
+                                   'uninterrupted operations \n'
+                                   'and real -time client collaboration.  \n'
+                                   '\uf0b7 Modern Computing Environ ment  \n'
+                                   'Robust server infrastructure, secure VPN '
+                                   'access, and virtualized environments that '
+                                   'mirror enterprise \n'
+                                   'client setups.  \n'
+                                   '\uf0b7 Secure Data Centers  \n'
+                                   'Internal data storage, backup systems, and '
+                                   'compliance -driven security protocols to '
+                                   'ensure data \n'
+                                   'protection and opera tional continuity.  \n'
+                                   'This infrastructure allows BroadAxis to '
+                                   'meet demanding client expectations '
+                                   '—supporting projects with speed, \n'
+                                   'resilience, and confidence.  \n'
+                                   'Cloud & Cyber Security Expertise  \n'
+                                   'BroadAxis, Inc. is a trusted provider of '
+                                   'advanced cloud and cybersecu rity '
+                                   'solutions. Our expert team delivers'},
+              'score': 0.510097265,
+              'values': []}],
+ 'namespace': 'broadaxis-index',
+ 'usage': {'read_units': 1}}
+2025-08-26 19:18:33,894 - MCPServer - INFO - Found 5 matches
+2025-08-26 19:18:33,895 - MCPServer - INFO - Match 1: score=0.5570, source=infoDoc.pdf, text_len=871
+2025-08-26 19:18:33,895 - MCPServer - INFO - Match 2: score=0.5289, source=infoDoc.pdf, text_len=1151
+2025-08-26 19:18:33,895 - MCPServer - INFO - Match 3: score=0.5250, source=infoDoc.pdf, text_len=1486
+2025-08-26 19:18:33,895 - MCPServer - INFO - Match 4: score=0.5224, source=infoDoc.pdf, text_len=1417
+2025-08-26 19:18:33,895 - MCPServer - INFO - Match 5: score=0.5101, source=infoDoc.pdf, text_len=1146
