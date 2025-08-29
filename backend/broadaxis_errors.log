@@ -671,3 +671,66 @@ RuntimeError: Attempted to exit cancel scope in a different task than it was ent
 2025-08-27 12:21:44,444 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
 2025-08-27 12:21:44,445 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.993946 seconds
 2025-08-27 12:21:45,633 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-08-27 12:26:43,042 - BroadAxis - ERROR - Error occurred: {'error_type': 'WebSocketDisconnect', 'message': '(1012, None)', 'context': {'session_id': '56c54731-f9d0-486d-ae0f-366eee073882', 'operation': 'websocket_message_handling'}, 'traceback': 'Traceback (most recent call last):\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\backend\\websocket_api.py", line 61, in websocket_chat\n    data = await asyncio.wait_for(websocket.receive_text(), timeout=300.0)  # 5 min timeout\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "C:\\Users\\rohka\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\asyncio\\tasks.py", line 507, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 120, in receive_text\n    self._raise_on_disconnect(message)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 114, in _raise_on_disconnect\n    raise WebSocketDisconnect(message["code"], message.get("reason"))\nstarlette.websockets.WebSocketDisconnect: (1012, None)\n'}
+2025-08-27 12:26:44,004 - asyncio - ERROR - an error occurred during closing of asynchronous generator <async_generator object stdio_client at 0x00000233DBB29A80>
+asyncgen: <async_generator object stdio_client at 0x00000233DBB29A80>
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | BaseExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 187, in stdio_client
+    |     yield read_stream, write_stream
+    | GeneratorExit
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\rohka\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 304, in __step_run_and_handle_result
+    result = coro.send(None)
+  File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\mcp\client\stdio\__init__.py", line 181, in stdio_client
+    anyio.create_task_group() as tg,
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 778, in __aexit__
+    if self.cancel_scope.__exit__(type(exc), exc, exc.__traceback__):
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rohka\OneDrive\Desktop\ba-rfpapp\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 457, in __exit__
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: Attempted to exit cancel scope in a different task than it was entered in
+2025-08-27 12:28:05,757 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:28:10,567 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:28:34,028 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:28:39,877 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-08-27 12:28:39,881 - anthropic._base_client - INFO - Retrying request to /v1/messages in 9.000000 seconds
+2025-08-27 12:28:53,318 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:28:56,599 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:28:57,621 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-08-27 12:28:57,622 - anthropic._base_client - INFO - Retrying request to /v1/messages in 13.000000 seconds
+2025-08-27 12:29:14,127 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:29:16,942 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-08-27 12:29:16,945 - anthropic._base_client - INFO - Retrying request to /v1/messages in 8.000000 seconds
+2025-08-27 12:29:29,147 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:29:31,688 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-08-27 12:29:31,690 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.415570 seconds
+2025-08-27 12:29:32,307 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-08-27 12:29:32,310 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.797820 seconds
+2025-08-27 12:29:33,324 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-08-27 12:35:46,644 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:35:50,464 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:38:55,095 - BroadAxis - ERROR - Error occurred: {'error_type': 'WebSocketDisconnect', 'message': "(1001, '')", 'context': {'session_id': None, 'operation': 'websocket_message_handling'}, 'traceback': 'Traceback (most recent call last):\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\backend\\websocket_api.py", line 61, in websocket_chat\n    data = await asyncio.wait_for(websocket.receive_text(), timeout=300.0)  # 5 min timeout\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "C:\\Users\\rohka\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\asyncio\\tasks.py", line 507, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 120, in receive_text\n    self._raise_on_disconnect(message)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 114, in _raise_on_disconnect\n    raise WebSocketDisconnect(message["code"], message.get("reason"))\nstarlette.websockets.WebSocketDisconnect: (1001, \'\')\n'}
+2025-08-27 12:38:55,099 - BroadAxis - ERROR - Error occurred: {'error_type': 'WebSocketDisconnect', 'message': "(1001, '')", 'context': {'session_id': '9b58a0e8-b40b-488c-ba95-ac5e81989ef7', 'operation': 'websocket_message_handling'}, 'traceback': 'Traceback (most recent call last):\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\backend\\websocket_api.py", line 61, in websocket_chat\n    data = await asyncio.wait_for(websocket.receive_text(), timeout=300.0)  # 5 min timeout\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "C:\\Users\\rohka\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\asyncio\\tasks.py", line 507, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 120, in receive_text\n    self._raise_on_disconnect(message)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 114, in _raise_on_disconnect\n    raise WebSocketDisconnect(message["code"], message.get("reason"))\nstarlette.websockets.WebSocketDisconnect: (1001, \'\')\n'}
+2025-08-27 12:40:42,781 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:40:46,464 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 12:41:07,341 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 13:00:26,063 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 13:00:33,713 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 13:00:56,469 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-08-27 13:19:25,919 - BroadAxis - ERROR - Error occurred: {'error_type': 'WebSocketDisconnect', 'message': "(<CloseCode.ABNORMAL_CLOSURE: 1006>, '')", 'context': {'session_id': None, 'operation': 'websocket_message_handling'}, 'traceback': 'Traceback (most recent call last):\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\backend\\websocket_api.py", line 61, in websocket_chat\n    data = await asyncio.wait_for(websocket.receive_text(), timeout=300.0)  # 5 min timeout\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "C:\\Users\\rohka\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\asyncio\\tasks.py", line 507, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 120, in receive_text\n    self._raise_on_disconnect(message)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 114, in _raise_on_disconnect\n    raise WebSocketDisconnect(message["code"], message.get("reason"))\nstarlette.websockets.WebSocketDisconnect: (<CloseCode.ABNORMAL_CLOSURE: 1006>, \'\')\n'}
+2025-08-27 13:26:26,919 - BroadAxis - ERROR - Error occurred: {'error_type': 'WebSocketDisconnect', 'message': "(1001, '')", 'context': {'session_id': None, 'operation': 'websocket_message_handling'}, 'traceback': 'Traceback (most recent call last):\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\backend\\websocket_api.py", line 61, in websocket_chat\n    data = await asyncio.wait_for(websocket.receive_text(), timeout=300.0)  # 5 min timeout\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "C:\\Users\\rohka\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\asyncio\\tasks.py", line 507, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 120, in receive_text\n    self._raise_on_disconnect(message)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 114, in _raise_on_disconnect\n    raise WebSocketDisconnect(message["code"], message.get("reason"))\nstarlette.websockets.WebSocketDisconnect: (1001, \'\')\n'}
+2025-08-27 15:22:56,332 - BroadAxis - ERROR - Error occurred: {'error_type': 'WebSocketDisconnect', 'message': "(1001, '')", 'context': {'session_id': None, 'operation': 'websocket_message_handling'}, 'traceback': 'Traceback (most recent call last):\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\backend\\websocket_api.py", line 61, in websocket_chat\n    data = await asyncio.wait_for(websocket.receive_text(), timeout=300.0)  # 5 min timeout\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "C:\\Users\\rohka\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\asyncio\\tasks.py", line 507, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 120, in receive_text\n    self._raise_on_disconnect(message)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^\n  File "C:\\Users\\rohka\\OneDrive\\Desktop\\ba-rfpapp\\venv\\Lib\\site-packages\\starlette\\websockets.py", line 114, in _raise_on_disconnect\n    raise WebSocketDisconnect(message["code"], message.get("reason"))\nstarlette.websockets.WebSocketDisconnect: (1001, \'\')\n'}

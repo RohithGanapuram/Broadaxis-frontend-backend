@@ -115,6 +115,21 @@ def _att_key(att: dict) -> str:
         return f"file|{name}|{size}"
     # last resort: name only
     return f"file|{name}"
+from pathlib import Path
+
+IMAGE_EXTS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg', '.tif', '.tiff'}
+
+def _is_image_attachment(att: dict) -> bool:
+    # Only screen file-type attachments; leave links alone
+    if (att.get('type') or 'file').lower() != 'file':
+        return False
+    name = (att.get('filename') or att.get('file_path') or '').strip()
+    ext = Path(name).suffix.lower()
+    if ext in IMAGE_EXTS:
+        return True
+    # also respect a content type field if present
+    ctype = (att.get('content_type') or att.get('contentType') or '')
+    return isinstance(ctype, str) and ctype.lower().startswith('image/')
 
 
 def _merge_email_batches(existing: list, new: list) -> list:
@@ -474,7 +489,7 @@ class EmailFetcher:
             }
 
             # Last 90 days (tz-aware UTC)
-            cutoff = datetime.now(timezone.utc) - timedelta(days=2)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=3)
             cutoff_iso = cutoff.strftime("%Y-%m-%dT%H:%M:%SZ")  # Graph $filter needs Z
 
             # De-dupe state + existing UI cache
@@ -492,7 +507,7 @@ class EmailFetcher:
             for user_email in self.graph_config['user_emails']:
                 seen = processed.setdefault(user_email, set())
 
-                url = f"https://graph.microsoft.com/v1.0/users/{user_email}/messages"
+                url = f"https://graph.microsoft.com/v1.0/users/{user_email}/mailFolders/Inbox/messages"
                 params = {
                     '$filter': f"receivedDateTime ge {cutoff_iso}",
                     '$orderby': 'receivedDateTime desc',
@@ -910,25 +925,24 @@ async def get_email_attachments(email_id: int):
         if not real_fetched_emails:
             return {"email_id": email_id, "attachments": []}
 
-        # Use the SAME ordering as /api/fetched-emails
+        # Same ordering as /api/fetched-emails
         ordered = _ordered_accounts(real_fetched_emails)
 
-        # Map 1..N IDs to accounts using the same stable order
+        # Find the requested account by the 1..N card id
         target = None
         for i, (acct, lst) in enumerate(ordered, 1):
             if i == email_id:
                 target = {"account": acct, "emails": lst}
                 break
-
         if not target:
             return {"email_id": email_id, "attachments": []}
 
+        # Collect ALL attachments from ALL emails of this account
         out_attachments = []
         for em in target["emails"]:
             email_subject = em.get("subject", "No Subject")
             email_sender  = em.get("sender", "Unknown Sender")
             email_date    = em.get("date", "")
-
             for att in em.get("attachments") or []:
                 a = dict(att)  # shallow copy
                 a.setdefault("email_subject", email_subject)
@@ -936,10 +950,22 @@ async def get_email_attachments(email_id: int):
                 a.setdefault("email_date",    email_date)
                 out_attachments.append(a)
 
+        # NOW de-dupe across the whole account and drop images
+        deduped = []
+        seen_keys = set()
+        for a in out_attachments:
+            if _is_image_attachment(a):
+                continue
+            k = _att_key(a)
+            if k in seen_keys:
+                continue
+            seen_keys.add(k)
+            deduped.append(a)
+
         return {
             "email_id": email_id,
             "account": target["account"],
-            "attachments": out_attachments,
+            "attachments": deduped,
         }
 
     except Exception as e:
