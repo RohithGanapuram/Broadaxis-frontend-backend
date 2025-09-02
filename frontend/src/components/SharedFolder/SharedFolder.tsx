@@ -7,6 +7,7 @@ interface SharedFile {
   file_size: number
   modified_at: string
   type: string
+  
   web_url?: string
   download_url?: string
   path: string
@@ -44,14 +45,53 @@ const SharedFolder: React.FC = () => {
     setIsLoading(true)
     try {
       const data = await apiClient.listSharePointFiles(folderPath)
-      
+
       if (data.status === 'success') {
         const filesData = data.files || []
-        setFiles(filesData)
-        
-        // Update cache
-        setFileCache(prev => ({ ...prev, [cacheKey]: filesData }))
+
+        // Are we at Emails/<account> level?
+        const isAccountLevel =
+          !!folderPath &&
+          folderPath.split('/').filter(Boolean).length === 2 &&
+          folderPath.startsWith('Emails/')
+
+        const toTime = (s?: string) => {
+          if (!s) return 0
+          const t = Date.parse(s)
+          return Number.isNaN(t) ? 0 : t
+        }
+
+        const datePrefix = (name: string) => {
+          const m = name.match(/^(\d{4}-\d{2}-\d{2})\b/)
+          return m ? m[1] : null
+        }
+
+        // Sort newest → oldest. Folders first. At account level, use YYYY-MM-DD prefix.
+        const sorted = [...filesData].sort((a, b) => {
+          const af = a.type === 'folder'
+          const bf = b.type === 'folder'
+          if (af && !bf) return -1
+          if (!af && bf) return 1
+
+          if (isAccountLevel && af && bf) {
+            const ad = datePrefix(a.filename)
+            const bd = datePrefix(b.filename)
+            if (ad && bd) return bd.localeCompare(ad) // newer (b) first
+            if (ad) return -1
+            if (bd) return 1
+          }
+
+          // fallback to modified_at (newer first)
+          return toTime(b.modified_at) - toTime(a.modified_at)
+        })
+
+        setFiles(sorted)
+
+        // cache as before…
+        setFileCache(prev => ({ ...prev, [cacheKey]: sorted }))
         setLastFetchTime(prev => ({ ...prev, [cacheKey]: now }))
+
+
       } else {
         console.error('Error loading files:', data.message)
         setFiles([])

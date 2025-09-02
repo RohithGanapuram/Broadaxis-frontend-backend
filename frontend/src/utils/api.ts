@@ -3,6 +3,9 @@ import { ChatResponse, FileInfo, Tool, Prompt, UploadResponse, GeneratedFile, Em
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'
 
+// Ensures "A/B/C" becomes "A/B/C" with each piece safely encoded
+
+
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,6 +14,9 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 })
+
+const encodePath = (p: string) =>
+  (p || "").split("/").map(encodeURIComponent).join("/");
 
 // Request interceptor for logging
 api.interceptors.request.use(
@@ -187,8 +193,9 @@ export const apiClient = {
   async listSharePointFiles(path: string = "", fileType?: string, sortBy: string = "name", sortOrder: string = "asc", maxItems: number = 100): Promise<any> {
     try {
       // Use the direct SharePoint API endpoint
-      const endpoint = path ? `/api/files/${encodeURIComponent(path)}` : '/api/files'
+      const endpoint = path ? `/api/files/${encodePath(path)}` : '/api/files'
       const response = await api.get(endpoint, { timeout: 60000 })
+
       return response.data
     } catch (error) {
       console.error('Failed to list SharePoint files:', error)
@@ -198,7 +205,7 @@ export const apiClient = {
 
   async readSharePointFile(path: string, maxSizeMb: number = 50, encoding: string = "utf-8", previewLines: number = 0): Promise<any> {
     try {
-      const response = await api.get(`/api/files/${encodeURIComponent(path)}`, { timeout: 60000 })
+      const response = await api.get(`/api/files/${encodePath(path)}`, { timeout: 60000 })
       return response.data
     } catch (error) {
       console.error('Failed to read SharePoint file:', error)
@@ -240,7 +247,7 @@ export const apiClient = {
       for (const folder of folders) {
         try {
           console.log(`Fetching count for ${folder} folder...`)
-          const response = await api.get(`/api/files/${encodeURIComponent(folder)}`, { timeout: 60000 })
+          const response = await api.get(`/api/files/${encodePath(folder)}`, { timeout: 60000 })
           
           console.log(`${folder} response:`, response.data)
           
