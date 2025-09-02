@@ -11,11 +11,50 @@ from datetime import datetime
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from fastapi import HTTPException
-
+from datetime import datetime, timezone
 from error_handler import error_handler
 
 # Create router for SharePoint endpoints
 sharepoint_router = APIRouter(prefix="/api", tags=["sharepoint"])
+
+# --- Normalization / sorting helpers ---------------------------------
+_SAN_RE = re.compile(r'[<>:"/\\|?*]')   # chars SharePoint dislikes
+
+_ILLEGAL = re.compile(r'[<>:"|?*#%]|[\r\n\t]')
+def safe_component(name: str) -> str:
+    if not name:
+        return "_"
+    # collapse slashes, trim spaces and dots at end (SharePoint quirks)
+    name = name.replace("\\", "/").replace("/", "_").strip().rstrip(".")
+    name = _ILLEGAL.sub("_", name)
+    return name[:120]  # keep it reasonable
+def _sanitize_component(name: str) -> str:
+    # 1) replace illegal SP chars with underscore
+    name = _SAN_RE.sub('_', name)
+    # 2) normalize whitespace -> hyphens, collapse repeats
+    name = re.sub(r'\s+', '-', name)
+    name = re.sub(r'[-_]+', lambda m: '-' if '-' in m.group(0) else '_', name)
+    return name.strip('-_')
+
+def _normalize_path(path: str) -> str:
+    parts = [p for p in (path or '').split('/') if p]
+    return '/'.join(_sanitize_component(p) for p in parts)
+
+def _logical_key(name: str) -> str:
+    # for dedupe: strip to letters/digits underscores and lower
+    return re.sub(r'[^A-Za-z0-9]+', '_', (name or '')).strip('_').lower()
+
+def _try_dt_prefix(s: str):
+    # match "YYYY-MM-DD_" prefix for email subfolders
+    m = re.match(r'^(\d{4}-\d{2}-\d{2})\b', s or '')
+    if not m:
+        return None
+    try:
+        return datetime.fromisoformat(m.group(1))
+    except Exception:
+        return None
+# ----------------------------------------------------------------------
+
 
 class SharePointManager:
     def __init__(self):
@@ -184,7 +223,6 @@ class SharePointManager:
             return []
 
     def get_folder_contents_by_path(self, folder_path: str):
-        """Get contents of a specific folder by path"""
         try:
             site_id, drive_id = self._get_site_and_drive_info()
             if not site_id or not drive_id:
@@ -193,22 +231,23 @@ class SharePointManager:
             access_token = self.get_graph_access_token()
             headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
 
-            # Get files from the specific folder path
-            if folder_path and folder_path != "":
-                files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{folder_path}:/children"
+            # normalize incoming path so it matches how we create/upload
+            safe_path = _normalize_path(folder_path or "")
+
+            # Build URL
+            if safe_path:
+                files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{safe_path}:/children"
             else:
                 files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root/children"
 
-            files_response = self._session.get(files_url, headers=headers)
+            resp = self._session.get(files_url, headers=headers)
+            if resp.status_code != 200:
+                return {"status": "error", "message": f"Failed to get folder contents: {resp.status_code}", "files": []}
 
-            if files_response.status_code != 200:
-                return {"status": "error", "message": f"Failed to get folder contents: {files_response.status_code}", "files": []}
-
-            files_data = files_response.json()
-            folder_items = []
-
-            for item in files_data.get('value', []):
-                file_info = {
+            data = resp.json()
+            items_raw = []
+            for item in data.get('value', []):
+                items_raw.append({
                     'id': item['id'],
                     'name': item['name'],
                     'type': 'folder' if 'folder' in item else 'file',
@@ -216,13 +255,65 @@ class SharePointManager:
                     'modified': item.get('lastModifiedDateTime', ''),
                     'download_url': item.get('@microsoft.graph.downloadUrl', ''),
                     'web_url': item.get('webUrl', ''),
-                    'path': f"{folder_path}/{item['name']}" if folder_path else item['name']
-                }
-                folder_items.append(file_info)
+                    'path': f"{safe_path}/{item['name']}" if safe_path else item['name']
+                })
+
+            # ---- DEDUPE by logical key (fixes double account folders) ----
+            unique = {}
+            for it in items_raw:
+                k = _logical_key(it['name'])
+                # prefer the most recently-modified duplicate
+                prev = unique.get(k)
+                if not prev:
+                    unique[k] = it
+                    continue
+                if (it['modified'] or '') > (prev['modified'] or ''):
+                    unique[k] = it
+
+            items = list(unique.values())
+
+            # ---- SORTING ----
+            # If we're at Emails/{account} level, sort subfolders by YYYY-MM-DD prefix desc
+            at_account_level = False
+            if safe_path:
+                parts = safe_path.split('/')
+                # e.g., "Emails/rohith_ganapuram_broadaxis_com"
+                at_account_level = (len(parts) == 2 and parts[0].lower() == 'emails')
+
+            def sort_key(it):
+                # folders first
+                folder_bit = 0 if it['type'] == 'folder' else 1
+                if at_account_level and it['type'] == 'folder':
+                    dt = _try_dt_prefix(it['name'])
+                else:
+                    # fallback to modified timestamp
+                    try:
+                        dt = datetime.fromisoformat((it['modified'] or '').replace('Z', '+00:00'))
+                    except Exception:
+                        dt = datetime.min
+                # newest first -> negative timestamp
+                ts = dt.timestamp() if dt and dt != datetime.min else float('-inf')
+                return (folder_bit, -ts, it['name'].lower())
+
+            items.sort(key=sort_key)
+
+            # transform to frontend shape
+            folder_items = []
+            for item in items:
+                folder_items.append({
+                    'id': item['id'],
+                    'name': item['name'],
+                    'type': item['type'],
+                    'size': item['size'],
+                    'modified': item['modified'],
+                    'download_url': item['download_url'],
+                    'web_url': item['web_url'],
+                    'path': item['path']
+                })
 
             return {
                 "status": "success",
-                "message": f"Successfully retrieved {len(folder_items)} items from folder: {folder_path}",
+                "message": f"Successfully retrieved {len(folder_items)} items from folder: {safe_path}",
                 "files": folder_items
             }
 
@@ -230,110 +321,92 @@ class SharePointManager:
             error_handler.log_error(e, {'operation': 'get_folder_contents_by_path', 'folder_path': folder_path})
             return {"status": "error", "message": str(e), "files": []}
 
+
     def upload_file_to_sharepoint(self, file_content: bytes, filename: str, folder_path: str):
-        """Upload a file to SharePoint"""
         try:
             access_token = self.get_graph_access_token()
             if not access_token:
                 return {"status": "error", "message": "Failed to get access token"}
 
+            # --- site & drive (same as you had) ---
+            auth_hdr = {'Authorization': f'Bearer {access_token}'}
+            site_url  = f"https://graph.microsoft.com/v1.0/sites/{self.graph_config['site_url']}"
+            site_resp = requests.get(site_url, headers=auth_hdr, timeout=15)
+            if site_resp.status_code != 200:
+                return {"status": "error", "message": "Failed to access SharePoint site"}
+            site_id = site_resp.json()["id"]
+
+            drive_url  = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive"
+            drive_resp = requests.get(drive_url, headers=auth_hdr, timeout=15)
+            if drive_resp.status_code != 200:
+                return {"status": "error", "message": "Failed to access SharePoint drive"}
+            drive_id = drive_resp.json()["id"]
+
+            # --- sanitize the whole folder path (segment-by-segment) ---
+            safe_folder_path = "/".join(
+                safe_component(p) for p in (folder_path or "").split("/") if p
+            )
+
+            # --- ensure folder exists by walking IDs; get the final folder item id ---
+            # NOTE: this calls the NEW method you added earlier
+            res = self.create_folder_by_path(site_id, drive_id, safe_folder_path, access_token)
+            if res.get("status") != "success":
+                return {"status": "error", "message": "Failed to ensure folder path"}
+            folder_id = res["id"]
+
+            # --- sanitize the file name the SAME way ---
+            safe_name = safe_component(filename)
+
+            # --- upload by item-id path (robust against special chars) ---
+            put_url = (
+                f"https://graph.microsoft.com/v1.0/sites/{site_id}"
+                f"/drives/{drive_id}/items/{folder_id}:/{urllib.parse.quote(safe_name)}:/content"
+            )
             headers = {
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/octet-stream'
             }
+            r = requests.put(put_url, headers=headers, data=file_content, timeout=60)
 
-            # Get site and drive info
-            site_url = f"https://graph.microsoft.com/v1.0/sites/{self.graph_config['site_url']}"
-            site_response = requests.get(site_url, headers={'Authorization': f'Bearer {access_token}'})
-
-            if site_response.status_code != 200:
-                return {"status": "error", "message": "Failed to access SharePoint site"}
-
-            site_data = site_response.json()
-            site_id = site_data['id']
-
-            # Get drive
-            drive_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive"
-            drive_response = requests.get(drive_url, headers={'Authorization': f'Bearer {access_token}'})
-
-            if drive_response.status_code != 200:
-                return {"status": "error", "message": "Failed to access SharePoint drive"}
-
-            drive_data = drive_response.json()
-            drive_id = drive_data['id']
-
-            # Create folder path if it doesn't exist
-            self.create_sharepoint_folder(site_id, drive_id, folder_path, access_token)
-
-            # Sanitize filename for SharePoint - remove or replace problematic characters
-            safe_filename = re.sub(r'[^\w\-_.]', '_', filename)
-            
-            # URL encode the path components for the API call
-            encoded_folder_path = urllib.parse.quote(folder_path, safe='')
-            encoded_filename = urllib.parse.quote(safe_filename, safe='')
-
-            # Upload file
-            upload_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{encoded_folder_path}/{encoded_filename}:/content"
-            print(f"Uploading file to: {upload_url}")
-
-            upload_response = requests.put(upload_url, headers=headers, data=file_content)
-
-            if upload_response.status_code in [200, 201]:
-                print(f"✅ Successfully uploaded: {safe_filename}")
-                return {"status": "success", "message": f"File uploaded: {safe_filename}"}
+            if r.status_code in (200, 201):
+                print(f"✅ Successfully uploaded: {safe_name}")
+                return {"status": "success", "message": f"File uploaded: {safe_name}"}
             else:
-                print(f"❌ Upload failed: {upload_response.status_code} - {upload_response.text}")
-                return {"status": "error", "message": f"Upload failed: {upload_response.status_code}"}
+                print(f"❌ Upload failed: {r.status_code} - {r.text}")
+                return {"status": "error", "message": f"Upload failed: {r.status_code}"}
 
         except Exception as e:
             print(f"Error uploading file to SharePoint: {e}")
             return {"status": "error", "message": str(e)}
 
-    def create_sharepoint_folder(self, site_id: str, drive_id: str, folder_path: str, access_token: str):
-        """Create folder structure in SharePoint if it doesn't exist"""
-        try:
-            headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
+    def create_folder_by_path(self, site_id: str, drive_id: str, folder_path: str, access_token: str):
+        """Create 'A/B/C' one segment at a time by ID; return final folder item id."""
+        headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
+        parts = [safe_component(p) for p in folder_path.split("/") if p]
 
-            # Split path and create each folder level
-            path_parts = folder_path.split('/')
-            current_path = ""
+        # Start at root
+        current_item_id = "root"
 
-            for part in path_parts:
-                if part:
-                    # Sanitize folder name for SharePoint
-                    safe_part = re.sub(r'[^\w\-_.]', '_', part)
-                    parent_path = current_path if current_path else ""
-                    current_path = f"{current_path}/{safe_part}" if current_path else safe_part
+        for seg in parts:
+            # List children under current item
+            list_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{current_item_id}/children?$select=id,name,folder"
+            lr = requests.get(list_url, headers=headers, timeout=15)
+            lr.raise_for_status()
+            kids = lr.json().get("value", [])
 
-                    # URL encode the path for the API call
-                    encoded_current_path = urllib.parse.quote(current_path, safe='')
+            existing = next((c for c in kids if c.get("name") == seg and "folder" in c), None)
+            if existing:
+                current_item_id = existing["id"]
+                continue
 
-                    # Check if folder exists
-                    check_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{encoded_current_path}"
-                    check_response = requests.get(check_url, headers=headers)
+            # Create missing folder
+            create_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{current_item_id}/children"
+            payload = {"name": seg, "folder": {}, "@microsoft.graph.conflictBehavior": "replace"}
+            cr = requests.post(create_url, headers=headers, json=payload, timeout=15)
+            cr.raise_for_status()
+            current_item_id = cr.json()["id"]
 
-                    if check_response.status_code == 404:
-                        # Folder doesn't exist, create it
-                        if parent_path:
-                            encoded_parent_path = urllib.parse.quote(parent_path, safe='')
-                            create_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{encoded_parent_path}:/children"
-                        else:
-                            create_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root/children"
-
-                        folder_data = {
-                            "name": safe_part,
-                            "folder": {},
-                            "@microsoft.graph.conflictBehavior": "rename"
-                        }
-
-                        create_response = requests.post(create_url, headers=headers, json=folder_data)
-                        if create_response.status_code in [200, 201]:
-                            print(f"✅ Created folder: {current_path}")
-                        else:
-                            print(f"⚠️ Folder creation warning: {create_response.status_code}")
-
-        except Exception as e:
-            print(f"Error creating SharePoint folder: {e}")
+        return {"status": "success", "id": current_item_id}
 
     def get_file_content(self, path: str, binary: bool = False) -> dict:
         """Get file content from SharePoint"""
@@ -460,22 +533,23 @@ class SharePointManager:
             return {"status": "error", "message": str(e)}
 
     def save_link_to_sharepoint(self, link_url: str, link_title: str, folder_path: str):
-        """Save a link as a text file to SharePoint"""
         try:
-            # Create text file content
-            link_content = f"RFP/RFI/RFQ Link\n"
-            link_content += f"Title: {link_title}\n"
-            link_content += f"URL: {link_url}\n"
-            link_content += f"Extracted: {datetime.now().isoformat()}\n"
+            # Build file content
+            link_content = (
+                "RFP/RFI/RFQ Link\n"
+                f"Title: {link_title}\n"
+                f"URL: {link_url}\n"
+                f"Extracted: {datetime.now(timezone.utc).isoformat()}\n"
+            )
 
-            # Clean filename
-            safe_filename = self.clean_filename(f"{link_title}.txt")
+            # IMPORTANT: use the SAME sanitizer as folder creation
+            safe_filename = safe_component(f"{link_title}.txt") or "Link.txt"
 
-            # Upload as text file
+            # Upload via the new, id-based uploader you already updated
             return self.upload_file_to_sharepoint(
-                link_content.encode('utf-8'),
+                link_content.encode("utf-8"),
                 safe_filename,
-                folder_path
+                folder_path,
             )
 
         except Exception as e:
