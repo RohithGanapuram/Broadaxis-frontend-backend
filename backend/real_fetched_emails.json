@@ -1,5 +1,67 @@
 [
   {
+    "email_id": "AAMkADgxNzU1MWQ1LWIwZWEtNGQzMS1hNzNlLTZmNWI5NDFiNmI3MgBGAAAAAAD31Ex7dOyxSa_Xwk6Ic_OvBwBxDRrnVNRURoVyVmVWMBDcAAAAAAEMAABxDRrnVNRURoVyVmVWMBDcAAAc1YhwAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "rfi rfi rfi",
+    "date": "2025-09-03T14:14:03Z",
+    "account": "rfiproject@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "14-Special Requirements.pdf",
+        "file_path": "email_attachments/2025-09-03/14-Special Requirements.pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-03T14:14:20.607430+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rfiproject@broadaxis.com/2025-09-03_rfi-rfi-rfi"
+      },
+      {
+        "filename": "City-of-Dallas-decision.pdf",
+        "file_path": "email_attachments/2025-09-03/City-of-Dallas-decision.pdf",
+        "file_size": 725390,
+        "download_date": "2025-09-03T14:14:22.767628+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rfiproject@broadaxis.com/2025-09-03_rfi-rfi-rfi"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADgxNzU1MWQ1LWIwZWEtNGQzMS1hNzNlLTZmNWI5NDFiNmI3MgBGAAAAAAD31Ex7dOyxSa_Xwk6Ic_OvBwBxDRrnVNRURoVyVmVWMBDcAAAAAAEMAABxDRrnVNRURoVyVmVWMBDcAAAc1YhvAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "newwwww rfi",
+    "date": "2025-09-03T14:12:20Z",
+    "account": "rfiproject@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "14-Special Requirements.pdf",
+        "file_path": "email_attachments/2025-09-03/14-Special Requirements.pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-03T14:12:34.830788+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rfiproject@broadaxis.com/2025-09-03_newwwww-rfi"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADBkOWZmYTMzLWUwZDAtNDVmZC05MjY3LThkMmQ3OGFjMGQ1YwBGAAAAAACnyMWE8qLuTaC1fc9F2IZ7BwBgtmbTAABWQYPKffbDBW8IAAAAAAEMAABgtmbTAABWQYPKffbDBW8IAAA7mzzrAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "oh nooo rfi ",
+    "date": "2025-09-02T19:26:30Z",
+    "account": "rohith.ganapuram@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "14-Special Requirements.pdf",
+        "file_path": "email_attachments/2025-09-02/14-Special Requirements.pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-03T05:27:28.185290+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rohith.ganapuram@broadaxis.com/2025-09-02_oh-nooo-rfi"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
     "email_id": "AAMkADBkOWZmYTMzLWUwZDAtNDVmZC05MjY3LThkMmQ3OGFjMGQ1YwBGAAAAAACnyMWE8qLuTaC1fc9F2IZ7BwBgtmbTAABWQYPKffbDBW8IAAAAAAEMAABgtmbTAABWQYPKffbDBW8IAAA7mzzpAAA=",
     "sender": "sakshi.k@broadaxis.com",
     "subject": "heeyyyy rfi",

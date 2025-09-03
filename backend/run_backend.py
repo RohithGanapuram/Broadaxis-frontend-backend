@@ -20,7 +20,8 @@ def main():
             "--host", "0.0.0.0", 
             "--port", "8000", 
             "--reload",
-            "--log-level", "info"
+            "--log-level", "info",
+            "--loop", "asyncio"  # Force use of standard asyncio instead of uvloop
         ]
         
         print("Starting BroadAxis FastAPI Backend...")

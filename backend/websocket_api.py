@@ -111,7 +111,8 @@ async def websocket_chat(websocket: WebSocket):
                 session_id = message_data.get("session_id")
                 print(f"🔍 Received session_id from frontend: {session_id}")
                 
-                if not session_id:
+                # Check if session_id is temporary (starts with 'temp_') or doesn't exist
+                if not session_id or (session_id and session_id.startswith('temp_')):
                     if SESSION_MANAGER_AVAILABLE:
                         session_id = await session_manager.create_session()
                         print(f"🆕 Created new Redis session: {session_id}")
@@ -119,7 +120,17 @@ async def websocket_chat(websocket: WebSocket):
                         session_id = f"ws_{id(websocket)}_{int(time.time())}"
                         print(f"🆕 Created fallback session: {session_id}")
                 else:
-                    print(f"⚠️ Frontend sent session_id: {session_id} - this should not happen initially")
+                    # Session ID provided and not temporary - verify it exists
+                    if SESSION_MANAGER_AVAILABLE:
+                        existing_session = await session_manager.get_session(session_id)
+                        if not existing_session:
+                            print(f"⚠️ Provided session_id {session_id} not found, creating new one")
+                            session_id = await session_manager.create_session()
+                            print(f"🆕 Created replacement Redis session: {session_id}")
+                        else:
+                            print(f"✅ Using existing session: {session_id}")
+                    else:
+                        print(f"✅ Using provided session_id: {session_id}")
                 
                 if not query:
                     # Log the message that caused the error for debugging
