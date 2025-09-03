@@ -1,5 +1,137 @@
 [
   {
+    "email_id": "AAMkADgxNzU1MWQ1LWIwZWEtNGQzMS1hNzNlLTZmNWI5NDFiNmI3MgBGAAAAAAD31Ex7dOyxSa_Xwk6Ic_OvBwBxDRrnVNRURoVyVmVWMBDcAAAAAAEMAABxDRrnVNRURoVyVmVWMBDcAAAc1YhwAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "rfi rfi rfi",
+    "date": "2025-09-03T14:14:03Z",
+    "account": "rfiproject@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "14-Special Requirements.pdf",
+        "file_path": "email_attachments\\2025-09-03\\14-Special Requirements.pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-03T14:28:41.041073+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rfiproject@broadaxis.com/2025-09-03_rfi-rfi-rfi"
+      },
+      {
+        "filename": "City-of-Dallas-decision.pdf",
+        "file_path": "email_attachments\\2025-09-03\\City-of-Dallas-decision.pdf",
+        "file_size": 725390,
+        "download_date": "2025-09-03T14:28:44.132219+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rfiproject@broadaxis.com/2025-09-03_rfi-rfi-rfi"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADgxNzU1MWQ1LWIwZWEtNGQzMS1hNzNlLTZmNWI5NDFiNmI3MgBGAAAAAAD31Ex7dOyxSa_Xwk6Ic_OvBwBxDRrnVNRURoVyVmVWMBDcAAAAAAEMAABxDRrnVNRURoVyVmVWMBDcAAAc1YhvAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "newwwww rfi",
+    "date": "2025-09-03T14:12:20Z",
+    "account": "rfiproject@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "14-Special Requirements.pdf",
+        "file_path": "email_attachments\\2025-09-03\\14-Special Requirements.pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-03T14:28:48.275011+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rfiproject@broadaxis.com/2025-09-03_newwwww-rfi"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADBkOWZmYTMzLWUwZDAtNDVmZC05MjY3LThkMmQ3OGFjMGQ1YwBGAAAAAACnyMWE8qLuTaC1fc9F2IZ7BwBgtmbTAABWQYPKffbDBW8IAAAAAAEMAABgtmbTAABWQYPKffbDBW8IAAA7mzzxAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "rfq newww",
+    "date": "2025-09-03T16:02:30Z",
+    "account": "rohith.ganapuram@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "14-Special Requirements.pdf",
+        "file_path": "email_attachments\\2025-09-03\\14-Special Requirements.pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-03T16:03:42.317013+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rohith.ganapuram@broadaxis.com/2025-09-03_rfq-newww"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADBkOWZmYTMzLWUwZDAtNDVmZC05MjY3LThkMmQ3OGFjMGQ1YwBGAAAAAACnyMWE8qLuTaC1fc9F2IZ7BwBgtmbTAABWQYPKffbDBW8IAAAAAAEMAABgtmbTAABWQYPKffbDBW8IAAA7mzzvAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "rohhiittttttt rfi",
+    "date": "2025-09-03T14:59:44Z",
+    "account": "rohith.ganapuram@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "City-of-Dallas-decision.pdf",
+        "file_path": "email_attachments\\2025-09-03\\City-of-Dallas-decision.pdf",
+        "file_size": 725390,
+        "download_date": "2025-09-03T15:00:10.007640+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rohith.ganapuram@broadaxis.com/2025-09-03_rohhiittttttt-rfi"
+      },
+      {
+        "filename": "14-Special Requirements.pdf",
+        "file_path": "email_attachments\\2025-09-03\\14-Special Requirements.pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-03T15:00:13.252232+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rohith.ganapuram@broadaxis.com/2025-09-03_rohhiittttttt-rfi"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADBkOWZmYTMzLWUwZDAtNDVmZC05MjY3LThkMmQ3OGFjMGQ1YwBGAAAAAACnyMWE8qLuTaC1fc9F2IZ7BwBgtmbTAABWQYPKffbDBW8IAAAAAAEMAABgtmbTAABWQYPKffbDBW8IAAA7mzztAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "rfp rfp",
+    "date": "2025-09-03T14:15:48Z",
+    "account": "rohith.ganapuram@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "5-General Requirements for Proposals.pdf",
+        "file_path": "email_attachments\\2025-09-03\\5-General Requirements for Proposals.pdf",
+        "file_size": 517198,
+        "download_date": "2025-09-03T14:28:54.064345+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rohith.ganapuram@broadaxis.com/2025-09-03_rfp-rfp"
+      },
+      {
+        "filename": "City-of-Dallas-decision.pdf",
+        "file_path": "email_attachments\\2025-09-03\\City-of-Dallas-decision.pdf",
+        "file_size": 725390,
+        "download_date": "2025-09-03T14:28:57.977073+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rohith.ganapuram@broadaxis.com/2025-09-03_rfp-rfp"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADBkOWZmYTMzLWUwZDAtNDVmZC05MjY3LThkMmQ3OGFjMGQ1YwBGAAAAAACnyMWE8qLuTaC1fc9F2IZ7BwBgtmbTAABWQYPKffbDBW8IAAAAAAEMAABgtmbTAABWQYPKffbDBW8IAAA7mzzrAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "oh nooo rfi ",
+    "date": "2025-09-02T19:26:30Z",
+    "account": "rohith.ganapuram@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "14-Special Requirements.pdf",
+        "file_path": "email_attachments\\2025-09-02\\14-Special Requirements.pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-03T14:29:02.091852+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rohith.ganapuram@broadaxis.com/2025-09-02_oh-nooo-rfi"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
     "email_id": "AAMkADBkOWZmYTMzLWUwZDAtNDVmZC05MjY3LThkMmQ3OGFjMGQ1YwBGAAAAAACnyMWE8qLuTaC1fc9F2IZ7BwBgtmbTAABWQYPKffbDBW8IAAAAAAEMAABgtmbTAABWQYPKffbDBW8IAAA7mzzpAAA=",
     "sender": "sakshi.k@broadaxis.com",
     "subject": "heeyyyy rfi",

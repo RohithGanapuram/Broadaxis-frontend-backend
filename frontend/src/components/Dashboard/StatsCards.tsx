@@ -1,5 +1,6 @@
 import React from 'react';
- 
+import { apiClient } from '../../utils/api';
+
 interface StatItem {
   title: string;
   count: number;
@@ -7,27 +8,70 @@ interface StatItem {
   color: string;
   icon: string;
 }
- 
+
+const isToday = (iso?: string) => {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+};
+
 const StatsCards: React.FC = () => {
+  const [counts, setCounts] = React.useState({ rfp: 0, rfi: 0, rfq: 0 });
+  const [loading, setLoading] = React.useState(false);
+
+  const loadCounts = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.getFetchedEmails();
+      let rfp = 0, rfi = 0, rfq = 0;
+      const emailsPerAcct = Array.isArray(res?.emails) ? res.emails : [];
+      for (const acct of emailsPerAcct) {
+        const list = Array.isArray(acct.emails) ? acct.emails : [];
+        for (const em of list) {
+          if (!isToday(em.date)) continue;
+          const subj = (em.subject || '').toLowerCase();
+          if (subj.includes('rfp') || subj.includes('request for proposal')) rfp++;
+          else if (subj.includes('rfi') || subj.includes('request for information')) rfi++;
+          else if (subj.includes('rfq') || subj.includes('request for quotation')) rfq++;
+        }
+      }
+      setCounts({ rfp, rfi, rfq });
+    } catch (e) {
+      console.error('[StatsCards] failed to load counts', e);
+      setCounts({ rfp: 0, rfi: 0, rfq: 0 });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    loadCounts();
+  }, []);
+
   const stats: StatItem[] = [
     {
       title: 'RFPs Today',
-      count: 16,
-      subtitle: 'Received today',
+      count: counts.rfp,
+      subtitle: loading ? 'Loading…' : 'Received today',
       color: '#3b82f6',
       icon: '📄'
     },
     {
       title: 'RFIs Today',
-      count: 8,
-      subtitle: 'Received today',
+      count: counts.rfi,
+      subtitle: loading ? 'Loading…' : 'Received today',
       color: '#8b5cf6',
       icon: '✉️'
     },
     {
       title: 'RFQs Today',
-      count: 6,
-      subtitle: 'Received today',
+      count: counts.rfq,
+      subtitle: loading ? 'Loading…' : 'Received today',
       color: '#f59e0b',
       icon: '📋'
     },
@@ -46,24 +90,45 @@ const StatsCards: React.FC = () => {
       icon: '❌'
     }
   ];
- 
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-      {stats.map((stat, index) => (
-        <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-200">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-2xl">{stat.icon}</span>
-            <h3 className="text-sm font-medium text-gray-600 text-right">{stat.title}</h3>
+    <div className="mb-8">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold text-gray-800">Daily Stats</h2>
+        <button
+          onClick={loadCounts}
+          disabled={loading}
+          className={`text-sm px-4 py-1.5 rounded-lg font-medium shadow-sm transition-colors
+            ${loading
+              ? 'bg-blue-300 text-white cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'}
+          `}
+        >
+          {loading ? 'Refreshing…' : '🔄 Refresh'}
+        </button>
+
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {stats.map((stat, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-200"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-2xl">{stat.icon}</span>
+              <h3 className="text-sm font-medium text-gray-600 text-right">
+                {stat.title}
+              </h3>
+            </div>
+            <div className="text-3xl font-bold mb-2" style={{ color: stat.color }}>
+              {stat.count}
+            </div>
+            <div className="text-sm text-gray-500">{stat.subtitle}</div>
           </div>
-          <div className="text-3xl font-bold mb-2" style={{ color: stat.color }}>
-            {stat.count}
-          </div>
-          <div className="text-sm text-gray-500">{stat.subtitle}</div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };
- 
+
 export default StatsCards;
- 

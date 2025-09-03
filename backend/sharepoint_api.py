@@ -232,13 +232,15 @@ class SharePointManager:
             headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
 
             # normalize incoming path so it matches how we create/upload
-            safe_path = _normalize_path(folder_path or "")
+            # Keep the original folder names for browsing; only URL-encode for Graph
+            orig_path = folder_path or ""
+            encoded_path = "/".join(urllib.parse.quote(p, safe="") for p in orig_path.split("/") if p)
 
-            # Build URL
-            if safe_path:
-                files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{safe_path}:/children"
+            if encoded_path:
+                files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{encoded_path}:/children"
             else:
                 files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root/children"
+
 
             resp = self._session.get(files_url, headers=headers)
             if resp.status_code != 200:
@@ -255,7 +257,7 @@ class SharePointManager:
                     'modified': item.get('lastModifiedDateTime', ''),
                     'download_url': item.get('@microsoft.graph.downloadUrl', ''),
                     'web_url': item.get('webUrl', ''),
-                    'path': f"{safe_path}/{item['name']}" if safe_path else item['name']
+                    'path': f"{orig_path}/{item['name']}" if orig_path else item['name']
                 })
 
             # ---- DEDUPE by logical key (fixes double account folders) ----
@@ -275,8 +277,8 @@ class SharePointManager:
             # ---- SORTING ----
             # If we're at Emails/{account} level, sort subfolders by YYYY-MM-DD prefix desc
             at_account_level = False
-            if safe_path:
-                parts = safe_path.split('/')
+            if orig_path:
+                parts = orig_path.split('/')
                 # e.g., "Emails/rohith_ganapuram_broadaxis_com"
                 at_account_level = (len(parts) == 2 and parts[0].lower() == 'emails')
 
@@ -313,7 +315,7 @@ class SharePointManager:
 
             return {
                 "status": "success",
-                "message": f"Successfully retrieved {len(folder_items)} items from folder: {safe_path}",
+                "message": f"Successfully retrieved {len(folder_items)} items from folder: {orig_path}",
                 "files": folder_items
             }
 
