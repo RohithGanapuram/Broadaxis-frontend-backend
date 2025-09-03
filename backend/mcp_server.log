@@ -6824,3 +6824,63 @@
 2025-09-02 15:06:35,248 - MCPServer - INFO - Tavily client initialized successfully
 2025-09-02 15:06:35,289 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
 2025-09-02 15:06:35,291 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-09-03 09:28:28,035 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-09-03 09:28:28,132 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-09-03 09:28:28,139 - MCPServer - INFO - Warming up connections...
+2025-09-03 09:28:28,238 - MCPServer - INFO - Embedding text of length: 4
+2025-09-03 09:28:30,923 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-09-03 09:28:30,926 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-09-03 09:28:30,929 - MCPServer - INFO - Connection warmup completed
+2025-09-03 09:28:30,934 - MCPServer - INFO - Tavily client initialized successfully
+2025-09-03 09:28:30,981 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-03 09:28:30,983 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-09-03 09:58:57,713 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-09-03 09:58:57,714 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-09-03 09:58:57,720 - MCPServer - INFO - Warming up connections...
+2025-09-03 09:58:57,825 - MCPServer - INFO - Embedding text of length: 4
+2025-09-03 09:58:58,672 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-09-03 09:58:58,675 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-09-03 09:58:58,678 - MCPServer - INFO - Connection warmup completed
+2025-09-03 09:58:58,683 - MCPServer - INFO - Tavily client initialized successfully
+2025-09-03 09:58:58,710 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-03 09:58:58,711 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-09-03 10:54:03,038 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-09-03 10:54:03,039 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-09-03 10:54:03,045 - MCPServer - INFO - Warming up connections...
+2025-09-03 10:54:03,121 - MCPServer - INFO - Embedding text of length: 4
+2025-09-03 10:54:04,158 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-09-03 10:54:04,161 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-09-03 10:54:04,163 - MCPServer - INFO - Connection warmup completed
+2025-09-03 10:54:04,166 - MCPServer - INFO - Tavily client initialized successfully
+2025-09-03 10:54:04,192 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-03 10:54:04,193 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2025-09-03 11:01:22,622 - MCPServer - INFO - Pinecone connection established. Index stats: {'dimension': 1536,
+ 'index_fullness': 0.0,
+ 'metric': 'cosine',
+ 'namespaces': {'broadaxis-index': {'vector_count': 226}},
+ 'total_vector_count': 226,
+ 'vector_type': 'dense'}
+2025-09-03 11:01:22,623 - MCPServer - INFO - Found 226 vectors in 'broadaxis-index' namespace
+2025-09-03 11:01:22,629 - MCPServer - INFO - Warming up connections...
+2025-09-03 11:01:22,679 - MCPServer - INFO - Embedding text of length: 4
+2025-09-03 11:01:23,751 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-09-03 11:01:23,755 - MCPServer - INFO - Generated embedding with dimension: 1536
+2025-09-03 11:01:23,758 - MCPServer - INFO - Connection warmup completed
+2025-09-03 11:01:23,764 - MCPServer - INFO - Tavily client initialized successfully
+2025-09-03 11:01:23,794 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-03 11:01:23,795 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest

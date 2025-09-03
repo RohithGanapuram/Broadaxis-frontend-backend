@@ -45,6 +45,24 @@ const Email: React.FC = () => {
   });
   const [selectedEmail, setSelectedEmail] = useState<number | null>(null);
   const [emailAttachments, setEmailAttachments] = useState<EmailAttachment[]>([]);
+  // Group attachments by email subject so multiple files from the same email appear together
+  const groupedAttachments = React.useMemo(() => {
+    const groups: Record<string, { subject: string; date?: string; items: EmailAttachment[] }> = {};
+    for (const att of emailAttachments) {
+      const subj = att.email_subject || "No Subject";
+      if (!groups[subj]) {
+        groups[subj] = { subject: subj, date: att.email_date, items: [] };
+      }
+      groups[subj].items.push(att);
+    }
+    // newest first
+    return Object.values(groups).sort((a, b) => {
+      const ta = a.date ? Date.parse(a.date) : 0;
+      const tb = b.date ? Date.parse(b.date) : 0;
+      return tb - ta;
+    });
+  }, [emailAttachments]);
+
   const [testStatus, setTestStatus] = useState('');
 
 
@@ -267,56 +285,58 @@ const Email: React.FC = () => {
                   <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
                     📎 Attachments ({emailAttachments.length})
                   </h4>
-                  {emailAttachments.length > 0 ? (
-                    <div className="space-y-2">
-                      {emailAttachments.map((attachment, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="text-lg">
-                              {attachment.type === 'link' ? '🔗' :
-                               attachment.filename?.endsWith('.pdf') ? '📄' :
-                               attachment.filename?.endsWith('.docx') ? '📝' :
-                               attachment.filename?.endsWith('.xlsx') ? '📊' : '📁'}
+                  {groupedAttachments.length > 0 ? (
+                    <div className="space-y-4">
+                      {groupedAttachments.map((group, gi) => (
+                        <div key={gi} className="border border-gray-200 rounded-lg">
+                          {/* Subject header */}
+                          <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                            <div className="font-semibold text-blue-700 truncate">
+                              📧 {group.subject}
                             </div>
-                            <div>
-                              {attachment.email_subject && (
-                                <div className="text-sm text-blue-600 font-bold mb-1">
-                                  📧 {attachment.email_subject}
-                                </div>
-                              )}
-                              <div className="text-xs font-medium text-gray-700">
-                                {attachment.filename}
-                              </div>
-                              {attachment.email_date && (
-                                <div className="text-xs text-gray-400 mb-1">
-                                  📅 {new Date(attachment.email_date).toLocaleDateString()}
-                                </div>
-                              )}
+                            {group.date && (
                               <div className="text-xs text-gray-500">
-                                {attachment.type === 'link' ?
-                                  `Link • ${attachment.domain || 'External'}` :
-                                  `${attachment.date} • ${attachment.size}`
-                                }
+                                📅 {new Date(group.date).toLocaleDateString()}
                               </div>
-                            </div>
+                            )}
                           </div>
-                          {attachment.type === 'link' ? (
-                            <a
-                              href={attachment.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors duration-200"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                              </svg>
-                              Open
-                            </a>
-                          ) : (
-                            <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                              View
-                            </button>
-                          )}
+                          {/* Attachments under this subject */}
+                          <div className="p-3 space-y-2">
+                            {group.items.map((att, i) => (
+                              <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                <div className="flex items-center space-x-3">
+                                  <div className="text-lg">
+                                    {att.type === 'link' ? '🔗' :
+                                    att.filename?.endsWith('.pdf') ? '📄' :
+                                    att.filename?.endsWith('.docx') ? '📝' :
+                                    att.filename?.endsWith('.xlsx') ? '📊' : '📁'}
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-medium text-gray-700">
+                                      {att.filename}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {att.type === 'link'
+                                        ? `Link • ${att.domain || 'External'}`
+                                        : `${att.date || ''} ${att.size ? '• ' + att.size : ''}`}
+                                    </div>
+                                  </div>
+                                </div>
+                                {att.type === 'link' ? (
+                                  <a
+                                    href={att.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs bg-blue-600 text-white px-2 py-1 rounded"
+                                  >
+                                    Open
+                                  </a>
+                                ) : (
+                                  <button className="text-xs text-blue-600">View</button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -325,6 +345,7 @@ const Email: React.FC = () => {
                       No attachments found for this email account
                     </div>
                   )}
+
                 </div>
               )}
             </div>

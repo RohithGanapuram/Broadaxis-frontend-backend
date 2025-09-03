@@ -1,6 +1,4 @@
-"""
-FastAPI Backend for BroadAxis RFP/RFQ Management Platform
-"""
+
 
 import asyncio
 import json
