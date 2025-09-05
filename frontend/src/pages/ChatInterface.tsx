@@ -583,63 +583,74 @@ If your recommendation is a Go, list down the things the user needs to complete 
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
       if (isIntelligentRFP) {
-        // For intelligent RFP processing, use regular API call
-        try {
-          setIsLoading(true)
-          toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' })
-          
-          const userMessage: ChatMessage = {
-            id: Date.now().toString(),
-            type: 'user',
-            content: `Process RFP folder intelligently: ${folderName}`,
-            timestamp: new Date()
-          }
-          
-          const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            type: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            isLoading: true
-          }
-          
-          addMessage(userMessage)
-          addMessage(assistantMessage)
-          
-          // Use regular API call for intelligent RFP processing
-          const response = await apiClient.processRFPFolderIntelligent(
-            folderName,
-            currentSessionId || 'default'
-          )
-          
-          console.log('Intelligent RFP Response:', response)
-          
-          // Update the assistant message with the response
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, content: response.summary || response.response || 'No response received', isLoading: false }
-              : msg
-          ))
-          
-          toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' })
-          setIsLoading(false)
+        // For intelligent RFP processing, first check if this folder has subfolders
+        const hasSubFolders = await fetchSubFolders(folderName)
+        
+        if (hasSubFolders) {
+          // Show subfolder selection first
+          setSelectedParentFolder(folderName)
+          setShowSubFolderSelection(true)
           setShowFolderSelection(false)
-          setSelectedPrompt(null)
-          
-        } catch (error: any) {
-          console.error('Intelligent RFP processing error:', error)
-          
-          // Update the assistant message with error
-          setMessages(prev => prev.map(msg => 
-            msg.isLoading 
-              ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
-              : msg
-          ))
-          
-          toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' })
-          setIsLoading(false)
-          setShowFolderSelection(false)
-          setSelectedPrompt(null)
+          return
+        } else {
+          // No subfolders, proceed with intelligent RFP processing
+          try {
+            setIsLoading(true)
+            toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' })
+            
+            const userMessage: ChatMessage = {
+              id: Date.now().toString(),
+              type: 'user',
+              content: `Process RFP folder intelligently: ${folderName}`,
+              timestamp: new Date()
+            }
+            
+            const assistantMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              type: 'assistant',
+              content: '',
+              timestamp: new Date(),
+              isLoading: true
+            }
+            
+            addMessage(userMessage)
+            addMessage(assistantMessage)
+            
+            // Use regular API call for intelligent RFP processing
+            const response = await apiClient.processRFPFolderIntelligent(
+              folderName,
+              currentSessionId || 'default'
+            )
+            
+            console.log('Intelligent RFP Response:', response)
+            
+            // Update the assistant message with the response
+            setMessages(prev => prev.map(msg => 
+              msg.id === assistantMessage.id 
+                ? { ...msg, content: response.summary || response.response || 'No response received', isLoading: false }
+                : msg
+            ))
+            
+            toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' })
+            setIsLoading(false)
+            setShowFolderSelection(false)
+            setSelectedPrompt(null)
+            
+          } catch (error: any) {
+            console.error('Intelligent RFP processing error:', error)
+            
+            // Update the assistant message with error
+            setMessages(prev => prev.map(msg => 
+              msg.isLoading 
+                ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
+                : msg
+            ))
+            
+            toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' })
+            setIsLoading(false)
+            setShowFolderSelection(false)
+            setSelectedPrompt(null)
+          }
         }
         return
       } else if (isStep1 || isStep2) {
@@ -711,6 +722,10 @@ If your recommendation is a Go, list down the things the user needs to complete 
     if (selectedPrompt && selectedParentFolder) {
       const fullPath = `${selectedParentFolder}/${subFolderName}`
       
+      // Check if this is intelligent RFP processing
+      const isIntelligentRFP = selectedPrompt.name === 'Intelligent_RFP_Processing' || 
+                              selectedPrompt.description.includes('intelligent RFP processing')
+      
       // Check if this is Step 1 (should work like Step 2 - with file selection)
       const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
                      selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
@@ -720,7 +735,69 @@ If your recommendation is a Go, list down the things the user needs to complete 
       const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
-      if (isStep1 || isStep2) {
+      if (isIntelligentRFP) {
+        // For intelligent RFP processing, proceed directly with the selected subfolder
+        try {
+          setIsLoading(true)
+          toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' })
+          
+          const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            type: 'user',
+            content: `Process RFP folder intelligently: ${fullPath}`,
+            timestamp: new Date()
+          }
+          
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isLoading: true
+          }
+          
+          addMessage(userMessage)
+          addMessage(assistantMessage)
+          
+          // Use regular API call for intelligent RFP processing
+          const response = await apiClient.processRFPFolderIntelligent(
+            fullPath,
+            currentSessionId || 'default'
+          )
+          
+          console.log('Intelligent RFP Response:', response)
+          
+          // Update the assistant message with the response
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessage.id 
+              ? { ...msg, content: response.summary || response.response || 'No response received', isLoading: false }
+              : msg
+          ))
+          
+          toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' })
+          setIsLoading(false)
+          setShowSubFolderSelection(false)
+          setSelectedPrompt(null)
+          setSelectedParentFolder('')
+          
+        } catch (error: any) {
+          console.error('Intelligent RFP processing error:', error)
+          
+          // Update the assistant message with error
+          setMessages(prev => prev.map(msg => 
+            msg.isLoading 
+              ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
+              : msg
+          ))
+          
+          toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' })
+          setIsLoading(false)
+          setShowSubFolderSelection(false)
+          setSelectedPrompt(null)
+          setSelectedParentFolder('')
+        }
+        return
+      } else if (isStep1 || isStep2) {
         // For both Step 1 and Step 2, show file selection after subfolder selection
         setSelectedFolder(fullPath)
         await fetchSharePointFiles(fullPath)
@@ -1034,7 +1111,7 @@ If your recommendation is a Go, list down the things the user needs to complete 
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-7xl mx-auto">
           {messages.length === 0 ? (
             <div className="text-center text-blue-500 mt-20">
               <h3 className="text-lg font-medium mb-2">Welcome to BroadAxis-AI</h3>
@@ -1052,10 +1129,10 @@ If your recommendation is a Go, list down the things the user needs to complete 
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-3xl px-6 py-4 rounded-2xl shadow-lg ${
+                  className={`${message.type === 'user' ? 'max-w-2xl' : 'w-full max-w-none'} px-8 py-6 rounded-2xl shadow-lg ${
                     message.type === 'user'
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
-                      : 'bg-white/80 backdrop-blur-md border border-blue-200/50'
+                      ? 'bg-blue-100 border border-blue-300 text-gray-900 font-medium'
+                      : 'bg-white/90 backdrop-blur-md border border-blue-200/50'
                   }`}
                 >
                   {message.isLoading ? (
@@ -1065,9 +1142,32 @@ If your recommendation is a Go, list down the things the user needs to complete 
                     </div>
                   ) : (
                     <>
-                      <ReactMarkdown className="prose prose-sm max-w-none">
-                        {message.content}
-                      </ReactMarkdown>
+                      <div className="rfp-analysis-content">
+                        <ReactMarkdown 
+                          className="prose prose-lg max-w-none rfp-markdown"
+                          components={{
+                            h1: ({children}) => <h1 className="text-3xl font-bold text-gray-900 mb-6 mt-8 first:mt-0 border-b-2 border-blue-200 pb-3">{children}</h1>,
+                            h2: ({children}) => <h2 className="text-2xl font-bold text-blue-800 mb-4 mt-6 first:mt-0 flex items-center gap-2"><span className="text-blue-600">📋</span>{children}</h2>,
+                            h3: ({children}) => <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-5 first:mt-0 flex items-center gap-2"><span className="text-gray-600">📄</span>{children}</h3>,
+                            h4: ({children}) => <h4 className="text-lg font-semibold text-gray-700 mb-2 mt-4 first:mt-0">{children}</h4>,
+                            p: ({children}) => <p className="text-gray-700 leading-relaxed mb-4 text-base">{children}</p>,
+                            ul: ({children}) => <ul className="list-disc list-inside space-y-2 mb-4 text-gray-700">{children}</ul>,
+                            ol: ({children}) => <ol className="list-decimal list-inside space-y-2 mb-4 text-gray-700">{children}</ol>,
+                            li: ({children}) => <li className="leading-relaxed">{children}</li>,
+                            strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                            em: ({children}) => <em className="italic text-gray-600">{children}</em>,
+                            blockquote: ({children}) => <blockquote className="border-l-4 border-blue-300 pl-4 py-2 bg-blue-50 rounded-r-lg mb-4 italic text-gray-700">{children}</blockquote>,
+                            code: ({children}) => <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800">{children}</code>,
+                            pre: ({children}) => <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto mb-4">{children}</pre>,
+                            table: ({children}) => <div className="overflow-x-auto mb-4"><table className="min-w-full border-collapse border border-gray-300">{children}</table></div>,
+                            th: ({children}) => <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-semibold text-gray-800">{children}</th>,
+                            td: ({children}) => <td className="border border-gray-300 px-4 py-2 text-gray-700">{children}</td>,
+                            hr: () => <hr className="my-6 border-gray-300" />
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
                       {/* Token usage display removed - no longer tracked */}
                     </>
                   )}

@@ -512,7 +512,7 @@ def _ensure_connections():
             raise
 
 @mcp.tool()
-def Broadaxis_knowledge_search(query: str, top_k: int = 10, min_score: float = 0.0, include_scores: bool = False, source_filter: str = ""):
+def Broadaxis_knowledge_search(query: str, top_k: int = 5, min_score: float = 0.0, include_scores: bool = False, source_filter: str = ""):
     """
     Retrieves the most relevant company's (Broadaxis) information from the internal knowledge base.
     Semantic search over Pinecone using OpenAI embeddings.
@@ -608,7 +608,7 @@ def Broadaxis_knowledge_search(query: str, top_k: int = 10, min_score: float = 0
                     
                     logger.info(f"Match {i+1}: score={score:.4f}, source={source}, text_len={len(text_content)}")
                 elif text_content:
-                    logger.info(f"Match {i+1} filtered out: score={score:.4f} < {min_score}, source={source}")
+                    logger.info(f"Match {i+1} filtered out: no text content, source={source}")
                 
             except Exception as match_error:
                 logger.error(f"Error processing match {i}: {match_error}")

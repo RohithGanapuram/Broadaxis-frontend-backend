@@ -659,7 +659,7 @@ async def process_rfp_folder_intelligent(request: RFPProcessingRequest):
 **Filename:** {doc.filename}
 
 ## 🔍 **Analysis Instructions:**
-1. **For PRIMARY documents:** Use `extract_pdf_text(path="{doc.file_path}", pages="all")` to read the ENTIRE document
+1. **For PRIMARY documents:** Use `extract_pdf_text(path="{doc.file_path}", pages="all", max_pages=200)` to read the ENTIRE document
 2. **For SECONDARY documents:** Use `extract_pdf_text(path="{doc.file_path}", pages="1-3")` to read first 3 pages
 3. Extract key information systematically from ALL available content
 4. Provide structured analysis following the BroadAxis-AI format below
@@ -682,13 +682,16 @@ async def process_rfp_folder_intelligent(request: RFPProcessingRequest):
 
 #### 🧩 **Key Opportunity Details**
 List all of the following **if available** in the document:
-- **Submission Deadline:** [Date + Time]
-- **Project Start/End Dates:** [Dates or Duration]
-- **Estimated Value / Budget:** [If stated]
+- **Submission Deadline:** [Date + Time - be specific]
+- **Project Start/End Dates:** [Exact dates, contract terms, renewal options]
+- **Estimated Value / Budget:** [If stated, include any budget ranges]
 - **Response Format:** (e.g., PDF proposal, online portal, pricing form, etc.)
-- **Delivery Location(s):** [City, Region, Remote, etc.]
-- **Eligibility Requirements:** (Certifications, licenses, location limits)
-- **Scope Summary:** (Bullet points or short paragraph outlining main tasks or deliverables)
+- **Delivery Location(s):** [City, Region, Remote, on-site requirements]
+- **Eligibility Requirements:** (Certifications, licenses, location limits, insurance requirements, background checks)
+- **Scope Summary:** (Detailed bullet points covering ALL services, technologies, and deliverables mentioned)
+- **Specific Technologies:** (List all software, hardware, systems mentioned by name)
+- **Insurance Requirements:** (Any specific coverage amounts or types required)
+- **Staff Requirements:** (Background checks, certifications, experience levels)
 
 ---
 
@@ -698,12 +701,12 @@ How will responses be scored or selected? Include weighting if provided (e.g., 4
 ---
 
 #### ⚠️ **Notable Risks or Challenges**
-Mention anything that could pose a red flag or require clarification (tight timeline, vague scope, legal constraints, strict eligibility).
+Mention anything that could pose a red flag or require clarification (tight timeline, vague scope, legal constraints, strict eligibility, insurance requirements, background checks, geographic requirements, pricing constraints).
 
 ---
 
 #### 💡 **Potential Opportunities or Differentiators**
-Highlight anything that could give a competitive edge or present upsell/cross-sell opportunities (e.g., optional services, innovation clauses, incumbent fatigue).
+Highlight anything that could give a competitive edge or present upsell/cross-sell opportunities (e.g., optional services, innovation clauses, incumbent fatigue, contract extensions, additional work potential, technology upgrades).
 
 ---
 
@@ -713,7 +716,16 @@ Highlight anything that could give a competitive edge or present upsell/cross-se
 
 ⚠️ **Only summarize what is clearly and explicitly stated. Never guess or infer.**
 
-Provide your analysis in the exact format above. Be thorough, specific, and comprehensive.
+**CRITICAL:** You must extract ALL specific details from the document including:
+- Exact dates, times, and deadlines
+- Specific technology names and versions
+- Insurance coverage amounts and types
+- Background check and certification requirements
+- Geographic and on-site requirements
+- Contract terms and renewal options
+- Pricing constraints and hold periods
+
+Provide your analysis in the exact format above. Be thorough, specific, and comprehensive. Do not miss any important details.
 
 **🔧 Tools Used:** extract_pdf_text"""
                     
@@ -761,20 +773,38 @@ Provide your analysis in the exact format above. Be thorough, specific, and comp
         # Step 5: Generate comprehensive Go/No-Go analysis using the BroadAxis-AI framework
         go_no_go_prompt = f"""You are BroadAxis-AI, an assistant trained to evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity. The user has uploaded opportunity documents to SharePoint, and you have already analyzed them. Now perform a structured **Go/No-Go analysis** using the following steps:
 
-## 📊 **RFP Analysis Summary**
-**Folder:** {folder_path}
-**Total Documents:** {len(documents)}
-**Primary Documents Found:** {len(primary_docs)}
-**Secondary Documents Found:** {len(secondary_docs)}
+---
 
-## 🧠 **Step-by-Step Evaluation Framework**
+# 🚀 **Intelligent RFP Processing Complete**
 
-### 1. **Review the RFP Requirements**
+## 📊 **Processing Summary**
+| **Metric** | **Value** |
+|------------|-----------|
+| **📁 Folder** | `{folder_path}` |
+| **📄 Total Documents** | `{len(documents)}` |
+| **🎯 Primary Documents** | `{len(primary_docs)}` |
+| **📋 Secondary Documents** | `{len(secondary_docs)}` |
+| **⚡ Processing Strategy** | Primary documents only, chunking for large files |
+
+---
+
+## 📄 **Document Analysis Results**
+
+{chr(10).join([f"### 📄 **{doc['filename']}**\n\n{doc['analysis']}\n\n---\n" for doc in processed_documents])}
+
+---
+
+## 🧠 **Comprehensive Go/No-Go Analysis**
+
+### 🔍 **Step 1: RFP Requirements Review**
+> **CRITICAL:** Base your analysis ONLY on the document analysis results provided above. Do not hallucinate or make assumptions.
+
+**Key Requirements Identified:**
 - Highlight the most critical needs and evaluation criteria from the document analysis above
-- Extract key deliverables, timeline, and scope requirements
-- Identify any special compliance or certification requirements
+- Extract key deliverables, timeline, and scope requirements from the actual documents
+- Identify any special compliance or certification requirements mentioned in the documents
 
-### 2. **Search Internal Knowledge** (via Broadaxis_knowledge_search)
+### 🔎 **Step 2: Internal Knowledge Research**
 Use `Broadaxis_knowledge_search` to research:
 - Relevant past projects and similar work experience
 - Proof of experience in the specific domain/industry
@@ -782,39 +812,47 @@ Use `Broadaxis_knowledge_search` to research:
 - Government/public sector experience if applicable
 - Geographic presence and local capabilities
 
-**BroadAxis Strengths Identified:**
+**🎯 BroadAxis Strengths Identified:**
 [Based on knowledge search results, list key capabilities and experience]
 
-### 3. **Evaluate Capability Alignment**
+### ⚖️ **Step 3: Capability Alignment Assessment**
 - Estimate percentage match (e.g., "BroadAxis meets ~85% of the requirements")
 - Note any missing capabilities or unclear requirements
 - Identify areas where BroadAxis has strong competitive advantages
 - Highlight any capability gaps that need to be addressed
 
-### 4. **Assess Resource Requirements**
+### 👥 **Step 4: Resource Requirements Analysis**
 - Are there any specialized skills, timelines, or staffing needs?
 - Does BroadAxis have the necessary team or partners?
 - Analyze proposal deadline and project timeline constraints
 - Assess current team and capability readiness
 
-### 5. **Evaluate Competitive Positioning**
+### 🏆 **Step 5: Competitive Positioning Evaluation**
 - Based on known experience and domain, would BroadAxis be competitive?
 - Identify competitive advantages (local presence, certifications, experience, technology)
 - Note potential competitive challenges or weaknesses
 
-## 🚦 **GO/NO-GO RECOMMENDATION: [GO / NO-GO / CONDITIONAL GO]**
-**Rationale:**
+---
+
+## 🚦 **FINAL RECOMMENDATION**
+
+### **Decision: [GO / NO-GO / CONDITIONAL GO]**
+
+**📝 Rationale:**
 [Clear explanation of the decision with supporting evidence from knowledge search]
 
-**Confidence Level:** [High / Medium / Low] - [Brief explanation of confidence factors]
+**🎯 Confidence Level:** [High / Medium / Low] - [Brief explanation of confidence factors]
 
-## 📋 **Required Tasks to Complete RFP Submission (if GO/CONDITIONAL GO):**
-**Immediate Actions (Next 7 Days):**
+---
+
+## 📋 **Action Plan** *(if GO/CONDITIONAL GO)*
+
+### **⚡ Immediate Actions (Next 7 Days):**
 1. [Specific capability assessment needed]
 2. [Experience documentation required]
 3. [Strategic positioning tasks]
 
-**RFP Response Preparation (Week 2):**
+### **📝 RFP Response Preparation (Week 2):**
 1. [Required forms completion]
 2. [Technical response development]
 3. [Final submission preparation]
@@ -826,9 +864,12 @@ Use `Broadaxis_knowledge_search` to research:
 
 ## ⚠️ **Important Guidelines:**
 - Use only verified internal information (via Broadaxis_knowledge_search) and the uploaded documents
-- Do not guess or hallucinate capabilities
+- **CRITICAL:** Base your analysis ONLY on the document analysis results provided above
+- Do not guess, hallucinate, or make assumptions about RFP requirements
 - If information is missing, clearly state what else is needed for a confident decision
 - If your recommendation is a GO, list down the specific tasks the user needs to complete for RFP submission
+
+**ANTI-HALLUCINATION RULE:** Only reference requirements, technologies, and details that are explicitly mentioned in the document analysis results above. Do not mention BI, data warehousing, or other technologies unless they appear in the actual documents.
 
 Provide your analysis in the exact format above. Be thorough, data-driven, and actionable.
 
