@@ -40,6 +40,7 @@ export interface ProgressTracker {
   estimatedTime?: number
   steps?: string[]
   currentStep?: number
+  total_steps?: number
 }
 
 // Global WebSocket connection that persists across page navigation

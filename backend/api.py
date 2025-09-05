@@ -361,6 +361,26 @@ async def chat_with_context(request: ChatRequest, session_id: str = None):
         raise
 
 
+@app.post("/api/session/create")
+async def create_session():
+    """Create a new session"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "session_id": None,
+                "error": "Session management not available",
+                "status": "error"
+            }
+        
+        session_id = await session_manager.create_session()
+        return {
+            "session_id": session_id,
+            "status": "success"
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'create_session'})
+        raise
+
 @app.get("/api/session/{session_id}")
 async def get_session_info(session_id: str):
     """Get session information and conversation history"""

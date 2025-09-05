@@ -48,8 +48,8 @@ class RedisSessionManager:
             "context": {}
         }
         
-        # Store with 24-hour TTL for testing (can be extended)
-        await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session_data))
+        # Store with 2-day TTL (172800 seconds = 48 hours)
+        await self.redis.setex(f"session:{session_id}", 172800, json.dumps(session_data))
         print(f"✅ Created session: {session_id}")
         return session_id
         
@@ -69,23 +69,39 @@ class RedisSessionManager:
         
     async def add_message(self, session_id: str, message: Dict):
         """Add message to session history"""
-        if not self.redis:
-            await self.connect()
-            
-        session = await self.get_session(session_id)
-        if session:
-            session["messages"].append(message)
-            session["updated_at"] = datetime.now().isoformat()
-            
-            # Keep only last 100 messages to prevent memory issues
-            if len(session["messages"]) > 100:
-                session["messages"] = session["messages"][-100:]
-                print(f"⚠️ Truncated session {session_id} to last 100 messages")
-            
-            await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session))
-            print(f"✅ Added message to session {session_id}, total: {len(session['messages'])}")
-        else:
-            print(f"❌ Cannot add message to non-existent session: {session_id}")
+        try:
+            if not self.redis:
+                await self.connect()
+                
+            # Validate session_id
+            if not session_id or not isinstance(session_id, str):
+                print(f"❌ Invalid session_id: {session_id}")
+                return False
+                
+            # Validate message
+            if not message or not isinstance(message, dict):
+                print(f"❌ Invalid message format: {message}")
+                return False
+                
+            session = await self.get_session(session_id)
+            if session:
+                session["messages"].append(message)
+                session["updated_at"] = datetime.now().isoformat()
+                
+                # Keep only last 100 messages to prevent memory issues
+                if len(session["messages"]) > 100:
+                    session["messages"] = session["messages"][-100:]
+                    print(f"⚠️ Truncated session {session_id} to last 100 messages")
+                
+                await self.redis.setex(f"session:{session_id}", 172800, json.dumps(session))
+                print(f"✅ Added message to session {session_id}, total: {len(session['messages'])}")
+                return True
+            else:
+                print(f"❌ Cannot add message to non-existent session: {session_id}")
+                return False
+        except Exception as e:
+            print(f"❌ Error adding message to session {session_id}: {e}")
+            return False
             
     async def get_conversation_context(self, session_id: str) -> List[Dict]:
         """Get conversation history for AI context"""
@@ -105,7 +121,7 @@ class RedisSessionManager:
         if session:
             session["context"].update(context)
             session["updated_at"] = datetime.now().isoformat()
-            await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session))
+            await self.redis.setex(f"session:{session_id}", 172800, json.dumps(session))
             print(f"✅ Updated context for session {session_id}")
     
     async def store_rfp_analysis(self, session_id: str, rfp_analysis: Dict):
@@ -130,7 +146,7 @@ class RedisSessionManager:
                 session["rfp_analyses"] = session["rfp_analyses"][-10:]
             
             session["updated_at"] = datetime.now().isoformat()
-            await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session))
+            await self.redis.setex(f"session:{session_id}", 172800, json.dumps(session))
             print(f"✅ Stored RFP analysis for session {session_id}")
     
     async def get_rfp_analyses(self, session_id: str) -> List[Dict]:
@@ -156,7 +172,7 @@ class RedisSessionManager:
             }
             
             session["updated_at"] = datetime.now().isoformat()
-            await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session))
+            await self.redis.setex(f"session:{session_id}", 172800, json.dumps(session))
             print(f"✅ Stored document summary for {document_path}")
     
     async def get_document_summary(self, session_id: str, document_path: str) -> Optional[Dict]:
@@ -183,7 +199,7 @@ class RedisSessionManager:
             }
             
             session["updated_at"] = datetime.now().isoformat()
-            await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session))
+            await self.redis.setex(f"session:{session_id}", 172800, json.dumps(session))
             print(f"✅ Stored capability match for {requirement}")
     
     async def get_capability_match(self, session_id: str, requirement: str) -> Optional[Dict]:
@@ -223,7 +239,7 @@ class RedisSessionManager:
         
     async def cleanup_old_sessions(self, hours: int = 24):
         """Clean up sessions older than specified hours (for testing, we'll skip this)"""
-        print(f"ℹ️ Skipping cleanup for testing - sessions will persist for 24 hours")
+        print(f"ℹ️ Skipping cleanup for testing - sessions will persist for 2 days (48 hours)")
         return 0
 
 

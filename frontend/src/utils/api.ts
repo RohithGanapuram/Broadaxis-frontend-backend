@@ -292,6 +292,11 @@ export const apiClient = {
   },
 
   // Session management endpoints
+  async createSession(): Promise<{ session_id: string }> {
+    const response = await api.post('/api/session/create')
+    return response.data
+  },
+
   async getSessionInfo(sessionId: string): Promise<any> {
     const response = await api.get(`/api/session/${sessionId}`)
     return response.data

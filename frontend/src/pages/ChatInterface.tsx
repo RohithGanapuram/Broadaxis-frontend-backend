@@ -91,9 +91,11 @@ const ChatInterface: React.FC = () => {
       globalWebSocket.removeErrorHandler(handleWebSocketError)
       globalWebSocket.removeCloseHandler(handleWebSocketClose)
     }
-  }, [isConnected, availableTools])
+  }, [isConnected, availableTools, currentSessionId])
 
   const handleWebSocketMessage = (data: any) => {
+    console.log(`🔍 Received WebSocket message:`, data)
+    
     if (data.type === 'response') {
       // Always update session ID if provided in response (for Redis testing)
       if (data.session_id) {
@@ -101,16 +103,48 @@ const ChatInterface: React.FC = () => {
         updateSessionId(data.session_id)
       }
       
-      setMessages(prev => prev.map(msg => 
-        msg.isLoading ? { 
-          ...msg, 
-          content: data.message, 
-          isLoading: false,
-                      // tokens_used removed - no longer tracked
-                      // token tracking removed
-        } : msg
-      ))
-      setIsLoading(false)
+      // Only process response if it's for the current session
+      if (data.session_id && data.session_id === currentSessionId) {
+        console.log(`📝 Processing response for current session: ${data.session_id}`)
+        
+        // Update the most recent loading message with the response
+        setMessages(prev => {
+          const updatedMessages = [...prev]
+          console.log(`📝 Updating messages. Total messages: ${updatedMessages.length}`)
+          console.log(`📝 Response data:`, { 
+            message: data.message, 
+            response: data.response,
+            fullData: data 
+          })
+          
+          // Find the last loading message and update it
+          let foundLoadingMessage = false
+          for (let i = updatedMessages.length - 1; i >= 0; i--) {
+            if (updatedMessages[i].isLoading) {
+              console.log(`📝 Found loading message at index ${i}, updating with response`)
+              const responseContent = data.message || data.response || 'No response received'
+              console.log(`📝 Setting response content:`, responseContent.substring(0, 100) + '...')
+              
+              updatedMessages[i] = {
+                ...updatedMessages[i],
+                content: responseContent,
+                isLoading: false
+              }
+              foundLoadingMessage = true
+              break
+            }
+          }
+          
+          if (!foundLoadingMessage) {
+            console.warn(`⚠️ No loading message found to update! Total messages: ${updatedMessages.length}`)
+            console.warn(`⚠️ Messages:`, updatedMessages.map(m => ({ id: m.id, type: m.type, isLoading: m.isLoading })))
+          }
+          return updatedMessages
+        })
+        setIsLoading(false)
+      } else {
+        console.log(`⚠️ Ignoring response for different session: ${data.session_id} (current: ${currentSessionId})`)
+      }
     } else if (data.type === 'error') {
       // Handle specific error types with better user guidance
       if (data.message.includes('Rate limit reached') || data.message.includes('429')) {
@@ -932,7 +966,7 @@ If your recommendation is a Go, list down the things the user needs to complete 
                   console.error('Failed to clear session:', error)
                 }
               }
-              createNewSession()
+              await createNewSession()
               setUploadedFiles([])
               setInputMessage('')
               toast.success('New chat started')
