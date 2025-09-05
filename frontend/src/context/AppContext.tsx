@@ -155,8 +155,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const backendSession = await apiClient.getSessionInfo(sessionId)
       if (backendSession && backendSession.status === 'success' && backendSession.messages) {
         // Convert backend messages to frontend format
-        const backendMessages = backendSession.messages.map((m: any) => ({
-          id: m.id || Date.now().toString(),
+        const backendMessages = backendSession.messages.map((m: any, index: number) => ({
+          id: m.id || `backend_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
           type: m.role === 'user' ? 'user' : 'assistant',
           content: m.content,
           timestamp: new Date(m.timestamp),

@@ -959,6 +959,25 @@ Provide your analysis in the exact format above. Be thorough, data-driven, and a
 - **Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 """
 
+        # Store the RFP processing conversation in the session
+        if SESSION_MANAGER_AVAILABLE:
+            # Store user message
+            user_message = {
+                "role": "user",
+                "content": f"Process RFP folder intelligently: {folder_path}",
+                "timestamp": datetime.now().isoformat()
+            }
+            await session_manager.add_message(session_id, user_message)
+            
+            # Store AI response
+            ai_message = {
+                "role": "assistant",
+                "content": formatted_response,
+                "timestamp": datetime.now().isoformat()
+            }
+            await session_manager.add_message(session_id, ai_message)
+            print(f"✅ Stored RFP processing conversation in session {session_id}")
+
         return {
             "status": "success",
             "folder_path": folder_path,

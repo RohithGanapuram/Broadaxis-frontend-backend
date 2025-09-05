@@ -9,6 +9,13 @@ import { ChatMessage, FileInfo, AppSettings } from '../types'
 import ProgressTracker from '../components/ProgressTracker'
 import StatusIndicator from '../components/StatusIndicator'
 
+// Generate unique message IDs to prevent React key conflicts
+let messageIdCounter = 0
+const generateMessageId = (): string => {
+  messageIdCounter++
+  return `${Date.now()}_${messageIdCounter}_${Math.random().toString(36).substr(2, 9)}`
+}
+
 const ChatInterface: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -228,14 +235,14 @@ const ChatInterface: React.FC = () => {
     if (!inputMessage.trim() && uploadedFiles.length === 0) return
 
     const userMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: generateMessageId(),
       type: 'user',
       content: inputMessage,
       timestamp: new Date()
     }
 
     const assistantMessage: ChatMessage = {
-      id: (Date.now() + 1).toString(),
+      id: generateMessageId(),
       type: 'assistant',
       content: '',
       timestamp: new Date(),
@@ -297,7 +304,7 @@ const ChatInterface: React.FC = () => {
         
         // Add upload confirmation to chat
         const uploadMessage: ChatMessage = {
-          id: Date.now().toString(),
+          id: generateMessageId(),
           type: 'assistant',
           content: fileInfo.message || `Document '${file.name}' processed and ready for intelligent Q&A! 🧠`,
           timestamp: new Date()
@@ -570,13 +577,13 @@ If your recommendation is a Go, list down the things the user needs to complete 
       setTimeout(() => {
         if (globalWebSocket.getConnectionStatus()) {
           const userMessage: ChatMessage = {
-            id: Date.now().toString(),
+            id: generateMessageId(),
             type: 'user',
             content: promptMessage,
             timestamp: new Date()
           }
           const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
+            id: generateMessageId(),
             type: 'assistant',
             content: '',
             timestamp: new Date(),
@@ -633,14 +640,14 @@ If your recommendation is a Go, list down the things the user needs to complete 
             toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' })
             
             const userMessage: ChatMessage = {
-              id: Date.now().toString(),
+              id: generateMessageId(),
               type: 'user',
               content: `Process RFP folder intelligently: ${folderName}`,
               timestamp: new Date()
             }
             
             const assistantMessage: ChatMessage = {
-              id: (Date.now() + 1).toString(),
+              id: generateMessageId(),
               type: 'assistant',
               content: '',
               timestamp: new Date(),
@@ -722,13 +729,13 @@ If your recommendation is a Go, list down the things the user needs to complete 
         setTimeout(() => {
           if (globalWebSocket.getConnectionStatus()) {
             const userMessage: ChatMessage = {
-              id: Date.now().toString(),
+              id: generateMessageId(),
               type: 'user',
               content: promptMessage,
               timestamp: new Date()
             }
             const assistantMessage: ChatMessage = {
-              id: (Date.now() + 1).toString(),
+              id: generateMessageId(),
               type: 'assistant',
               content: '',
               timestamp: new Date(),
@@ -776,14 +783,14 @@ If your recommendation is a Go, list down the things the user needs to complete 
           toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' })
           
           const userMessage: ChatMessage = {
-            id: Date.now().toString(),
+            id: generateMessageId(),
             type: 'user',
             content: `Process RFP folder intelligently: ${fullPath}`,
             timestamp: new Date()
           }
           
           const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
+            id: generateMessageId(),
             type: 'assistant',
             content: '',
             timestamp: new Date(),
@@ -846,13 +853,13 @@ If your recommendation is a Go, list down the things the user needs to complete 
       setTimeout(() => {
         if (globalWebSocket.getConnectionStatus()) {
           const userMessage: ChatMessage = {
-            id: Date.now().toString(),
+            id: generateMessageId(),
             type: 'user',
             content: promptMessage,
             timestamp: new Date()
           }
           const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
+            id: generateMessageId(),
             type: 'assistant',
             content: '',
             timestamp: new Date(),
@@ -909,13 +916,13 @@ If your recommendation is a Go, list down the things the user needs to complete 
       setTimeout(() => {
         if (globalWebSocket.getConnectionStatus()) {
           const userMessage: ChatMessage = {
-            id: Date.now().toString(),
+            id: generateMessageId(),
             type: 'user',
             content: promptMessage,
             timestamp: new Date()
           }
           const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
+            id: generateMessageId(),
             type: 'assistant',
             content: '',
             timestamp: new Date(),
@@ -987,13 +994,13 @@ If your recommendation is a Go, list down the things the user needs to complete 
                 ).join('\n')}`
                 
                 const userMessage: ChatMessage = {
-                  id: Date.now().toString(),
+                  id: generateMessageId(),
                   type: 'user',
                   content: 'Show token usage status',
                   timestamp: new Date()
                 }
                 const assistantMessage: ChatMessage = {
-                  id: (Date.now() + 1).toString(),
+                  id: generateMessageId(),
                   type: 'assistant',
                   content: message,
                   timestamp: new Date(),
@@ -1283,13 +1290,13 @@ If your recommendation is a Go, list down the things the user needs to complete 
                           setTimeout(() => {
                             if (globalWebSocket.getConnectionStatus()) {
                               const userMessage: ChatMessage = {
-                                id: Date.now().toString(),
+                                id: generateMessageId(),
                                 type: 'user',
                                 content: simplifiedMessage,
                                 timestamp: new Date()
                               }
                               const assistantMessage: ChatMessage = {
-                                id: (Date.now() + 1).toString(),
+                                id: generateMessageId(),
                                 type: 'assistant',
                                 content: '',
                                 timestamp: new Date(),
