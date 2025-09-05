@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
  
 interface RegisterProps {
   switchToLogin: () => void;
@@ -13,6 +15,8 @@ const Register: React.FC<RegisterProps> = ({ switchToLogin }) => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { register } = useAuth();
  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -21,61 +25,51 @@ const Register: React.FC<RegisterProps> = ({ switchToLogin }) => {
     });
   };
  
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
- 
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError('Please fill in all fields');
-      return;
+    setIsLoading(true);
+
+    try {
+      if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+        setError('Please fill in all fields');
+        return;
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match');
+        return;
+      }
+
+      if (formData.password.length < 6) {
+        setError('Password must be at least 6 characters long');
+        return;
+      }
+
+      const success = await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (success) {
+        toast.success('Account created successfully!');
+        // Clear form
+        setFormData({
+          name: '',
+          email: '',
+          password: '',
+          confirmPassword: ''
+        });
+      } else {
+        setError('Registration failed. Please try again.');
+      }
+    } catch (error) {
+      setError('Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
- 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
- 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
-    }
- 
-    // Get existing users
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-   
-    // Check if user already exists
-    if (users.find((u: any) => u.email === formData.email)) {
-      setError('User with this email already exists');
-      return;
-    }
- 
-    // Add new user
-    const newUser = {
-      id: Date.now(),
-      name: formData.name,
-      email: formData.email,
-      password: formData.password,
-      createdAt: new Date().toISOString()
-    };
- 
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
- 
-    setSuccess('Account created successfully! You can now sign in.');
-   
-    // Clear form
-    setFormData({
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: ''
-    });
- 
-    // Auto switch to login after 2 seconds
-    setTimeout(() => {
-      switchToLogin();
-    }, 2000);
   };
  
   return (

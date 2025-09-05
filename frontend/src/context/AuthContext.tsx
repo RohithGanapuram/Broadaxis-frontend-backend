@@ -1,17 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { apiClient } from '../utils/api'
 
 export interface User {
-  id: number
+  id: string
   name: string
   email: string
-  isLoggedIn: boolean
+  created_at: string
+  last_login?: string
 }
 
 export interface AuthContextType {
   isLoggedIn: boolean
   currentUser: User | null
-  login: () => void
-  logout: () => void
+  login: (userData: { email: string; password: string }) => Promise<boolean>
+  register: (userData: { name: string; email: string; password: string }) => Promise<boolean>
+  logout: () => Promise<void>
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -23,36 +27,87 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   // Check if user is already logged in on app start
   useEffect(() => {
-    const user = localStorage.getItem('user')
-    if (user) {
-      const userData = JSON.parse(user)
-      if (userData.isLoggedIn) {
-        setIsLoggedIn(true)
-        setCurrentUser(userData)
+    const checkAuthStatus = async () => {
+      try {
+        const token = localStorage.getItem('access_token')
+        if (token) {
+          const userData = await apiClient.getCurrentUser()
+          if (userData) {
+            setIsLoggedIn(true)
+            setCurrentUser(userData)
+          } else {
+            // Token is invalid, remove it
+            localStorage.removeItem('access_token')
+          }
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        localStorage.removeItem('access_token')
+      } finally {
+        setLoading(false)
       }
     }
+
+    checkAuthStatus()
   }, [])
 
-  const login = () => {
-    setIsLoggedIn(true)
-    // Get updated user data
-    const user = localStorage.getItem('user')
-    if (user) {
-      setCurrentUser(JSON.parse(user))
+  const login = async (userData: { email: string; password: string }): Promise<boolean> => {
+    try {
+      setLoading(true)
+      const response = await apiClient.login(userData)
+      
+      // Store token and user data
+      localStorage.setItem('access_token', response.access_token)
+      setIsLoggedIn(true)
+      setCurrentUser(response.user)
+      
+      return true
+    } catch (error) {
+      console.error('Login failed:', error)
+      return false
+    } finally {
+      setLoading(false)
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('user')
-    setIsLoggedIn(false)
-    setCurrentUser(null)
+  const register = async (userData: { name: string; email: string; password: string }): Promise<boolean> => {
+    try {
+      setLoading(true)
+      const response = await apiClient.register(userData)
+      
+      // Store token and user data
+      localStorage.setItem('access_token', response.access_token)
+      setIsLoggedIn(true)
+      setCurrentUser(response.user)
+      
+      return true
+    } catch (error) {
+      console.error('Registration failed:', error)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const logout = async (): Promise<void> => {
+    try {
+      await apiClient.logout()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    } finally {
+      // Always clear local state
+      localStorage.removeItem('access_token')
+      setIsLoggedIn(false)
+      setCurrentUser(null)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, currentUser, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, currentUser, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   )

@@ -60,7 +60,6 @@ const AppContent: React.FC = () => {
       <div className="app">
         {authMode === 'login' ? (
           <Login
-            onLogin={login}
             switchToRegister={() => setAuthMode('register')}
           />
         ) : (

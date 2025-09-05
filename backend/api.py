@@ -6,16 +6,20 @@ import os
 import time
 import base64
 import logging
+import uuid
+import bcrypt
+import jwt
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 import nest_asyncio
-from fastapi import FastAPI, File, UploadFile, WebSocket, Request
+from fastapi import FastAPI, File, UploadFile, WebSocket, Request, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from pydantic import BaseModel, ValidationError as PydanticValidationError
@@ -140,8 +144,141 @@ class RFPProcessingRequest(BaseModel):
     folder_path: str
     session_id: str = "default"
 
+# Authentication Models
+class UserRegister(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    created_at: str
+    last_login: Optional[str] = None
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: UserResponse
+
+class TokenData(BaseModel):
+    user_id: Optional[str] = None
+
 # Session file storage (keeping for backward compatibility)
 session_files = {}
+
+# Authentication Configuration
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Authentication Helper Functions
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt"""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash"""
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create a JWT access token"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(token: str) -> Optional[str]:
+    """Verify a JWT token and return user_id"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+        return user_id
+    except jwt.PyJWTError:
+        return None
+
+# Authentication Middleware
+security = HTTPBearer()
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserResponse:
+    """Authentication dependency to get current user from JWT token"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Session management not available"
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        token = credentials.credentials
+        
+        # Verify token and get user_id
+        user_id = verify_token(token)
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Check if session exists in Redis
+        session_data = await session_manager.redis.get(f"session:{token}")
+        if not session_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Get user data
+        user_data_str = await session_manager.redis.get(f"user:{user_id}")
+        if not user_data_str:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        user = json.loads(user_data_str)
+        
+        return UserResponse(
+            id=user["id"],
+            name=user["name"],
+            email=user["email"],
+            created_at=user["created_at"],
+            last_login=user.get("last_login")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Authentication error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication failed"
+        )
+
+async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[UserResponse]:
+    """Optional authentication dependency - returns None if not authenticated"""
+    try:
+        return await get_current_user(credentials)
+    except HTTPException:
+        return None
 
 # run_mcp_query is now imported from mcp_interface.py
 
@@ -290,7 +427,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
 
 
 @app.post("/api/chat")
-async def chat_with_context(request: ChatRequest, session_id: str = None):
+async def chat_with_context(request: ChatRequest, session_id: str = None, current_user: UserResponse = Depends(get_current_user)):
     """Chat endpoint with Redis session management"""
     try:
         if not SESSION_MANAGER_AVAILABLE:
@@ -362,7 +499,7 @@ async def chat_with_context(request: ChatRequest, session_id: str = None):
 
 
 @app.post("/api/session/create")
-async def create_session():
+async def create_session(current_user: UserResponse = Depends(get_current_user)):
     """Create a new session"""
     try:
         if not SESSION_MANAGER_AVAILABLE:
@@ -554,7 +691,7 @@ async def get_document_summary(session_id: str, document_path: str):
         }
 
 @app.post("/api/process-rfp-folder-intelligent")
-async def process_rfp_folder_intelligent(request: RFPProcessingRequest):
+async def process_rfp_folder_intelligent(request: RFPProcessingRequest, current_user: UserResponse = Depends(get_current_user)):
     """Intelligently process an RFP folder with document prioritization and token management"""
     folder_path = request.folder_path
     session_id = request.session_id
@@ -998,6 +1135,264 @@ Provide your analysis in the exact format above. Be thorough, data-driven, and a
             "message": f"Error processing RFP folder: {str(e)}",
             "folder_path": folder_path
         }
+
+
+# Authentication Endpoints
+@app.post("/api/auth/register", response_model=AuthResponse)
+async def register_user(user_data: UserRegister):
+    """Register a new user"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Check if user already exists
+        existing_user = await session_manager.redis.get(f"user:email:{user_data.email}")
+        if existing_user:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "User with this email already exists"}
+            )
+        
+        # Create new user
+        user_id = str(uuid.uuid4())
+        hashed_password = hash_password(user_data.password)
+        now = datetime.now().isoformat()
+        
+        user = {
+            "id": user_id,
+            "name": user_data.name,
+            "email": user_data.email,
+            "password_hash": hashed_password,
+            "created_at": now,
+            "last_login": None
+        }
+        
+        # Store user in Redis
+        await session_manager.redis.setex(f"user:{user_id}", 86400 * 30, json.dumps(user))  # 30 days
+        await session_manager.redis.setex(f"user:email:{user_data.email}", 86400 * 30, user_id)
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user_id}, expires_delta=access_token_expires
+        )
+        
+        # Store session in Redis
+        session_data = {
+            "user_id": user_id,
+            "created_at": now,
+            "expires_at": (datetime.now() + access_token_expires).isoformat()
+        }
+        await session_manager.redis.setex(f"session:{access_token}", int(access_token_expires.total_seconds()), json.dumps(session_data))
+        
+        print(f"✅ User registered: {user_data.email} (ID: {user_id})")
+        
+        return AuthResponse(
+            access_token=access_token,
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            user=UserResponse(
+                id=user_id,
+                name=user_data.name,
+                email=user_data.email,
+                created_at=now
+            )
+        )
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'register_user', 'email': user_data.email})
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Registration failed"}
+        )
+
+@app.post("/api/auth/login", response_model=AuthResponse)
+async def login_user(user_data: UserLogin):
+    """Login a user"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get user by email
+        user_id = await session_manager.redis.get(f"user:email:{user_data.email}")
+        if not user_id:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Invalid email or password"}
+            )
+        
+        # Get user data
+        user_data_str = await session_manager.redis.get(f"user:{user_id}")
+        if not user_data_str:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Invalid email or password"}
+            )
+        
+        user = json.loads(user_data_str)
+        
+        # Verify password
+        if not verify_password(user_data.password, user["password_hash"]):
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Invalid email or password"}
+            )
+        
+        # Update last login
+        now = datetime.now().isoformat()
+        user["last_login"] = now
+        await session_manager.redis.setex(f"user:{user_id}", 86400 * 30, json.dumps(user))
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user_id}, expires_delta=access_token_expires
+        )
+        
+        # Store session in Redis
+        session_data = {
+            "user_id": user_id,
+            "created_at": now,
+            "expires_at": (datetime.now() + access_token_expires).isoformat()
+        }
+        await session_manager.redis.setex(f"session:{access_token}", int(access_token_expires.total_seconds()), json.dumps(session_data))
+        
+        print(f"✅ User logged in: {user_data.email} (ID: {user_id})")
+        
+        return AuthResponse(
+            access_token=access_token,
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            user=UserResponse(
+                id=user["id"],
+                name=user["name"],
+                email=user["email"],
+                created_at=user["created_at"],
+                last_login=now
+            )
+        )
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'login_user', 'email': user_data.email})
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Login failed"}
+        )
+
+@app.post("/api/auth/logout")
+async def logout_user(request: Request):
+    """Logout a user"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get token from Authorization header
+        authorization = request.headers.get("Authorization")
+        if not authorization or not authorization.startswith("Bearer "):
+            return JSONResponse(
+                status_code=401,
+                content={"error": "No valid token provided"}
+            )
+        
+        token = authorization.split(" ")[1]
+        
+        # Remove session from Redis
+        await session_manager.redis.delete(f"session:{token}")
+        
+        print(f"✅ User logged out")
+        
+        return {"message": "Successfully logged out"}
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'logout_user'})
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Logout failed"}
+        )
+
+@app.get("/api/auth/me", response_model=UserResponse)
+async def get_current_user(request: Request):
+    """Get current user information"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get token from Authorization header
+        authorization = request.headers.get("Authorization")
+        if not authorization or not authorization.startswith("Bearer "):
+            return JSONResponse(
+                status_code=401,
+                content={"error": "No valid token provided"}
+            )
+        
+        token = authorization.split(" ")[1]
+        
+        # Verify token and get user_id
+        user_id = verify_token(token)
+        if not user_id:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Invalid token"}
+            )
+        
+        # Check if session exists in Redis
+        session_data = await session_manager.redis.get(f"session:{token}")
+        if not session_data:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Session expired"}
+            )
+        
+        # Get user data
+        user_data_str = await session_manager.redis.get(f"user:{user_id}")
+        if not user_data_str:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "User not found"}
+            )
+        
+        user = json.loads(user_data_str)
+        
+        return UserResponse(
+            id=user["id"],
+            name=user["name"],
+            email=user["email"],
+            created_at=user["created_at"],
+            last_login=user.get("last_login")
+        )
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_current_user'})
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to get user information"}
+        )
 
 
 if __name__ == "__main__":

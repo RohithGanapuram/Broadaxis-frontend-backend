@@ -18,14 +18,35 @@ const api = axios.create({
 const encodePath = (p: string) =>
   (p || "").split("/").map(encodeURIComponent).join("/");
 
-// Request interceptor for logging
+// Request interceptor for logging and auth
 api.interceptors.request.use(
   (config) => {
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    
+    // Add auth token to requests
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    
     return config
   },
   (error) => {
     console.error('API Request Error:', error)
+    return Promise.reject(error)
+  }
+)
+
+// Response interceptor for auth error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid, clear it
+      localStorage.removeItem('access_token')
+      console.warn('Authentication token expired or invalid')
+      // Optionally redirect to login or show auth error
+    }
     return Promise.reject(error)
   }
 )
@@ -294,6 +315,27 @@ export const apiClient = {
   // Session management endpoints
   async createSession(): Promise<{ session_id: string }> {
     const response = await api.post('/api/session/create')
+    return response.data
+  },
+
+  // Authentication API methods
+  async register(userData: { name: string; email: string; password: string }) {
+    const response = await api.post('/api/auth/register', userData)
+    return response.data
+  },
+
+  async login(userData: { email: string; password: string }) {
+    const response = await api.post('/api/auth/login', userData)
+    return response.data
+  },
+
+  async logout() {
+    const response = await api.post('/api/auth/logout')
+    return response.data
+  },
+
+  async getCurrentUser() {
+    const response = await api.get('/api/auth/me')
     return response.data
   },
 

@@ -1,34 +1,29 @@
 import React, { useState } from 'react'
 import toast from 'react-hot-toast'
+import { useAuth } from '../../context/AuthContext'
 
 interface LoginProps {
-  onLogin: () => void
   switchToRegister: () => void
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, switchToRegister }) => {
+const Login: React.FC<LoginProps> = ({ switchToRegister }) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      // Mock login - replace with actual API call
       if (email && password) {
-        // Store mock user data
-        const userData = {
-          id: 1,
-          name: email.split('@')[0],
-          email,
-          isLoggedIn: true
+        const success = await login({ email, password })
+        if (success) {
+          toast.success('Login successful!')
+        } else {
+          toast.error('Invalid email or password')
         }
-        localStorage.setItem('user', JSON.stringify(userData))
-        
-        toast.success('Login successful!')
-        onLogin()
       } else {
         toast.error('Please fill in all fields')
       }
