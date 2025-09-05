@@ -216,7 +216,7 @@ async def websocket_chat(websocket: WebSocket):
                     
                     async with websocket.__gate:
                         result = await run_mcp_query(
-                            full_prompt, enabled_tools, model, session_id, websocket, manager.send_personal_message
+                            full_prompt, enabled_tools, model, session_id
                         )
                     
                     if not isinstance(result, dict) or "response" not in result:
