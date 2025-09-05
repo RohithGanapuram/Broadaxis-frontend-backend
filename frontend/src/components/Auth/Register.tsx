@@ -54,7 +54,7 @@ const Register: React.FC<RegisterProps> = ({ switchToLogin }) => {
       });
 
       if (success) {
-        toast.success('Account created successfully!');
+        toast.success('Account created successfully! Please login to continue.');
         // Clear form
         setFormData({
           name: '',
@@ -62,6 +62,10 @@ const Register: React.FC<RegisterProps> = ({ switchToLogin }) => {
           password: '',
           confirmPassword: ''
         });
+        // Switch to login after 2 seconds
+        setTimeout(() => {
+          switchToLogin();
+        }, 2000);
       } else {
         setError('Registration failed. Please try again.');
       }

@@ -79,10 +79,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true)
       const response = await apiClient.register(userData)
       
-      // Store token and user data
-      localStorage.setItem('access_token', response.access_token)
-      setIsLoggedIn(true)
-      setCurrentUser(response.user)
+      // Don't auto-login after registration
+      // Just return success, user needs to login manually
+      console.log('Registration successful, user needs to login')
       
       return true
     } catch (error) {

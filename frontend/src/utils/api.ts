@@ -344,6 +344,11 @@ export const apiClient = {
     return response.data
   },
 
+  async getUserSessions(): Promise<any> {
+    const response = await api.get('/api/user/sessions')
+    return response.data
+  },
+
   async getRedisStatus(): Promise<any> {
     const response = await api.get('/api/redis/status')
     return response.data

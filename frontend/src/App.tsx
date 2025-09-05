@@ -9,7 +9,7 @@ import { AppProvider, useAppContext } from './context/AppContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
  
 const AppContent: React.FC = () => {
-  const { setTools, setPrompts, setIsConnected } = useAppContext()
+  const { setTools, setPrompts, setIsConnected, loadUserSessions } = useAppContext()
   const { isLoggedIn, login } = useAuth()
   const [isInitialized, setIsInitialized] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting')
@@ -40,6 +40,10 @@ const AppContent: React.FC = () => {
         setTools(initResponse.tools)
         setPrompts(initResponse.prompts)
         setConnectionStatus('connected')
+        
+        // Load user sessions after successful initialization
+        await loadUserSessions()
+        
         setIsInitialized(true)
         toast.success(`Ready! ${initResponse.tools.length} tools, ${initResponse.prompts.length} prompts loaded`, { id: 'app-init' })
  

@@ -509,7 +509,16 @@ async def create_session(current_user: UserResponse = Depends(get_current_user))
                 "status": "error"
             }
         
-        session_id = await session_manager.create_session()
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Create session with user ID
+        session_id = await session_manager.create_session(user_id=current_user.id)
+        
+        # Store user-session mapping
+        await session_manager.redis.sadd(f"user_sessions:{current_user.id}", session_id)
+        
         return {
             "session_id": session_id,
             "status": "success"
@@ -517,6 +526,51 @@ async def create_session(current_user: UserResponse = Depends(get_current_user))
     except Exception as e:
         error_handler.log_error(e, {'operation': 'create_session'})
         raise
+
+@app.get("/api/user/sessions")
+async def get_user_sessions(current_user: UserResponse = Depends(get_current_user)):
+    """Get all sessions for the current user"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "sessions": [],
+                "error": "Session management not available",
+                "status": "error"
+            }
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get all session IDs for this user
+        session_ids = await session_manager.redis.smembers(f"user_sessions:{current_user.id}")
+        
+        sessions = []
+        for session_id in session_ids:
+            session_data = await session_manager.get_session(session_id)
+            if session_data:
+                sessions.append({
+                    "id": session_id,
+                    "title": session_data.get("title", "Untitled Chat"),
+                    "created_at": session_data.get("created_at"),
+                    "updated_at": session_data.get("updated_at"),
+                    "message_count": len(session_data.get("messages", []))
+                })
+        
+        # Sort by updated_at (most recent first)
+        sessions.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+        
+        return {
+            "sessions": sessions,
+            "status": "success"
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_user_sessions'})
+        return {
+            "sessions": [],
+            "error": str(e),
+            "status": "error"
+        }
 
 @app.get("/api/session/{session_id}")
 async def get_session_info(session_id: str):

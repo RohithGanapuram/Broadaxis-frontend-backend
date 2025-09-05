@@ -17,6 +17,7 @@ interface AppContextType {
   switchToSession: (sessionId: string) => void
   deleteSession: (sessionId: string) => void
   updateSessionId: (newSessionId: string) => void
+  loadUserSessions: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -138,6 +139,28 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     console.log(`🔄 Updated session ID from ${currentSessionId} to: ${newSessionId}`)
   }
 
+  const loadUserSessions = async (): Promise<void> => {
+    try {
+      const { apiClient } = await import('../utils/api')
+      const response = await apiClient.getUserSessions()
+      
+      if (response.status === 'success' && response.sessions) {
+        const userSessions: ChatSession[] = response.sessions.map((session: any) => ({
+          id: session.id,
+          title: session.title,
+          messages: [], // Messages will be loaded when switching to session
+          createdAt: new Date(session.created_at),
+          updatedAt: new Date(session.updated_at)
+        }))
+        
+        console.log(`📂 Loaded ${userSessions.length} user sessions from backend`)
+        setChatSessions(userSessions)
+      }
+    } catch (error) {
+      console.error('Failed to load user sessions:', error)
+    }
+  }
+
   const switchToSession = async (sessionId: string) => {
     console.log(`🔄 Switching to session: ${sessionId}`)
     console.log(`🔄 Current session before switch: ${currentSessionId}`)
@@ -211,7 +234,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       createNewSession,
       switchToSession,
       deleteSession,
-      updateSessionId
+      updateSessionId,
+      loadUserSessions
     }}>
       {children}
     </AppContext.Provider>
