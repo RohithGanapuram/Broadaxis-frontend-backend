@@ -299,3 +299,128 @@ async def websocket_chat(websocket: WebSocket):
 
     finally:
         manager.disconnect(websocket)
+
+async def websocket_rfp_processing(websocket: WebSocket):
+    """WebSocket endpoint for real-time RFP processing with streaming updates."""
+    session_id = None
+    
+    try:
+        await manager.connect(websocket)
+        
+        while True:
+            try:
+                # Receive message from client with timeout
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=300.0)
+                
+                try:
+                    message_data = json.loads(data)
+                except json.JSONDecodeError as e:
+                    await manager.send_personal_message(
+                        json.dumps({
+                            "type": "error",
+                            "message": "Invalid JSON format in message",
+                            "status": "error"
+                        }),
+                        websocket
+                    )
+                    continue
+
+                # Handle different message types
+                message_type = message_data.get("type", "")
+                
+                # Handle heartbeat/ping messages
+                if message_type in ["ping", "pong", "heartbeat"]:
+                    if message_type == "ping":
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "pong",
+                                "timestamp": datetime.now().isoformat()
+                            }),
+                            websocket
+                        )
+                    continue
+                
+                # Handle RFP processing requests
+                if message_type == "rfp_processing":
+                    folder_path = message_data.get("folder_path", "")
+                    session_id = message_data.get("session_id", f"rfp_{int(time.time())}")
+                    
+                    if not folder_path:
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "error",
+                                "message": "Folder path is required for RFP processing",
+                                "status": "error"
+                            }),
+                            websocket
+                        )
+                        continue
+                    
+                    # Start RFP processing with streaming
+                    await process_rfp_with_streaming(websocket, folder_path, session_id)
+                    
+                else:
+                    await manager.send_personal_message(
+                        json.dumps({
+                            "type": "error",
+                            "message": f"Unknown message type: {message_type}",
+                            "status": "error"
+                        }),
+                        websocket
+                    )
+                    
+            except asyncio.TimeoutError:
+                await manager.send_personal_message(
+                    json.dumps({
+                        "type": "error",
+                        "message": "Connection timeout - please reconnect",
+                        "status": "timeout"
+                    }),
+                    websocket
+                )
+                break
+                
+            except Exception as e:
+                error_handler.log_error(e, {'session_id': session_id, 'operation': 'websocket_rfp_processing'})
+                break
+
+    except WebSocketDisconnect:
+        error_handler.logger.info(f"WebSocket RFP processing disconnected: {session_id}")
+
+    except Exception as e:
+        error_handler.log_error(e, {'session_id': session_id, 'operation': 'websocket_rfp_connection'})
+
+    finally:
+        manager.disconnect(websocket)
+
+async def process_rfp_with_streaming(websocket: WebSocket, folder_path: str, session_id: str):
+    """Process RFP with real-time streaming updates."""
+    try:
+        # Import here to avoid circular imports
+        from api import process_rfp_folder_intelligent_streaming
+        
+        # Send initial status
+        await manager.send_personal_message(
+            json.dumps({
+                "type": "rfp_status",
+                "message": "🚀 Starting Intelligent RFP Processing...",
+                "status": "info",
+                "step": "initialization",
+                "progress": 0
+            }),
+            websocket
+        )
+        
+        # Process RFP with streaming updates
+        await process_rfp_folder_intelligent_streaming(websocket, folder_path, session_id)
+        
+    except Exception as e:
+        error_handler.log_error(e, {'session_id': session_id, 'folder_path': folder_path})
+        await manager.send_personal_message(
+            json.dumps({
+                "type": "error",
+                "message": f"Error during RFP processing: {str(e)}",
+                "status": "error"
+            }),
+            websocket
+        )

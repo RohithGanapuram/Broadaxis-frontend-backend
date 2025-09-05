@@ -189,6 +189,7 @@ const ChatInterface: React.FC = () => {
     })
   }
 
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() && uploadedFiles.length === 0) return
 
@@ -464,6 +465,10 @@ const ChatInterface: React.FC = () => {
   const handlePromptClick = async (prompt: any) => {
     console.log('Prompt clicked:', prompt)
     
+    // Check if this is the intelligent RFP processing prompt
+    const isIntelligentRFP = prompt.name === 'Intelligent_RFP_Processing' || 
+                            prompt.description.includes('intelligent RFP processing')
+    
     // Check if this is the Step1 or Step2 prompt template (both need folder selection)
     const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
                    prompt.name === 'Step-1: Document Identification Assistant' ||
@@ -472,7 +477,13 @@ const ChatInterface: React.FC = () => {
     const isStep2 = prompt.name === 'Step2_summarize_documents' || 
                    prompt.description.includes('Generate a clear, high-value summary')
     
-    if (isStep1 || isStep2) {
+    if (isIntelligentRFP) {
+      console.log('Intelligent RFP processing prompt detected - showing folder selection')
+      setSelectedPrompt(prompt)
+      await fetchSharePointFolders()
+      setShowFolderSelection(true)
+      setShowPromptsPanel(false)
+    } else if (isStep1 || isStep2) {
       console.log(`${isStep1 ? 'Step1' : 'Step2'} prompt detected - showing folder selection`)
       setSelectedPrompt(prompt)
       await fetchSharePointFolders()
@@ -558,6 +569,10 @@ If your recommendation is a Go, list down the things the user needs to complete 
 
   const handleFolderSelection = async (folderName: string) => {
     if (selectedPrompt) {
+      // Check if this is intelligent RFP processing
+      const isIntelligentRFP = selectedPrompt.name === 'Intelligent_RFP_Processing' || 
+                              selectedPrompt.description.includes('intelligent RFP processing')
+      
       // Check if this is Step 1 (should work like Step 2 - with folder/file selection)
       const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
                      selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
@@ -567,7 +582,67 @@ If your recommendation is a Go, list down the things the user needs to complete 
       const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
-      if (isStep1 || isStep2) {
+      if (isIntelligentRFP) {
+        // For intelligent RFP processing, use regular API call
+        try {
+          setIsLoading(true)
+          toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' })
+          
+          const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            type: 'user',
+            content: `Process RFP folder intelligently: ${folderName}`,
+            timestamp: new Date()
+          }
+          
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isLoading: true
+          }
+          
+          addMessage(userMessage)
+          addMessage(assistantMessage)
+          
+          // Use regular API call for intelligent RFP processing
+          const response = await apiClient.processRFPFolderIntelligent(
+            folderName,
+            currentSessionId || 'default'
+          )
+          
+          console.log('Intelligent RFP Response:', response)
+          
+          // Update the assistant message with the response
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessage.id 
+              ? { ...msg, content: response.summary || response.response || 'No response received', isLoading: false }
+              : msg
+          ))
+          
+          toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' })
+          setIsLoading(false)
+          setShowFolderSelection(false)
+          setSelectedPrompt(null)
+          
+        } catch (error: any) {
+          console.error('Intelligent RFP processing error:', error)
+          
+          // Update the assistant message with error
+          setMessages(prev => prev.map(msg => 
+            msg.isLoading 
+              ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
+              : msg
+          ))
+          
+          toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' })
+          setIsLoading(false)
+          setShowFolderSelection(false)
+          setSelectedPrompt(null)
+        }
+        return
+      } else if (isStep1 || isStep2) {
         // For both Step 1 and Step 2, first check if this folder has subfolders
         const hasSubFolders = await fetchSubFolders(folderName)
         
@@ -769,7 +844,7 @@ If your recommendation is a Go, list down the things the user needs to complete 
     <div className="flex h-[calc(100vh-4.5rem)] bg-blue-50">
       {/* Chat History Sidebar */}
       <div className="w-64 bg-white/70 backdrop-blur-md border-r border-blue-200/50 flex flex-col shadow-xl">
-        <div className="p-3 border-b border-blue-200/50">
+        <div className="p-3 border-b border-blue-200/50 space-y-2">
           <button 
             onClick={async () => {
               // Clear current session files if any
@@ -788,6 +863,41 @@ If your recommendation is a Go, list down the things the user needs to complete 
             className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium text-sm"
           >
             ✨ New Chat
+          </button>
+          
+          <button 
+            onClick={async () => {
+              try {
+                const tokenStatus = await apiClient.getTokenStatus()
+                const usage = await apiClient.getTokenUsage(currentSessionId || 'default')
+                
+                const message = `📊 **Token Status**\n\n**Current Session Usage:**\n- Total Tokens: ${usage.usage?.total_tokens || 0}\n- Requests: ${usage.usage?.total_requests || 0}\n\n**Budget Status:**\n${Object.entries(tokenStatus.budgets || {}).map(([model, budget]: [string, any]) => 
+                  `- **${model}**: ${budget.hourly_remaining}/${budget.hourly_limit} tokens remaining`
+                ).join('\n')}`
+                
+                const userMessage: ChatMessage = {
+                  id: Date.now().toString(),
+                  type: 'user',
+                  content: 'Show token usage status',
+                  timestamp: new Date()
+                }
+                const assistantMessage: ChatMessage = {
+                  id: (Date.now() + 1).toString(),
+                  type: 'assistant',
+                  content: message,
+                  timestamp: new Date(),
+                  isLoading: false
+                }
+                addMessage(userMessage)
+                addMessage(assistantMessage)
+              } catch (error) {
+                toast.error('Failed to get token status')
+                console.error('Token status error:', error)
+              }
+            }}
+            className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-3 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium text-sm"
+          >
+            📊 Token Status
           </button>
         </div>
         

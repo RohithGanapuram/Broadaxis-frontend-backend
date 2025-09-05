@@ -11,6 +11,7 @@ from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from error_handler import BroadAxisError, ExternalAPIError, error_handler
+from token_manager import token_manager, TaskComplexity
 
 
 class MCPInterface:
@@ -125,6 +126,26 @@ class MCPInterface:
             await self.initialize()
         return self._prompts_cache
     
+    def _determine_task_complexity(self, query: str, enabled_tools: List[str] = None) -> TaskComplexity:
+        """Determine task complexity based on query and tools"""
+        query_lower = query.lower()
+        
+        # Complex complexity indicators
+        if any(keyword in query_lower for keyword in [
+            'analyze', 'comprehensive', 'detailed', 'complete', 'thorough',
+            'rfp', 'rfq', 'rfi', 'proposal', 'go/no-go', 'recommendation'
+        ]):
+            return TaskComplexity.COMPLEX
+        
+        # Medium complexity indicators
+        if any(keyword in query_lower for keyword in [
+            'search', 'find', 'list', 'compare', 'evaluate', 'assess'
+        ]) or (enabled_tools and len(enabled_tools) > 2):
+            return TaskComplexity.MEDIUM
+        
+        # Default to simple complexity
+        return TaskComplexity.SIMPLE
+    
     async def process_query_with_anthropic(self, query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default", websocket = None, send_message_callback=None) -> Dict:
         if not self.anthropic:
             return {"response": "Anthropic API not available", "tokens_used": 0}
@@ -154,7 +175,28 @@ class MCPInterface:
 
 ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis company information, location, or any company-specific details."""
             
-            selected_model = model or "claude-3-7-sonnet-20250219"
+            # Determine task complexity and select appropriate model
+            task_complexity = self._determine_task_complexity(query, enabled_tools)
+            estimated_tokens = token_manager.estimate_tokens(query + system_prompt)
+            
+            # Use token manager to select the best model
+            if model:
+                selected_model = model
+            else:
+                selected_model = token_manager.get_recommended_model(query, estimated_tokens)
+            
+            # Generate unique request ID
+            import uuid
+            request_id = str(uuid.uuid4())
+            
+            # TEMPORARILY DISABLED: Reserve tokens and check rate limits
+            # TODO: Debug and fix token manager
+            # if not await token_manager.reserve_tokens(selected_model, estimated_tokens, request_id, session_id):
+            #     return {
+            #         "response": "❌ **Rate limit or token budget exceeded. Please try again in a few minutes.**",
+            #         "tokens_used": 0,
+            #         "error": "rate_limit_exceeded"
+            #     }
             
             # Build messages for the API call
             messages = [{"role": "user", "content": query}]
@@ -350,33 +392,46 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
                 tools_info = "\n\n---\n🔧 **Tools Used:** " + ", ".join(set(tools_used))
                 full_response += tools_info
             
+            # TEMPORARILY DISABLED: Record actual token usage
+            # TODO: Debug and fix token manager
+            # actual_input_tokens = estimated_tokens  # Rough estimate
+            # actual_output_tokens = token_manager.estimate_tokens(full_response)
+            # token_manager.record_usage(
+            #     selected_model,
+            #     actual_input_tokens,
+            #     actual_output_tokens,
+            #     request_id,
+            #     task_complexity.value,
+            #     session_id
+            # )
+            
             return {
                 "response": full_response,
-                "tokens_used": 0  # No token tracking
+                "tokens_used": 0,  # Temporarily disabled
+                "model_used": selected_model,
+                "request_id": request_id
             }
             
         except Exception as e:
             self._connection_status = "offline"
             return {"response": f"Error: {str(e)}", "tokens_used": 0}
 
-    async def cleanup(self):
-        """Clean up the persistent connection"""
-        try:
-            if self.exit_stack:
-                await self.exit_stack.aclose()
-        except Exception as e:
-            error_handler.log_error(e, {'operation': 'cleanup_mcp_connection'})
-        finally:
-            self.exit_stack = None
-            self.session = None
-            self.stdio = None
-            self.write = None
-            self._connection_status = "disconnected"
 
-
-# Create global instance
+# Global instance
 mcp_interface = MCPInterface()
 
-
-async def run_mcp_query(query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default", websocket = None, send_message_callback=None) -> Dict:
-    return await mcp_interface.process_query_with_anthropic(query, enabled_tools, model, session_id, websocket, send_message_callback)
+async def run_mcp_query(
+    query: str,
+    enabled_tools: List[str] = None,
+    model: str = "claude-3-5-sonnet-20241022",
+    session_id: str = "default"
+) -> Dict:
+    """
+    Run MCP query with the specified parameters.
+    """
+    return await mcp_interface.process_query_with_anthropic(
+        query=query,
+        enabled_tools=enabled_tools,
+        model=model,
+        session_id=session_id
+    )

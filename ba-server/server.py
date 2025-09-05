@@ -512,7 +512,7 @@ def _ensure_connections():
             raise
 
 @mcp.tool()
-def Broadaxis_knowledge_search(query: str, top_k: int = 5, min_score: float = 0.0, include_scores: bool = False, source_filter: str = ""):
+def Broadaxis_knowledge_search(query: str, top_k: int = 10, min_score: float = 0.0, include_scores: bool = False, source_filter: str = ""):
     """
     Retrieves the most relevant company's (Broadaxis) information from the internal knowledge base.
     Semantic search over Pinecone using OpenAI embeddings.
@@ -2061,6 +2061,34 @@ def extract_pdf_text(path: str, pages: str = "all", clean_text: bool = True, pre
         return json.dumps({"status": "error", "error": str(e)})
 
 
+@mcp.prompt(title="Intelligent RFP Processing")
+def Intelligent_RFP_Processing():
+    """Intelligently process an entire RFP folder with document prioritization and token management."""
+    return """🚀 **Intelligent RFP Processing**
+
+This advanced workflow will:
+
+## 🎯 **What It Does:**
+1. **Smart Document Prioritization** - Automatically identifies primary vs secondary documents
+2. **Token Management** - Uses optimal models (Haiku/Sonnet/Opus) based on complexity
+3. **Efficient Processing** - Only processes the most important 2-3 documents out of many
+4. **BroadAxis Knowledge Search** - Cross-references requirements with your capabilities
+5. **Go/No-Go Recommendation** - Provides clear decision with reasons and next steps
+
+## 📊 **Benefits:**
+- ✅ **50-70% faster** than processing all documents
+- ✅ **Token efficient** - Smart budgeting prevents rate limits
+- ✅ **Intelligent caching** - Results saved for future use
+- ✅ **Multi-model strategy** - Right tool for each task
+
+## 🔄 **How It Works:**
+1. Select your RFP folder (e.g., "harriscounty")
+2. System prioritizes documents automatically
+3. Processes only primary/secondary documents
+4. Searches BroadAxis knowledge base
+5. Returns Go/No-Go recommendation with analysis
+
+**Ready to process your RFP folder intelligently!** 🎯"""
 
 @mcp.prompt(title="Step-1: Document Identification Assistant")
 def Step1_Identifying_documents():
@@ -2230,6 +2258,8 @@ Your task is to **complete the missing sections** on the fillable documents whic
 Only fill what you can verify using internal knowledge and uploaded content. Leave everything else with clear, professional placeholders.
 
 """
+
+
 
 
 if __name__ == "__main__":

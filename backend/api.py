@@ -5,8 +5,12 @@ import json
 import os
 import time
 import base64
+import logging
 from typing import Dict, List, Optional
 from datetime import datetime
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 import nest_asyncio
 from fastapi import FastAPI, File, UploadFile, WebSocket, Request
@@ -27,6 +31,8 @@ from error_handler import (
 
 # Import MCP interface
 from mcp_interface import mcp_interface, run_mcp_query
+from token_manager import token_manager
+from document_prioritizer import document_prioritizer
 
 # Import WebSocket functionality
 from websocket_api import websocket_chat
@@ -129,6 +135,10 @@ class EmailFetchResponse(BaseModel):
     emails_found: int
     attachments_downloaded: int
     fetched_emails: List[FetchedEmail]
+
+class RFPProcessingRequest(BaseModel):
+    folder_path: str
+    session_id: str = "default"
 
 # Session file storage (keeping for backward compatibility)
 session_files = {}
@@ -276,6 +286,8 @@ async def websocket_chat_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time chat communication."""
     await websocket_chat(websocket)
 
+# WebSocket endpoint for real-time RFP processing
+
 
 @app.post("/api/chat")
 async def chat_with_context(request: ChatRequest, session_id: str = None):
@@ -412,7 +424,503 @@ async def get_redis_status():
             "error": str(e)
         }
 
+@app.get("/api/token-status")
+async def get_token_status():
+    """Get current token budget and usage status"""
+    try:
+        budget_status = token_manager.get_budget_status()
+        return {
+            "status": "success",
+            "budgets": budget_status,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_token_status'})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.get("/api/token-usage/{session_id}")
+async def get_token_usage(session_id: str):
+    """Get token usage statistics for a specific session"""
+    try:
+        usage_stats = token_manager.get_usage_stats(session_id)
+        return {
+            "status": "success",
+            "usage": usage_stats,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_token_usage', 'session_id': session_id})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.get("/api/token-usage")
+async def get_all_token_usage():
+    """Get overall token usage statistics"""
+    try:
+        usage_stats = token_manager.get_usage_stats()
+        return {
+            "status": "success",
+            "usage": usage_stats,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_all_token_usage'})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.get("/api/rfp-analyses/{session_id}")
+async def get_rfp_analyses(session_id: str):
+    """Get stored RFP analyses for a session"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "status": "error",
+                "error": "Session management not available"
+            }
+        
+        analyses = await session_manager.get_rfp_analyses(session_id)
+        return {
+            "status": "success",
+            "analyses": analyses,
+            "count": len(analyses),
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_rfp_analyses', 'session_id': session_id})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.get("/api/document-summary/{session_id}")
+async def get_document_summary(session_id: str, document_path: str):
+    """Get stored document summary"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "status": "error",
+                "error": "Session management not available"
+            }
+        
+        summary = await session_manager.get_document_summary(session_id, document_path)
+        if summary:
+            return {
+                "status": "success",
+                "summary": summary,
+                "document_path": document_path,
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            return {
+                "status": "not_found",
+                "message": "Document summary not found",
+                "document_path": document_path,
+                "session_id": session_id
+            }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_document_summary', 'session_id': session_id, 'document_path': document_path})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.post("/api/process-rfp-folder-intelligent")
+async def process_rfp_folder_intelligent(request: RFPProcessingRequest):
+    """Intelligently process an RFP folder with document prioritization and token management"""
+    folder_path = request.folder_path
+    session_id = request.session_id
+    try:
+        # Ensure MCP connection
+        await mcp_interface._ensure_connection()
+        
+        # Step 1: Recursively list all documents in the folder and subfolders
+        print(f"🔍 Attempting to list files in folder: '{folder_path}'")
+        list_result = await mcp_interface.session.call_tool(
+            "sharepoint_list_files",
+            arguments={"path": folder_path, "max_results": 100, "recursive": True}
+        )
+        
+        print(f"📋 SharePoint list result: {list_result}")
+        print(f"📋 Content: {list_result.content}")
+        
+        if not list_result.content:
+            return {
+                "status": "error",
+                "message": f"No documents found in the specified folder: '{folder_path}'. Please check if the folder exists and contains files."
+            }
+        
+        # Parse the list result
+        try:
+            print(f"📄 Raw content text: {list_result.content[0].text}")
+            files_data = json.loads(list_result.content[0].text)
+            print(f"📄 Parsed files data: {files_data}")
+            
+            if files_data.get("status") != "success":
+                return {
+                    "status": "error",
+                    "message": f"Failed to list files: {files_data.get('error', 'Unknown error')}"
+                }
+            items = files_data.get("items", [])
+            print(f"📄 Found {len(items)} items: {[item.get('name', 'unknown') for item in items]}")
+            
+            # Filter out folders and only keep actual files
+            documents = [item for item in items if not item.get("is_folder", False)]
+            folders = [item for item in items if item.get("is_folder", False)]
+            
+            print(f"📁 Found {len(folders)} folders: {[f.get('name') for f in folders]}")
+            print(f"📄 Found {len(documents)} documents: {[d.get('name') for d in documents]}")
+            
+            # Check if we have a single archive file that needs to be extracted
+            if len(documents) == 1 and len(folders) == 0:
+                archive_item = documents[0]
+                archive_name = archive_item.get("name", "")
+                archive_path = archive_item.get("path", "")
+                
+                # Check if it's likely an archive file (ZIP, RAR, etc.)
+                if any(ext in archive_name.lower() for ext in ['.zip', '.rar', '.7z', '.tar', '.gz']):
+                    print(f"📦 Detected archive file: {archive_name}")
+                    return {
+                        "status": "error",
+                        "message": f"Archive file detected: '{archive_name}'. Please extract the contents first or use a different folder path.",
+                        "suggestion": f"Try using the path: '{archive_path}' or extract the archive to get individual documents."
+                    }
+                else:
+                    # It's a single document file - this is perfectly fine to process
+                    print(f"📄 Single document found: {archive_name} - proceeding with analysis")
+                    # Continue processing - don't return an error
+            
+            # If we have folders but no documents, that's also an issue
+            if len(documents) == 0 and len(folders) > 0:
+                return {
+                    "status": "error",
+                    "message": f"Found {len(folders)} folders but no documents. The intelligent RFP processing needs actual document files.",
+                    "suggestion": f"Folders found: {[f.get('name') for f in folders]}. Please ensure these folders contain document files."
+                }
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON decode error: {e}")
+            return {
+                "status": "error",
+                "message": f"Invalid response from SharePoint list files: {str(e)}"
+            }
+        
+        if not documents:
+            return {
+                "status": "error",
+                "message": "No documents found in the specified folder"
+            }
+        
+        # Step 2: Prioritize documents
+        prioritized_docs = document_prioritizer.prioritize_documents(documents)
+        
+        # Step 3: Get processing recommendation
+        recommendation = document_prioritizer.get_processing_recommendation(prioritized_docs)
+        
+        # Step 4: Process primary documents first (if any)
+        primary_docs = document_prioritizer.get_primary_documents(prioritized_docs, max_count=3)
+        secondary_docs = document_prioritizer.get_secondary_documents(prioritized_docs, max_count=2)
+        
+        processed_documents = []
+        total_tokens_used = 0
+        
+        # Process primary documents
+        for doc in primary_docs:
+            try:
+                # Check if we already have a summary for this document
+                existing_summary = None
+                if SESSION_MANAGER_AVAILABLE:
+                    existing_summary = await session_manager.get_document_summary(session_id, doc.file_path)
+                
+                if existing_summary:
+                    # Use cached summary
+                    processed_documents.append({
+                        "filename": doc.filename,
+                        "priority": doc.priority.value,
+                        "confidence": doc.confidence_score,
+                        "analysis": existing_summary["summary"]["analysis"],
+                        "tokens_used": 0,  # No tokens used for cached result
+                        "model_used": "cached",
+                        "cached": True
+                    })
+                    logger.info(f"Using cached analysis for {doc.filename}")
+                else:
+                    # Use comprehensive RFP analysis prompt following BroadAxis-AI format
+                    analysis_prompt = f"""You are **BroadAxis-AI**, an intelligent assistant that analyzes procurement documents (RFP, RFQ, RFI) to help vendor teams quickly understand the opportunity and make informed pursuit decisions.
+
+## 📄 **Document to Analyze:**
+**Filename:** {doc.filename}
+
+## 🔍 **Analysis Instructions:**
+1. **For PRIMARY documents:** Use `extract_pdf_text(path="{doc.file_path}", pages="all")` to read the ENTIRE document
+2. **For SECONDARY documents:** Use `extract_pdf_text(path="{doc.file_path}", pages="1-3")` to read first 3 pages
+3. Extract key information systematically from ALL available content
+4. Provide structured analysis following the BroadAxis-AI format below
+5. **DO NOT include technical details like Priority, Confidence, Model Used, or Tokens in your response**
+
+**IMPORTANT:** Since this is a PRIMARY document, you MUST read the entire document to capture all critical information.
+
+## 📊 **Required Analysis Format:**
+
+### 📄 **Document: {doc.filename}**
+
+#### 📹 **What is This About?**
+> A 3–5 sentence **plain-English overview** of the opportunity. Include:
+- Who issued it (organization)
+- What they need / are requesting
+- Why (the business problem or goal)
+- Type of response expected (proposal, quote, info)
+
+---
+
+#### 🧩 **Key Opportunity Details**
+List all of the following **if available** in the document:
+- **Submission Deadline:** [Date + Time]
+- **Project Start/End Dates:** [Dates or Duration]
+- **Estimated Value / Budget:** [If stated]
+- **Response Format:** (e.g., PDF proposal, online portal, pricing form, etc.)
+- **Delivery Location(s):** [City, Region, Remote, etc.]
+- **Eligibility Requirements:** (Certifications, licenses, location limits)
+- **Scope Summary:** (Bullet points or short paragraph outlining main tasks or deliverables)
+
+---
+
+#### 📊 **Evaluation Criteria**
+How will responses be scored or selected? Include weighting if provided (e.g., 40% price, 30% experience).
+
+---
+
+#### ⚠️ **Notable Risks or Challenges**
+Mention anything that could pose a red flag or require clarification (tight timeline, vague scope, legal constraints, strict eligibility).
+
+---
+
+#### 💡 **Potential Opportunities or Differentiators**
+Highlight anything that could give a competitive edge or present upsell/cross-sell opportunities (e.g., optional services, innovation clauses, incumbent fatigue).
+
+---
+
+#### 📞 **Contact & Submission Info**
+- **Primary Contact:** Name, title, email, phone (if listed)
+- **Submission Instructions:** Portal, email, physical, etc.
+
+⚠️ **Only summarize what is clearly and explicitly stated. Never guess or infer.**
+
+Provide your analysis in the exact format above. Be thorough, specific, and comprehensive.
+
+**🔧 Tools Used:** extract_pdf_text"""
+                    
+                    # Process with token management and multi-model strategy
+                    result = await run_mcp_query(
+                        analysis_prompt,
+                        enabled_tools=['sharepoint_list_files', 'extract_pdf_text'],
+                        model=token_manager.get_recommended_model(analysis_prompt, 1000),
+                        session_id=session_id
+                    )
+                    
+                    analysis_result = {
+                        "filename": doc.filename,
+                        "priority": doc.priority.value,
+                        "confidence": doc.confidence_score,
+                        "analysis": result.get("response", ""),
+                        "tokens_used": result.get("tokens_used", 0),
+                        "model_used": result.get("model_used", "unknown"),
+                        "cached": False
+                    }
+                    
+                    processed_documents.append(analysis_result)
+                    total_tokens_used += result.get("tokens_used", 0)
+                    
+                    # Store the analysis for future use
+                    if SESSION_MANAGER_AVAILABLE:
+                        await session_manager.store_document_summary(
+                            session_id, 
+                            doc.file_path, 
+                            analysis_result
+                        )
+                
+            except Exception as e:
+                logger.error(f"Error processing primary document {doc.filename}: {e}")
+                processed_documents.append({
+                    "filename": doc.filename,
+                    "priority": doc.priority.value,
+                    "confidence": doc.confidence_score,
+                    "analysis": f"Error processing document: {str(e)}",
+                    "tokens_used": 0,
+                    "model_used": "error",
+                    "cached": False
+                })
+        
+        # Step 5: Generate comprehensive Go/No-Go analysis using the BroadAxis-AI framework
+        go_no_go_prompt = f"""You are BroadAxis-AI, an assistant trained to evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity. The user has uploaded opportunity documents to SharePoint, and you have already analyzed them. Now perform a structured **Go/No-Go analysis** using the following steps:
+
+## 📊 **RFP Analysis Summary**
+**Folder:** {folder_path}
+**Total Documents:** {len(documents)}
+**Primary Documents Found:** {len(primary_docs)}
+**Secondary Documents Found:** {len(secondary_docs)}
+
+## 🧠 **Step-by-Step Evaluation Framework**
+
+### 1. **Review the RFP Requirements**
+- Highlight the most critical needs and evaluation criteria from the document analysis above
+- Extract key deliverables, timeline, and scope requirements
+- Identify any special compliance or certification requirements
+
+### 2. **Search Internal Knowledge** (via Broadaxis_knowledge_search)
+Use `Broadaxis_knowledge_search` to research:
+- Relevant past projects and similar work experience
+- Proof of experience in the specific domain/industry
+- Known strengths or capability gaps for this type of opportunity
+- Government/public sector experience if applicable
+- Geographic presence and local capabilities
+
+**BroadAxis Strengths Identified:**
+[Based on knowledge search results, list key capabilities and experience]
+
+### 3. **Evaluate Capability Alignment**
+- Estimate percentage match (e.g., "BroadAxis meets ~85% of the requirements")
+- Note any missing capabilities or unclear requirements
+- Identify areas where BroadAxis has strong competitive advantages
+- Highlight any capability gaps that need to be addressed
+
+### 4. **Assess Resource Requirements**
+- Are there any specialized skills, timelines, or staffing needs?
+- Does BroadAxis have the necessary team or partners?
+- Analyze proposal deadline and project timeline constraints
+- Assess current team and capability readiness
+
+### 5. **Evaluate Competitive Positioning**
+- Based on known experience and domain, would BroadAxis be competitive?
+- Identify competitive advantages (local presence, certifications, experience, technology)
+- Note potential competitive challenges or weaknesses
+
+## 🚦 **GO/NO-GO RECOMMENDATION: [GO / NO-GO / CONDITIONAL GO]**
+**Rationale:**
+[Clear explanation of the decision with supporting evidence from knowledge search]
+
+**Confidence Level:** [High / Medium / Low] - [Brief explanation of confidence factors]
+
+## 📋 **Required Tasks to Complete RFP Submission (if GO/CONDITIONAL GO):**
+**Immediate Actions (Next 7 Days):**
+1. [Specific capability assessment needed]
+2. [Experience documentation required]
+3. [Strategic positioning tasks]
+
+**RFP Response Preparation (Week 2):**
+1. [Required forms completion]
+2. [Technical response development]
+3. [Final submission preparation]
+
+**Risk Mitigation Strategies:**
+[Specific strategies to address identified risks]
+
+**Success Probability:** [XX%] with proper preparation, versus [XX%] without focused effort.
+
+## ⚠️ **Important Guidelines:**
+- Use only verified internal information (via Broadaxis_knowledge_search) and the uploaded documents
+- Do not guess or hallucinate capabilities
+- If information is missing, clearly state what else is needed for a confident decision
+- If your recommendation is a GO, list down the specific tasks the user needs to complete for RFP submission
+
+Provide your analysis in the exact format above. Be thorough, data-driven, and actionable.
+
+**🔧 Tools Used:** Broadaxis_knowledge_search"""
+        
+        summary_result = await run_mcp_query(
+            go_no_go_prompt,
+            enabled_tools=['Broadaxis_knowledge_search'],
+            model=token_manager.get_recommended_model(go_no_go_prompt, 2000),
+            session_id=session_id
+        )
+        
+        total_tokens_used += summary_result.get("tokens_used", 0)
+        
+        # Store the complete RFP analysis for future reference
+        rfp_analysis = {
+            "folder_path": folder_path,
+            "total_documents": len(documents),
+            "processed_documents": len(processed_documents),
+            "recommendation": recommendation,
+            "processed_docs": processed_documents,
+            "summary": summary_result.get("response", ""),
+            "total_tokens_used": total_tokens_used,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        if SESSION_MANAGER_AVAILABLE:
+            await session_manager.store_rfp_analysis(session_id, rfp_analysis)
+        
+        # Format the response with proper markdown structure and spacing
+        formatted_response = f"""# 🚀 **Intelligent RFP Processing Complete**
+
+## 📊 **Document Classification Results**
+
+### 📘 **Primary Documents (RFP/RFQ/RFI Content)**
+
+{chr(10).join([f"**{doc['filename']}**\n\n{doc['analysis']}\n" for doc in processed_documents if doc.get('priority') == 'primary'] or ['No primary documents found.'])}
+
+### 📄 **Secondary Documents (Supporting Information)**
+
+{chr(10).join([f"**{doc['filename']}**\n\n{doc['analysis']}\n" for doc in processed_documents if doc.get('priority') == 'secondary'] or ['No secondary documents found.'])}
+
+### 📋 **Other Documents (Reference/Supporting)**
+
+{chr(10).join([f"**{doc['filename']}**\n\n{doc['analysis']}\n" for doc in processed_documents if doc.get('priority') not in ['primary', 'secondary']] or ['No other documents found.'])}
+
+---
+
+## 📋 **Summary**
+
+**Primary Documents:** {len([doc for doc in processed_documents if doc.get('priority') == 'primary'])} files
+**Secondary Documents:** {len([doc for doc in processed_documents if doc.get('priority') == 'secondary'])} files  
+**Other Documents:** {len([doc for doc in processed_documents if doc.get('priority') not in ['primary', 'secondary']])} files
+**Total Documents Processed:** {len(processed_documents)}
+**Total Tokens Used:** {total_tokens_used}
+
+---
+
+## 🧠 **Comprehensive Go/No-Go Analysis**
+
+{summary_result.get("response", "")}
+
+---
+
+## 📈 **Session Information**
+- **Session ID:** {session_id}
+- **Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+"""
+
+        return {
+            "status": "success",
+            "folder_path": folder_path,
+            "total_documents": len(documents),
+            "processed_documents": len(processed_documents),
+            "recommendation": recommendation,
+            "processed_docs": processed_documents,
+            "summary": formatted_response,
+            "total_tokens_used": total_tokens_used,
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'process_rfp_folder_intelligent', 'folder_path': folder_path})
+        return {
+            "status": "error",
+            "message": f"Error processing RFP folder: {str(e)}",
+            "folder_path": folder_path
+        }
+
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+

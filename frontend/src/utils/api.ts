@@ -300,6 +300,43 @@ export const apiClient = {
   async getRedisStatus(): Promise<any> {
     const response = await api.get('/api/redis/status')
     return response.data
+  },
+
+  // New intelligent RFP processing
+  async processRFPFolderIntelligent(folderPath: string, sessionId: string = 'default'): Promise<any> {
+    try {
+      const response = await api.post('/api/process-rfp-folder-intelligent', {
+        folder_path: folderPath,
+        session_id: sessionId
+      }, { timeout: 300000 }); // 5 minute timeout
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to process RFP folder intelligently:', error);
+      throw error;
+    }
+  },
+
+  // Token management endpoints
+  async getTokenStatus(): Promise<any> {
+    try {
+      const response = await api.get('/api/token-status');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get token status:', error);
+      throw error;
+    }
+  },
+
+  async getTokenUsage(sessionId?: string): Promise<any> {
+    try {
+      const url = sessionId ? `/api/token-usage/${sessionId}` : '/api/token-usage';
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get token usage:', error);
+      throw error;
+    }
   }
 
 }
@@ -377,5 +414,6 @@ export class ChatWebSocket {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN
   }
 }
+
 
 export default api

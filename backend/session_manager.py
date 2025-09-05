@@ -107,6 +107,92 @@ class RedisSessionManager:
             session["updated_at"] = datetime.now().isoformat()
             await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session))
             print(f"✅ Updated context for session {session_id}")
+    
+    async def store_rfp_analysis(self, session_id: str, rfp_analysis: Dict):
+        """Store RFP analysis results for reuse"""
+        if not self.redis:
+            await self.connect()
+            
+        session = await self.get_session(session_id)
+        if session:
+            if "rfp_analyses" not in session:
+                session["rfp_analyses"] = []
+            
+            # Add timestamp and analysis
+            analysis_with_timestamp = {
+                "timestamp": datetime.now().isoformat(),
+                "analysis": rfp_analysis
+            }
+            session["rfp_analyses"].append(analysis_with_timestamp)
+            
+            # Keep only last 10 analyses to prevent memory issues
+            if len(session["rfp_analyses"]) > 10:
+                session["rfp_analyses"] = session["rfp_analyses"][-10:]
+            
+            session["updated_at"] = datetime.now().isoformat()
+            await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session))
+            print(f"✅ Stored RFP analysis for session {session_id}")
+    
+    async def get_rfp_analyses(self, session_id: str) -> List[Dict]:
+        """Get stored RFP analyses for a session"""
+        session = await self.get_session(session_id)
+        if session:
+            return session.get("rfp_analyses", [])
+        return []
+    
+    async def store_document_summary(self, session_id: str, document_path: str, summary: Dict):
+        """Store document summary for reuse"""
+        if not self.redis:
+            await self.connect()
+            
+        session = await self.get_session(session_id)
+        if session:
+            if "document_summaries" not in session:
+                session["document_summaries"] = {}
+            
+            session["document_summaries"][document_path] = {
+                "timestamp": datetime.now().isoformat(),
+                "summary": summary
+            }
+            
+            session["updated_at"] = datetime.now().isoformat()
+            await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session))
+            print(f"✅ Stored document summary for {document_path}")
+    
+    async def get_document_summary(self, session_id: str, document_path: str) -> Optional[Dict]:
+        """Get stored document summary"""
+        session = await self.get_session(session_id)
+        if session:
+            summaries = session.get("document_summaries", {})
+            return summaries.get(document_path)
+        return None
+    
+    async def store_capability_match(self, session_id: str, requirement: str, match_result: Dict):
+        """Store capability match results"""
+        if not self.redis:
+            await self.connect()
+            
+        session = await self.get_session(session_id)
+        if session:
+            if "capability_matches" not in session:
+                session["capability_matches"] = {}
+            
+            session["capability_matches"][requirement] = {
+                "timestamp": datetime.now().isoformat(),
+                "match": match_result
+            }
+            
+            session["updated_at"] = datetime.now().isoformat()
+            await self.redis.setex(f"session:{session_id}", 86400, json.dumps(session))
+            print(f"✅ Stored capability match for {requirement}")
+    
+    async def get_capability_match(self, session_id: str, requirement: str) -> Optional[Dict]:
+        """Get stored capability match"""
+        session = await self.get_session(session_id)
+        if session:
+            matches = session.get("capability_matches", {})
+            return matches.get(requirement)
+        return None
             
     async def delete_session(self, session_id: str):
         """Delete session"""
