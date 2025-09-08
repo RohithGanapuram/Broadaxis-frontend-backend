@@ -573,6 +573,27 @@ async def get_user_sessions(current_user: UserResponse = Depends(get_current_use
             "status": "error"
         }
 
+@app.delete("/api/session/{session_id}")
+async def delete_session_api(session_id: str, current_user: UserResponse = Depends(get_current_user)):
+    """Delete a session and remove it from the user's session set."""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        # Delete session data
+        await session_manager.delete_session(session_id)
+        # Remove mapping
+        await session_manager.redis.srem(f"user_sessions:{current_user.id}", session_id)
+        return {"status": "success", "deleted_session": session_id}
+    except Exception as e:
+        error_handler.log_error(e, {"operation": "delete_session", "session_id": session_id})
+        return JSONResponse(status_code=500, content={"error": "Failed to delete session"})
+
 @app.get("/api/session/{session_id}")
 async def get_session_info(session_id: str):
     """Get session information and conversation history"""

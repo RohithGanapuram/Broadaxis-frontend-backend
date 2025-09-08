@@ -349,6 +349,11 @@ export const apiClient = {
     return response.data
   },
 
+  async deleteSession(sessionId: string): Promise<any> {
+    const response = await api.delete(`/api/session/${sessionId}`)
+    return response.data
+  },
+
   async getRedisStatus(): Promise<any> {
     const response = await api.get('/api/redis/status')
     return response.data

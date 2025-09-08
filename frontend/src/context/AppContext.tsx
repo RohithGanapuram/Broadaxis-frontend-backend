@@ -201,12 +201,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   }
 
-  const deleteSession = (sessionId: string) => {
+  const deleteSession = async (sessionId: string) => {
+    try {
+      const { apiClient } = await import('../utils/api')
+      await apiClient.deleteSession(sessionId)
+    } catch (e) {
+      console.error('Failed to delete session on backend:', e)
+    }
     setChatSessions(prev => prev.filter(s => s.id !== sessionId))
     if (currentSessionId === sessionId) {
-      const remainingSessions = chatSessions.filter(s => s.id !== sessionId)
-      if (remainingSessions.length > 0) {
-        switchToSession(remainingSessions[remainingSessions.length - 1].id)
+      const remaining = chatSessions.filter(s => s.id !== sessionId)
+      if (remaining.length > 0) {
+        switchToSession(remaining[remaining.length - 1].id)
       } else {
         setCurrentSessionId(null)
         setMessages([])

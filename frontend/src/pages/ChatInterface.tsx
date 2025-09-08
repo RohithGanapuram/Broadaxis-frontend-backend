@@ -110,8 +110,11 @@ const ChatInterface: React.FC = () => {
         updateSessionId(data.session_id)
       }
       
-      // Only process response if it's for the current session
-      if (data.session_id && data.session_id === currentSessionId) {
+      // Process response if it matches current session OR we're transitioning temp -> real ID
+      const isSameSession = (!data.session_id)
+        || (data.session_id === currentSessionId)
+        || (!!data.session_id && !currentSessionId)
+      if (isSameSession) {
         console.log(`📝 Processing response for current session: ${data.session_id}`)
         
         // Update the most recent loading message with the response
@@ -596,7 +599,8 @@ If your recommendation is a Go, list down the things the user needs to complete 
           globalWebSocket.sendMessage({
             query: promptMessage,
             enabled_tools: getToolsForPrompt(prompt),
-            model: settings.model
+            model: settings.model,
+            session_id: currentSessionId
           })
           setInputMessage('')
           setShowPromptsPanel(false)
@@ -872,7 +876,8 @@ If your recommendation is a Go, list down the things the user needs to complete 
           globalWebSocket.sendMessage({
             query: promptMessage,
             enabled_tools: getToolsForPrompt(selectedPrompt),
-            model: settings.model
+            model: settings.model,
+            session_id: currentSessionId
           })
           setInputMessage('')
           setShowSubFolderSelection(false)
@@ -939,7 +944,8 @@ If your recommendation is a Go, list down the things the user needs to complete 
           globalWebSocket.sendMessage({
             query: promptMessage,
             enabled_tools: enabledTools,
-            model: settings.model
+            model: settings.model,
+            session_id: currentSessionId
           })
           setInputMessage('')
           setShowFileSelection(false)
