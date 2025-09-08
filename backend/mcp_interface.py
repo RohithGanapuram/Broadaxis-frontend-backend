@@ -157,7 +157,8 @@ class MCPInterface:
             available_tools = await self.get_tools()
             
             # Filter tools based on query context
-            if enabled_tools:
+            # IMPORTANT: empty list means "no tools allowed"; None means "allow all"
+            if enabled_tools is not None:
                 available_tools = [tool for tool in available_tools if tool["name"] in enabled_tools]
             
             system_prompt = """I'm BroadAxis AI. I have access to several tools to help you:

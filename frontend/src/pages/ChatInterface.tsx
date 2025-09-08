@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import remarkGfm from 'remark-gfm'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
@@ -148,6 +149,15 @@ const ChatInterface: React.FC = () => {
           if (!foundLoadingMessage) {
             console.warn(`⚠️ No loading message found to update! Total messages: ${updatedMessages.length}`)
             console.warn(`⚠️ Messages:`, updatedMessages.map(m => ({ id: m.id, type: m.type, isLoading: m.isLoading })))
+            // Fallback: append a new assistant message so user sees the response
+            const responseContent = data.message || data.response || 'No response received'
+            updatedMessages.push({
+              id: generateMessageId(),
+              type: 'assistant',
+              content: responseContent,
+              timestamp: new Date(),
+              isLoading: false
+            })
           }
           return updatedMessages
         })
@@ -1191,8 +1201,10 @@ If your recommendation is a Go, list down the things the user needs to complete 
                     <>
                       <div className="rfp-analysis-content">
                         <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
                           className="prose prose-lg max-w-none rfp-markdown"
                           components={{
+                            a: ({href, children}) => <a href={href as string} target="_blank" rel="noreferrer" className="underline text-blue-700 hover:text-blue-900">{children}</a>,
                             h1: ({children}) => <h1 className="text-3xl font-bold text-gray-900 mb-6 mt-8 first:mt-0 border-b-2 border-blue-200 pb-3">{children}</h1>,
                             h2: ({children}) => <h2 className="text-2xl font-bold text-blue-800 mb-4 mt-6 first:mt-0 flex items-center gap-2"><span className="text-blue-600">📋</span>{children}</h2>,
                             h3: ({children}) => <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-5 first:mt-0 flex items-center gap-2"><span className="text-gray-600">📄</span>{children}</h3>,
