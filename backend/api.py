@@ -10,6 +10,7 @@ import uuid
 import bcrypt
 import jwt
 from typing import Dict, List, Optional
+import re
 from datetime import datetime, timedelta
 
 # Set up logging
@@ -210,7 +211,7 @@ def verify_token(token: str) -> Optional[str]:
     except jwt.PyJWTError:
         return None
 
-# Authentication Middleware
+# Authentication Middlewar
 security = HTTPBearer()
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserResponse:
@@ -1110,38 +1111,70 @@ Provide your analysis in the exact format above. Be thorough, data-driven, and a
         if SESSION_MANAGER_AVAILABLE:
             await session_manager.store_rfp_analysis(session_id, rfp_analysis)
         
+        # Prepare classification lists from prioritization (not only processed docs)
+        primary_names = [d.filename for d in primary_docs]
+        secondary_names = [d.filename for d in secondary_docs]
+        prioritized_filenames = {d.filename for d in prioritized_docs}
+        non_primary_secondary = set(primary_names) | set(secondary_names)
+        other_names = [name for name in prioritized_filenames if name not in non_primary_secondary]
+
+        # Counts per category (reflect all files discovered in folder)
+        primary_count = len(primary_names)
+        secondary_count = len(secondary_names)
+        other_count = len(other_names)
+
+        # Clean simple HTML-like tags the LLM may emit (e.g., <result>) and any anchors
+        def clean_markup(text: str) -> str:
+            if not isinstance(text, str):
+                return text
+            cleaned = text.replace('<result>', '').replace('</result>', '')
+            # remove empty anchor tags like <a id="..."></a>
+            cleaned = re.sub(r"<a[^>]*></a>\s*", "", cleaned)
+            return cleaned
+
         # Format the response with proper markdown structure and spacing
         formatted_response = f"""# 🚀 **Intelligent RFP Processing Complete**
 
 ## 📊 **Document Classification Results**
 
-### 📘 **Primary Documents (RFP/RFQ/RFI Content)**
+### 📘 **Primary Documents (RFP/RFQ/RFI Content) ({primary_count})**
+{chr(10).join([f"- {name}" for name in primary_names] or ['- None'])}
 
-{chr(10).join([f"**{doc['filename']}**\n\n{doc['analysis']}\n" for doc in processed_documents if doc.get('priority') == 'primary'] or ['No primary documents found.'])}
+### 📄 **Secondary Documents (Supporting Information) ({secondary_count})**
+{chr(10).join([f"- {name}" for name in secondary_names] or ['- None'])}
 
-### 📄 **Secondary Documents (Supporting Information)**
+### 📋 **Other Documents (Reference/Supporting) ({other_count})**
+{chr(10).join([f"- {name}" for name in other_names] or ['- None'])}
 
-{chr(10).join([f"**{doc['filename']}**\n\n{doc['analysis']}\n" for doc in processed_documents if doc.get('priority') == 'secondary'] or ['No secondary documents found.'])}
+---
 
-### 📋 **Other Documents (Reference/Supporting)**
+## 📄 **Detailed Summaries**
 
-{chr(10).join([f"**{doc['filename']}**\n\n{doc['analysis']}\n" for doc in processed_documents if doc.get('priority') not in ['primary', 'secondary']] or ['No other documents found.'])}
+### 📘 **Primary Documents (RFP/RFQ/RFI Content) ({primary_count})**
+{chr(10).join([f"**{doc['filename']}**\n\n{clean_markup(doc['analysis'])}\n" for doc in processed_documents if doc.get('priority') == 'primary'] or ['No primary documents found.'])}
+
+### 📄 **Secondary Documents (Supporting Information) ({secondary_count})**
+{chr(10).join([f"**{doc['filename']}**\n\n{clean_markup(doc['analysis'])}\n" for doc in processed_documents if doc.get('priority') == 'secondary'] or ['No secondary documents found.'])}
+
+### 📋 **Other Documents (Reference/Supporting) ({other_count})**
+{chr(10).join([f"**{doc['filename']}**\n\n{clean_markup(doc['analysis'])}\n" for doc in processed_documents if doc.get('priority') not in ['primary', 'secondary']] or ['No other documents found.'])}
 
 ---
 
 ## 📋 **Summary**
 
-**Primary Documents:** {len([doc for doc in processed_documents if doc.get('priority') == 'primary'])} files
-**Secondary Documents:** {len([doc for doc in processed_documents if doc.get('priority') == 'secondary'])} files  
-**Other Documents:** {len([doc for doc in processed_documents if doc.get('priority') not in ['primary', 'secondary']])} files
-**Total Documents Processed:** {len(processed_documents)}
+**Primary Documents:** {primary_count} files
+**Secondary Documents:** {secondary_count} files  
+**Other Documents:** {other_count} files
+**Total Documents Found:** {len(prioritized_filenames)}
+**Total Documents Processed (summarized):** {len(processed_documents)}
 **Total Tokens Used:** {total_tokens_used}
 
 ---
 
 ## 🧠 **Comprehensive Go/No-Go Analysis**
 
-{summary_result.get("response", "")}
+{clean_markup(summary_result.get("response", ""))}
 
 ---
 

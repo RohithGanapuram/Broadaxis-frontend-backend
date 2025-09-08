@@ -1282,52 +1282,6 @@ If your recommendation is a Go, list down the things the user needs to complete 
                       </button>
                     </div>
                     <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {/* Quick Go/No-Go Analysis Button */}
-                      <button
-                        onClick={() => {
-                          const simplifiedMessage = "Should BroadAxis pursue the given RFP? Give me a brief Go/No-Go recommendation based on our capabilities."
-                          setInputMessage(simplifiedMessage)
-                          setTimeout(() => {
-                            if (globalWebSocket.getConnectionStatus()) {
-                              const userMessage: ChatMessage = {
-                                id: generateMessageId(),
-                                type: 'user',
-                                content: simplifiedMessage,
-                                timestamp: new Date()
-                              }
-                              const assistantMessage: ChatMessage = {
-                                id: generateMessageId(),
-                                type: 'assistant',
-                                content: '',
-                                timestamp: new Date(),
-                                isLoading: true
-                              }
-                              addMessage(userMessage)
-                              addMessage(assistantMessage)
-                              setIsLoading(true)
-                              
-                              globalWebSocket.sendMessage({
-                                query: simplifiedMessage,
-                                enabled_tools: settings.enabledTools.filter(tool => !['generate_pdf_document', 'generate_word_document'].includes(tool)),
-                                model: settings.model
-                              })
-                              setInputMessage('')
-                              setShowPromptsPanel(false)
-                            } else {
-                              console.error('WebSocket not connected')
-                              toast.error('Connection lost. Please refresh the page.')
-                            }
-                          }, 100)
-                        }}
-                        className="w-full text-left p-3 bg-green-700/10 hover:bg-green-700/20 rounded-lg transition-colors border border-green-200/50"
-                      >
-                        <div className="font-medium text-green-800 text-sm">⚡ Quick Go/No-Go Analysis</div>
-                        <div className="text-xs text-green-600 mt-1">Brief recommendation based on capabilities</div>
-                        <div className="text-xs text-green-500 mt-1 font-medium">
-                          🚀 Fast analysis (avoids rate limits)
-                        </div>
-                      </button>
-                      
                       {availablePrompts.length > 0 ? (
                         availablePrompts.map((prompt, index) => (
                           <button
