@@ -20,7 +20,7 @@ from pydantic import BaseModel
 import nest_asyncio
 from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+# CORS middleware removed - handled by main api.py
 from fastapi.exception_handlers import http_exception_handler
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -197,13 +197,7 @@ nest_asyncio.apply()
 
 app = FastAPI(title="BroadAxis API", version="1.0.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS is handled by the main api.py app
 
 class EmailFetchRequest(BaseModel):
     email_accounts: List[str] = []  # Optional: specific accounts to fetch from

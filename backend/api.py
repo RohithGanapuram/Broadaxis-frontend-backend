@@ -61,13 +61,33 @@ nest_asyncio.apply()
 
 app = FastAPI(title="BroadAxis API", version="1.0.0")
 
+# CORS Configuration - Environment-based with security
+CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS")
+if CORS_ORIGINS_ENV:
+    # Production: Use specific origins from environment
+    CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_ENV.split(",") if origin.strip()]
+    print(f"🔒 Production CORS: {CORS_ORIGINS}")
+else:
+    # Development: Allow localhost origins only
+    CORS_ORIGINS = [
+        "http://localhost:3000", 
+        "http://localhost:5173", 
+        "http://127.0.0.1:3000", 
+        "http://127.0.0.1:5173"
+    ]
+    print(f"🛠️ Development CORS: {CORS_ORIGINS}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
+
+# CORS is handled by middleware above
+
+# OPTIONS requests are handled by CORS middleware
 
 # Include API routers
 app.include_router(email_router)
@@ -189,7 +209,13 @@ else:
 session_files = {}
 
 # Authentication Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    # Development fallback - WARNING: Change this in production!
+    SECRET_KEY = "dev-secret-key-change-in-production"
+    print("⚠️ WARNING: Using development JWT secret key. Set JWT_SECRET_KEY in .env for production!")
+else:
+    print("🔒 Production JWT secret key configured")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

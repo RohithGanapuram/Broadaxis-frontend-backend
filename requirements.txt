@@ -44,3 +44,6 @@ python-jose[cryptography]>=3.3.0
 # Scientific Computing
 arxiv>=2.1.0
 uvicorn>=0.24.0
+nest-asyncio>=1.5.8
+langchain>=0.3.0
+langchain-text-splitters>=0.3.0
