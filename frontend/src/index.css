@@ -499,3 +499,13 @@
 .trading-info {
   @apply bg-blue-100 border-l-4 border-blue-400 p-4 rounded-r-lg mb-4;
 }
+
+/* Auto-expanding textarea styles */
+.auto-expand-textarea {
+  transition: height 0.2s ease-in-out;
+  overflow-y: auto;
+}
+
+.auto-expand-textarea:focus {
+  outline: none;
+}

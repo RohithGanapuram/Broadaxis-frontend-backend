@@ -19,6 +19,8 @@ const generateMessageId = (): string => {
 
 const ChatInterface: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('')
+  const [textareaRef, setTextareaRef] = useState<HTMLTextAreaElement | null>(null)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<FileInfo[]>([])
   const { tools: availableTools, prompts: availablePrompts, isConnected, messages, setMessages, addMessage, chatSessions, currentSessionId, createNewSession, switchToSession, deleteSession, updateSessionId } = useAppContext()
@@ -244,6 +246,17 @@ const ChatInterface: React.FC = () => {
   }
 
 
+  // Auto-expand textarea function
+  const autoExpandTextarea = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = 'auto'
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px' // Max height of 200px
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputMessage(e.target.value)
+    autoExpandTextarea(e.target)
+  }
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() && uploadedFiles.length === 0) return
 
@@ -295,6 +308,10 @@ const ChatInterface: React.FC = () => {
     }
 
     setInputMessage('')
+    // Reset textarea height after sending
+    if (textareaRef) {
+      textareaRef.style.height = 'auto'
+    }
   }
 
   const handleFileUpload = async (files: File[]) => {
@@ -977,8 +994,29 @@ If your recommendation is a Go, list down the things the user needs to complete 
   return (
     <div className="flex h-[calc(100vh-4.5rem)] bg-blue-50">
       {/* Chat History Sidebar */}
-      <div className="w-64 bg-white/70 backdrop-blur-md border-r border-blue-200/50 flex flex-col shadow-xl">
+      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 ease-in-out bg-white/70 backdrop-blur-md border-r border-blue-200/50 flex flex-col shadow-xl`}>
         <div className="p-3 border-b border-blue-200/50 space-y-2">
+          {/* Sidebar Toggle Button */}
+          <div className="flex items-center justify-between mb-2">
+            {!isSidebarCollapsed && (
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
+                  <span className="text-white text-xs font-bold">💬</span>
+                </div>
+                <h3 className="text-sm font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+                  Chat Sessions
+                </h3>
+              </div>
+            )}
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="p-1.5 rounded-lg bg-white/80 hover:bg-white shadow-md transition-all duration-200 hover:scale-105"
+            >
+              <span className="text-gray-600 text-sm">
+                {isSidebarCollapsed ? '→' : '←'}
+              </span>
+            </button>
+          </div>
           <button 
             onClick={async () => {
               // Clear current session files if any
@@ -994,9 +1032,10 @@ If your recommendation is a Go, list down the things the user needs to complete 
               setInputMessage('')
               toast.success('New chat started')
             }}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium text-sm"
+            className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium text-sm flex items-center justify-center space-x-2 ${isSidebarCollapsed ? 'px-2' : 'px-3'}`}
           >
-            ✨ New Chat
+            <span className="text-sm">✨</span>
+            {!isSidebarCollapsed && <span>New Chat</span>}
           </button>
           
           <button 
@@ -1029,16 +1068,19 @@ If your recommendation is a Go, list down the things the user needs to complete 
                 console.error('Token status error:', error)
               }
             }}
-            className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-3 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium text-sm"
+            className={`w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-3 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium text-sm flex items-center justify-center space-x-2 ${isSidebarCollapsed ? 'px-2' : 'px-3'}`}
           >
-            📊 Token Status
+            <span className="text-sm">📊</span>
+            {!isSidebarCollapsed && <span>Token Status</span>}
           </button>
         </div>
         
                  {/* Chat Sessions List */}
          <div className="flex-1 overflow-y-auto">
            <div className="p-2">
-             <h3 className="text-xs font-semibold text-blue-600 mb-2 px-2">CHAT HISTORY</h3>
+             {!isSidebarCollapsed && (
+               <h3 className="text-xs font-semibold text-blue-600 mb-2 px-2">CHAT HISTORY</h3>
+             )}
              <div className="space-y-1">
                {chatSessions.slice().reverse().map((session) => (
                  <div key={session.id} className="group relative">
@@ -1048,28 +1090,37 @@ If your recommendation is a Go, list down the things the user needs to complete 
                        currentSessionId === session.id
                          ? 'bg-blue-100 text-blue-800'
                          : 'text-blue-600 hover:bg-blue-50'
-                     }`}
+                     } ${isSidebarCollapsed ? 'flex items-center justify-center' : ''}`}
+                     title={isSidebarCollapsed ? session.title : undefined}
                    >
-                     <div className="truncate font-medium">{session.title}</div>
-                     <div className="text-xs text-blue-400 mt-1">
-                       {session.updatedAt.toLocaleDateString()}
-                     </div>
+                     {isSidebarCollapsed ? (
+                       <span className="text-lg">💬</span>
+                     ) : (
+                       <>
+                         <div className="truncate font-medium">{session.title}</div>
+                         <div className="text-xs text-blue-400 mt-1">
+                           {session.updatedAt.toLocaleDateString()}
+                         </div>
+                       </>
+                     )}
                    </button>
-                   <button
-                     onClick={(e) => {
-                       e.stopPropagation()
-                       if (confirm('Delete this chat?')) {
-                         deleteSession(session.id)
-                         toast.success('Chat deleted')
-                       }
-                     }}
-                     className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-xs bg-red-100 text-red-600 hover:bg-red-200 transition-all"
-                   >
-                     ×
-                   </button>
+                   {!isSidebarCollapsed && (
+                     <button
+                       onClick={(e) => {
+                         e.stopPropagation()
+                         if (confirm('Delete this chat?')) {
+                           deleteSession(session.id)
+                           toast.success('Chat deleted')
+                         }
+                       }}
+                       className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-xs bg-red-100 text-red-600 hover:bg-red-200 transition-all"
+                     >
+                       ×
+                     </button>
+                   )}
                  </div>
                ))}
-               {chatSessions.length === 0 && (
+               {chatSessions.length === 0 && !isSidebarCollapsed && (
                  <div className="text-center text-blue-400 text-xs py-4">
                    No chat history yet
                  </div>
@@ -1081,7 +1132,9 @@ If your recommendation is a Go, list down the things the user needs to complete 
          {/* Real-time Progress and Status Updates - Moved to bottom of sidebar */}
          {(activeProgress.length > 0 || statusUpdates.length > 0) && (
            <div className="bg-white/95 backdrop-blur-sm border-t border-blue-200/30 p-2">
-             <div className="text-xs font-semibold text-blue-600 mb-2">STATUS</div>
+             {!isSidebarCollapsed && (
+               <div className="text-xs font-semibold text-blue-600 mb-2">STATUS</div>
+             )}
              {/* Progress Trackers */}
              {activeProgress.map((progress) => (
                <ProgressTracker
@@ -1730,14 +1783,21 @@ If your recommendation is a Go, list down the things the user needs to complete 
             </div>
 
             {/* Message Input */}
-            <input
-              type="text"
+            <textarea
+              ref={setTextareaRef}
               value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSendMessage()
+                }
+              }}
               placeholder={uploadedFiles.length > 0 ? "Ask questions about your uploaded documents..." : "Message BroadAxis-AI..."}
-              className="flex-1 px-6 py-4 border border-blue-200/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white/80 backdrop-blur-md shadow-lg placeholder-blue-500"
+              className="flex-1 px-6 py-4 border border-blue-200/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white/80 backdrop-blur-md shadow-lg placeholder-blue-500 resize-none min-h-[3rem] max-h-[12rem] overflow-y-auto"
               disabled={isLoading}
+              rows={1}
+              style={{ height: 'auto' }}
             />
 
                          {/* Stop Button - Show when loading */}
