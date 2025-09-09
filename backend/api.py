@@ -29,6 +29,28 @@ from dotenv import load_dotenv
 # Load environment variables from parent directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
+# Setup Sentry for error tracking
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+
+# Initialize Sentry
+sentry_sdk.init(
+    dsn="https://70c65fd67ca8d2cad3f6852505d6ad95@o4509991991705600.ingest.us.sentry.io/4509992009334784",
+    integrations=[
+        FastApiIntegration(auto_enabling_instrumentations=True),
+        RedisIntegration(),
+    ],
+    # Performance monitoring
+    traces_sample_rate=0.1,  # 10% of transactions
+    # Error sampling
+    sample_rate=1.0,  # 100% of errors
+    # Add data like request headers and IP for users
+    send_default_pii=True,
+    # Environment
+    environment=os.getenv('ENVIRONMENT', 'production'),
+)
+
 from error_handler import (
     BroadAxisError, ValidationError, ExternalAPIError, FileOperationError, error_handler
 )

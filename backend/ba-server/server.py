@@ -10,6 +10,20 @@ import traceback
 from datetime import datetime
 import tempfile
 
+# Setup Sentry for MCP server error tracking
+import sentry_sdk
+sentry_sdk.init(
+    dsn="https://70c65fd67ca8d2cad3f6852505d6ad95@o4509991991705600.ingest.us.sentry.io/4509992009334784",
+    # Performance monitoring
+    traces_sample_rate=0.1,  # 10% of transactions
+    # Error sampling
+    sample_rate=1.0,  # 100% of errors
+    # Add data like request headers and IP for users
+    send_default_pii=True,
+    # Environment
+    environment=os.getenv('ENVIRONMENT', 'production'),
+)
+
 from pinecone import Pinecone
 from tavily import TavilyClient
 from dotenv import load_dotenv
