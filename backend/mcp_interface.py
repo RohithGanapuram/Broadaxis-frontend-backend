@@ -16,10 +16,21 @@ from token_manager import token_manager, TaskComplexity
 
 class MCPInterface:
     def __init__(self):
+        # Ensure environment variables are available to the MCP server subprocess
+        import os
+        from dotenv import load_dotenv
+        
+        # Load environment variables from parent directory
+        load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+        load_dotenv()  # Also try current directory
+        
+        # Pass current environment to subprocess
+        env = os.environ.copy()
+        
         self.server_params = StdioServerParameters(
             command='python',
             args=[os.path.join(os.path.dirname(__file__), "ba-server", "server.py")],
-            env=None,
+            env=env,
         )
         self.anthropic = None
         self._tools_cache = None
@@ -57,17 +68,24 @@ class MCPInterface:
                 self._initializing = True
                 try:
                     self._connection_status = "connecting"
+                    print(f"🔧 MCP Interface: Starting initialization...")
+                    print(f"🔧 Server params: {self.server_params}")
                     
                     # Create persistent connection
                     if self.exit_stack is None:
                         self.exit_stack = AsyncExitStack()
                     
+                    print(f"🔧 Creating stdio transport...")
                     stdio_transport = await self.exit_stack.enter_async_context(stdio_client(self.server_params))
                     self.stdio, self.write = stdio_transport
+                    
+                    print(f"🔧 Creating client session...")
                     self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
                     
+                    print(f"🔧 Initializing session...")
                     await self.session.initialize()
                     self._connection_status = "connected"
+                    print(f"✅ MCP Interface: Connection established")
                     
                     # Fetch both tools and prompts in parallel
                     tools_task = self.session.list_tools()
@@ -104,6 +122,11 @@ class MCPInterface:
                     self._connection_status = "offline"
                     self._tools_cache = self._tools_cache or []
                     self._prompts_cache = self._prompts_cache or []
+                    
+                    print(f"❌ MCP Interface: Initialization failed: {e}")
+                    print(f"❌ Error type: {type(e)}")
+                    import traceback
+                    print(f"❌ Traceback: {traceback.format_exc()}")
                     
                     if isinstance(e, BroadAxisError):
                         raise e
