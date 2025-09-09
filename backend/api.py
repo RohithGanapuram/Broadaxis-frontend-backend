@@ -38,7 +38,7 @@ from sentry_sdk.integrations.redis import RedisIntegration
 sentry_sdk.init(
     dsn="https://70c65fd67ca8d2cad3f6852505d6ad95@o4509991991705600.ingest.us.sentry.io/4509992009334784",
     integrations=[
-        FastApiIntegration(auto_enabling_instrumentations=True),
+        FastApiIntegration(),
         RedisIntegration(),
     ],
     # Performance monitoring
