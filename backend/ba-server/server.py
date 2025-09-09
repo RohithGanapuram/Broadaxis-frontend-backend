@@ -15,6 +15,8 @@ from tavily import TavilyClient
 from dotenv import load_dotenv
 # Load environment variables from parent directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+# Also try loading from current directory for Render deployment
+load_dotenv()
 # File generation imports
 from reportlab.lib.pagesizes import letter, A4, legal
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
