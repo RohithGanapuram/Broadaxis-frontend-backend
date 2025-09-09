@@ -58,6 +58,28 @@ def handle_tool_errors(func):
     return wrapper
 
 
+def get_sharepoint_manager():
+    """Helper function to import SharePointManager with multiple fallback paths"""
+    import_paths = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
+        os.path.abspath(os.path.dirname(__file__))
+    ]
+    
+    for path in import_paths:
+        try:
+            if path not in sys.path:
+                sys.path.insert(0, path)
+            from sharepoint_api import SharePointManager  # type: ignore
+            logger.info(f"Successfully imported SharePointManager from path: {path}")
+            return SharePointManager()
+        except ImportError as e:
+            logger.warning(f"Failed to import from {path}: {e}")
+            continue
+    
+    raise ImportError("Could not import SharePointManager from any path")
+
+
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 EMBED_MODEL = "text-embedding-3-small"  # 1536-dim
 #Connection to Pinecone
@@ -884,13 +906,10 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
         
         # Upload to SharePoint
         try:
-            sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-            from sharepoint_api import SharePointManager  # type: ignore
+            sharepoint_manager = get_sharepoint_manager()
             
             with open(temp_file_path, 'rb') as f:
                 file_content = f.read()
-            
-            sharepoint_manager = SharePointManager()
             sharepoint_folder = f"Generated_Documents/{datetime.datetime.now().strftime('%Y-%m')}"
             
             logger.info(f"Attempting SharePoint upload: {filename}.pdf to {sharepoint_folder}")
@@ -1104,10 +1123,7 @@ def generate_word_document(title: str, content: str, filename: str = None, inclu
         
         # Upload to SharePoint
         try:
-            sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-            from sharepoint_api import SharePointManager  # type: ignore
-            
-            sharepoint_manager = SharePointManager()
+            sharepoint_manager = get_sharepoint_manager()
             sharepoint_folder = f"Generated_Documents/{datetime.datetime.now().strftime('%Y-%m')}"
             
             upload_result = sharepoint_manager.upload_file_to_sharepoint(
@@ -1216,10 +1232,7 @@ def sharepoint_read_file(path: str, max_size_mb: int = 50, encoding: str = "utf-
         })
     
     try:
-        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-        from sharepoint_api import SharePointManager  # type: ignore
-        
-        sharepoint_manager = SharePointManager()
+        sharepoint_manager = get_sharepoint_manager()
         
         # Get file metadata first
         logger.info(f"Reading file from SharePoint: {clean_path}")
@@ -1465,10 +1478,7 @@ def sharepoint_list_files(path: str = "", file_type: str = None, sort_by: str = 
         })
     
     try:
-        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-        from sharepoint_api import SharePointManager  # type: ignore
-        
-        sharepoint_manager = SharePointManager()
+        sharepoint_manager = get_sharepoint_manager()
         
         # Get file listing
         logger.info(f"Listing files from SharePoint: {clean_path or 'root'}")
@@ -1709,10 +1719,7 @@ def sharepoint_search_files(query: str, path: str = "", search_type: str = "file
         })
     
     try:
-        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-        from sharepoint_api import SharePointManager  # type: ignore
-        
-        sharepoint_manager = SharePointManager()
+        sharepoint_manager = get_sharepoint_manager()
         
         # Log search parameters
         logger.info(f"SharePoint search: query='{query}', path='{clean_path}', type='{search_type}', file_type='{file_type}', max_results={max_results}")
