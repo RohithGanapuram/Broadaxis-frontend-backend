@@ -18,7 +18,7 @@ class MCPInterface:
     def __init__(self):
         self.server_params = StdioServerParameters(
             command='python',
-            args=[os.path.join(os.path.dirname(__file__), "..", "ba-server", "server.py")],
+            args=[os.path.join(os.path.dirname(__file__), "ba-server", "server.py")],
             env=None,
         )
         self.anthropic = None
