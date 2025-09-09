@@ -171,6 +171,20 @@ class AuthResponse(BaseModel):
 class TokenData(BaseModel):
     user_id: Optional[str] = None
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+# Trading access allowlist (comma-separated user emails in env), fallback to predefined emails
+_env_allow = os.getenv("TRADING_ALLOWED_EMAILS")
+if _env_allow:
+    TRADING_ALLOWED_EMAILS = set((_env_allow.strip() or "").split(","))
+else:
+    TRADING_ALLOWED_EMAILS = {"tariq@broadaxis.com", "rohith.ganapuram@broadaxis.com"}
+
 # Session file storage (keeping for backward compatibility)
 session_files = {}
 
@@ -323,6 +337,14 @@ def get_status():
         "initializing": mcp_interface._initializing,
         "tools_cached": mcp_interface._tools_cache is not None,
         "prompts_cached": mcp_interface._prompts_cache is not None
+    }
+
+@app.get("/api/access/trading")
+async def trading_access(current_user: UserResponse = Depends(get_current_user)):
+    """Return whether current user has trading planner access."""
+    return {
+        "trading_access": current_user.email in TRADING_ALLOWED_EMAILS,
+        "status": "success"
     }
 
 
@@ -497,6 +519,111 @@ async def chat_with_context(request: ChatRequest, session_id: str = None, curren
     except Exception as e:
         error_handler.log_error(e, {'operation': 'chat_with_context', 'session_id': session_id})
         raise
+
+# ---------------- TRADING PLANNER (restricted) ----------------
+class TradingChatRequest(BaseModel):
+    query: str
+    model: str = "claude-3-7-sonnet-20250219"
+    session_id: Optional[str] = None
+
+TRADING_SYSTEM_PROMPT = """
+You are BroadAxis Trading Planner.
+Rules:
+- No tool usage. Answer purely from provided input and general market knowledge; do not claim live data access.
+- Format outputs cleanly with GitHub-flavored Markdown tables when appropriate.
+- Be precise, concise, and actionable; avoid hype.
+- For earnings/event planners, follow the user's structure strictly.
+"""
+
+def _require_trading_access(user: UserResponse):
+    if user.email not in TRADING_ALLOWED_EMAILS:
+        raise HTTPException(status_code=403, detail="Not authorized for trading planner")
+
+@app.post("/api/trading/session/create")
+async def trading_create_session(current_user: UserResponse = Depends(get_current_user)):
+    _require_trading_access(current_user)
+    if not session_manager.redis:
+        await session_manager.connect()
+    session_id = await session_manager.create_session(user_id=current_user.id)
+    await session_manager.redis.sadd(f"user_trading_sessions:{current_user.id}", session_id)
+    return {"session_id": session_id, "status": "success"}
+
+@app.get("/api/trading/sessions")
+async def trading_list_sessions(current_user: UserResponse = Depends(get_current_user)):
+    _require_trading_access(current_user)
+    if not session_manager.redis:
+        await session_manager.connect()
+    session_ids = await session_manager.redis.smembers(f"user_trading_sessions:{current_user.id}")
+    sessions = []
+    for sid in session_ids:
+        data = await session_manager.get_session(sid)
+        if data:
+            sessions.append({
+                "id": sid,
+                "title": data.get("title", "Trading Chat"),
+                "created_at": data.get("created_at"),
+                "updated_at": data.get("updated_at"),
+                "message_count": len(data.get("messages", []))
+            })
+    sessions.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+    return {"sessions": sessions, "status": "success"}
+
+@app.get("/api/trading/session/{session_id}")
+async def trading_get_session(session_id: str, current_user: UserResponse = Depends(get_current_user)):
+    _require_trading_access(current_user)
+    data = await session_manager.get_session(session_id)
+    if not data:
+        return {"status": "error", "error": "Session not found"}
+    return {
+        "status": "success",
+        "session_id": session_id,
+        "messages": data.get("messages", []),
+        "created_at": data.get("created_at"),
+        "updated_at": data.get("updated_at")
+    }
+
+@app.delete("/api/trading/session/{session_id}")
+async def trading_delete_session(session_id: str, current_user: UserResponse = Depends(get_current_user)):
+    _require_trading_access(current_user)
+    if not session_manager.redis:
+        await session_manager.connect()
+    await session_manager.delete_session(session_id)
+    await session_manager.redis.srem(f"user_trading_sessions:{current_user.id}", session_id)
+    return {"status": "success"}
+
+@app.post("/api/trading/chat")
+async def trading_chat(request: TradingChatRequest, current_user: UserResponse = Depends(get_current_user)):
+    _require_trading_access(current_user)
+    try:
+        session_id = request.session_id or await session_manager.create_session(user_id=current_user.id)
+        # Add user message
+        await session_manager.add_message(session_id, {
+            "role": "user",
+            "content": request.query,
+            "timestamp": datetime.now().isoformat()
+        })
+        # Force no tools, best model by default, with trading system prompt
+        result = await run_mcp_query(
+            query=request.query,
+            enabled_tools=[],
+            model=request.model,
+            session_id=session_id,
+            system_prompt=TRADING_SYSTEM_PROMPT
+        )
+        # Store assistant message
+        await session_manager.add_message(session_id, {
+            "role": "assistant",
+            "content": result.get("response", ""),
+            "timestamp": datetime.now().isoformat()
+        })
+        return {
+            "status": "success",
+            "response": result.get("response", ""),
+            "session_id": session_id
+        }
+    except Exception as e:
+        error_handler.log_error(e, {"operation": "trading_chat"})
+        return JSONResponse(status_code=500, content={"error": "Trading chat failed"})
 
 
 @app.post("/api/session/create")
@@ -1391,13 +1518,73 @@ async def login_user(user_data: UserLogin):
                 last_login=now
             )
         )
-        
+
     except Exception as e:
         error_handler.log_error(e, {'operation': 'login_user', 'email': user_data.email})
         return JSONResponse(
             status_code=500,
             content={"error": "Login failed"}
         )
+
+@app.post("/api/auth/forgot")
+async def forgot_password(req: ForgotPasswordRequest):
+    """Initiate password reset: create a one-time token with short TTL and (in dev) return it."""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(status_code=503, content={"error": "Session management not available"})
+        if not session_manager.redis:
+            await session_manager.connect()
+
+        # Lookup user id by email
+        user_id = await session_manager.redis.get(f"user:email:{req.email}")
+        # Always respond success to avoid user enumeration
+        if not user_id:
+            return {"status": "ok"}
+
+        # Create reset token
+        reset_token = str(uuid.uuid4())
+        # Store mapping token -> user_id with 15-minute TTL
+        await session_manager.redis.setex(f"password_reset:{reset_token}", 900, user_id)
+
+        # In production: send email with reset link including token.
+        # For development: return token in response so user can reset immediately.
+        return {"status": "ok", "reset_token": reset_token}
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'forgot_password'})
+        return JSONResponse(status_code=500, content={"error": "Failed to initiate password reset"})
+
+@app.post("/api/auth/reset")
+async def reset_password(req: ResetPasswordRequest):
+    """Complete password reset given a valid token."""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(status_code=503, content={"error": "Session management not available"})
+        if not session_manager.redis:
+            await session_manager.connect()
+
+        # Resolve token -> user_id
+        user_id = await session_manager.redis.get(f"password_reset:{req.token}")
+        if not user_id:
+            return JSONResponse(status_code=400, content={"error": "Invalid or expired token"})
+
+        # Get user data
+        user_data_str = await session_manager.redis.get(f"user:{user_id}")
+        if not user_data_str:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        user = json.loads(user_data_str)
+
+        # Update password hash
+        new_hash = hash_password(req.new_password)
+        user["password_hash"] = new_hash
+        await session_manager.redis.setex(f"user:{user_id}", 86400 * 30, json.dumps(user))
+
+        # Invalidate token
+        await session_manager.redis.delete(f"password_reset:{req.token}")
+
+        return {"status": "success"}
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'reset_password'})
+        return JSONResponse(status_code=500, content={"error": "Failed to reset password"})
 
 @app.post("/api/auth/logout")
 async def logout_user(request: Request):

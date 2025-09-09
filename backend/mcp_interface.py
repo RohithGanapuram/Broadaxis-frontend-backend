@@ -146,7 +146,7 @@ class MCPInterface:
         # Default to simple complexity
         return TaskComplexity.SIMPLE
     
-    async def process_query_with_anthropic(self, query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default", websocket = None, send_message_callback=None) -> Dict:
+    async def process_query_with_anthropic(self, query: str, enabled_tools: List[str] = None, model: str = None, session_id: str = "default", websocket = None, send_message_callback=None, system_prompt_override: str = None) -> Dict:
         if not self.anthropic:
             return {"response": "Anthropic API not available", "tokens_used": 0}
         
@@ -175,6 +175,10 @@ class MCPInterface:
 3. **Other tools** - For document generation, SharePoint operations, etc.
 
 ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis company information, location, or any company-specific details."""
+
+            # Allow callers to override the system prompt (e.g., trading planner)
+            if system_prompt_override:
+                system_prompt = system_prompt_override
             
             # Determine task complexity and select appropriate model
             task_complexity = self._determine_task_complexity(query, enabled_tools)
@@ -425,7 +429,8 @@ async def run_mcp_query(
     query: str,
     enabled_tools: List[str] = None,
     model: str = "claude-3-5-sonnet-20241022",
-    session_id: str = "default"
+    session_id: str = "default",
+    system_prompt: str = None
 ) -> Dict:
     """
     Run MCP query with the specified parameters.
@@ -434,5 +439,6 @@ async def run_mcp_query(
         query=query,
         enabled_tools=enabled_tools,
         model=model,
-        session_id=session_id
+        session_id=session_id,
+        system_prompt_override=system_prompt
     )

@@ -329,6 +329,16 @@ export const apiClient = {
     return response.data
   },
 
+  async forgotPassword(payload: { email: string }) {
+    const response = await api.post('/api/auth/forgot', payload)
+    return response.data as { status: string; reset_token?: string }
+  },
+
+  async resetPassword(payload: { token: string; new_password: string }) {
+    const response = await api.post('/api/auth/reset', payload)
+    return response.data as { status: string }
+  },
+
   async logout() {
     const response = await api.post('/api/auth/logout')
     return response.data
@@ -339,6 +349,11 @@ export const apiClient = {
     return response.data
   },
 
+  async getTradingAccess(): Promise<{ trading_access: boolean; status: string }> {
+    const response = await api.get('/api/access/trading')
+    return response.data
+  },
+
   async getSessionInfo(sessionId: string): Promise<any> {
     const response = await api.get(`/api/session/${sessionId}`)
     return response.data
@@ -346,6 +361,28 @@ export const apiClient = {
 
   async getUserSessions(): Promise<any> {
     const response = await api.get('/api/user/sessions')
+    return response.data
+  },
+
+  // Trading endpoints
+  async tradingCreateSession(): Promise<{ session_id: string }> {
+    const response = await api.post('/api/trading/session/create')
+    return response.data
+  },
+  async tradingListSessions(): Promise<any> {
+    const response = await api.get('/api/trading/sessions')
+    return response.data
+  },
+  async tradingGetSession(sessionId: string): Promise<any> {
+    const response = await api.get(`/api/trading/session/${sessionId}`)
+    return response.data
+  },
+  async tradingDeleteSession(sessionId: string): Promise<any> {
+    const response = await api.delete(`/api/trading/session/${sessionId}`)
+    return response.data
+  },
+  async tradingChat(query: string, sessionId?: string, model: string = 'claude-3-7-sonnet-20250219'): Promise<any> {
+    const response = await api.post('/api/trading/chat', { query, session_id: sessionId, model })
     return response.data
   },
 

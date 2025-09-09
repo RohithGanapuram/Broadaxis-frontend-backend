@@ -5,6 +5,7 @@ import Dashboard from './Dashboard/Dashboard'
 import Email from './Email/Email'
 import SharedFolder from './SharedFolder/SharedFolder'
 import ChatInterface from '../pages/ChatInterface'
+import TradingPlanner from '../pages/TradingPlanner'
 import { useAppContext } from '../context/AppContext'
  
 const DashboardLayout: React.FC = () => {
@@ -26,6 +27,8 @@ const DashboardLayout: React.FC = () => {
             <ChatInterface />
           </div>
         );
+      case 'trading':
+        return <TradingPlanner />;
       default:
         return <Dashboard />;
     }

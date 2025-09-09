@@ -24,12 +24,15 @@ const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   currentUser
 }) => {
-  const menuItems: MenuItem[] = [
+  const baseItems: MenuItem[] = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'email', icon: '📧', label: 'Email' },
     { id: 'shared-folder', icon: '📁', label: 'Shared Folder' },
     { id: 'chatbot', icon: '💬', label: 'Chat' }
   ];
+  const menuItems: MenuItem[] = currentUser?.email && ['tariq@broadaxis.com','rohith.ganapuram@broadaxis.com'].includes(currentUser.email)
+    ? [...baseItems, { id: 'trading', icon: '📈', label: 'Broadaxis Trading Planner' }]
+    : baseItems;
  
   return (
     <div className="w-64 bg-white shadow-xl border-r border-gray-200 flex flex-col h-screen">
