@@ -3,6 +3,7 @@ Redis Session Manager for BroadAxis RFP/RFQ Management Platform
 """
 
 import json
+import os
 import uuid
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
@@ -12,8 +13,10 @@ from error_handler import BroadAxisError, ExternalAPIError, error_handler
 
 class RedisSessionManager:
     def __init__(self, redis_url: str = None):
-        # Default to your Redis Cloud instance
-        self.redis_url = redis_url or "redis://default:Z2lpuSzdHFo6Di14SpHHry4ntcp9MGzv@redis-13430.c85.us-east-1-2.ec2.redns.redis-cloud.com:13430"
+        # Get Redis URL from environment variable for security
+        self.redis_url = redis_url or os.getenv('REDIS_URL')
+        if not self.redis_url:
+            raise ValueError("REDIS_URL environment variable is required. Please set it in your .env file.")
         self.redis = None
         
     async def connect(self):
