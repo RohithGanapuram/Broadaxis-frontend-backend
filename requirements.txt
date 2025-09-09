@@ -3,7 +3,6 @@ fastapi>=0.104.1
 uvicorn[standard]>=0.24.0
 gunicorn>=21.2.0
 python-multipart>=0.0.6
-nest-asyncio>=1.5.8
 
 # MCP (Model Context Protocol)
 mcp>=1.0.0
@@ -44,7 +43,5 @@ python-jose[cryptography]>=3.3.0
 
 # Scientific Computing
 arxiv>=2.1.0
-uvicorn>=0.24.0
-nest-asyncio>=1.5.8
 langchain>=0.3.0
 langchain-text-splitters>=0.3.0

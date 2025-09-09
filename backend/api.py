@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 # Set up logging
 logger = logging.getLogger(__name__)
 
-import nest_asyncio
 from fastapi import FastAPI, File, UploadFile, WebSocket, Request, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,10 +53,6 @@ except ImportError as e:
     print(f"⚠️ Session manager not available: {e}")
     SESSION_MANAGER_AVAILABLE = False
     session_manager = None
-
-
-
-nest_asyncio.apply()
 
 app = FastAPI(title="BroadAxis API", version="1.0.0")
 

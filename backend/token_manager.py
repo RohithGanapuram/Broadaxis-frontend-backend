@@ -118,8 +118,18 @@ class TokenManager:
             TaskComplexity.COMPLEX: ModelType.OPUS
         }
         
-        # Start cleanup task
-        asyncio.create_task(self._cleanup_old_data())
+        # Cleanup task will be started when first needed
+        self._cleanup_task = None
+    
+    def _start_cleanup_task(self):
+        """Start the cleanup task if not already running"""
+        if self._cleanup_task is None or self._cleanup_task.done():
+            try:
+                self._cleanup_task = asyncio.create_task(self._cleanup_old_data())
+                logger.info("Started token manager cleanup task")
+            except RuntimeError:
+                # No event loop running yet, will start later
+                logger.info("No event loop available for cleanup task, will start later")
     
     def select_model(self, task_complexity: TaskComplexity, estimated_tokens: int = 1000) -> str:
         """Select the most appropriate model for the task"""
@@ -193,6 +203,9 @@ class TokenManager:
     async def reserve_tokens(self, model: str, estimated_tokens: int, request_id: str, session_id: str) -> bool:
         """Reserve tokens for a request"""
         logger.info(f"Attempting to reserve {estimated_tokens} tokens for {model} (request {request_id})")
+        
+        # Start cleanup task if not already running
+        self._start_cleanup_task()
         
         if not self._can_afford_request(model, estimated_tokens):
             logger.warning(f"Cannot afford request for {model}: {estimated_tokens} tokens")
@@ -355,7 +368,11 @@ class TokenManager:
                 logger.error(f"Error in cleanup task: {e}")
             
             # Run cleanup every hour
-            await asyncio.sleep(3600)
+            try:
+                await asyncio.sleep(3600)
+            except asyncio.CancelledError:
+                logger.info("Cleanup task cancelled")
+                break
     
     def estimate_tokens(self, text: str) -> int:
         """Estimate token count for text (rough approximation)"""

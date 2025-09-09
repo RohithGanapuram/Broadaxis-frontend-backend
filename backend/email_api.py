@@ -17,7 +17,6 @@ from urllib.parse import urlparse
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-import nest_asyncio
 from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import FileResponse, JSONResponse
 # CORS middleware removed - handled by main api.py
@@ -111,7 +110,7 @@ def _att_key(att: dict) -> str:
         # same folder + same filename => same file
         return f"file|{sp_path}|{name}"
     if size is not None:
-        # fallback when we don’t have sharepoint_path
+        # fallback when we don't have sharepoint_path
         return f"file|{name}|{size}"
     # last resort: name only
     return f"file|{name}"
@@ -192,8 +191,6 @@ def _ordered_accounts(emails):
     for acct in sorted(per_acct.keys(), key=lambda x: (x or '').lower()):
         ordered.append((acct, per_acct[acct]))
     return ordered
-
-nest_asyncio.apply()
 
 app = FastAPI(title="BroadAxis API", version="1.0.0")
 
