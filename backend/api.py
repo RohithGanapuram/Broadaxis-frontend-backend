@@ -203,7 +203,7 @@ _env_allow = os.getenv("TRADING_ALLOWED_EMAILS")
 if _env_allow:
     TRADING_ALLOWED_EMAILS = set((_env_allow.strip() or "").split(","))
 else:
-    TRADING_ALLOWED_EMAILS = {"tariq@broadaxis.com", "rohith.ganapuram@broadaxis.com"}
+    print("⚠️ set trading allowed emails in the environment")
 
 # Session file storage (keeping for backward compatibility)
 session_files = {}
