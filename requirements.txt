@@ -47,4 +47,7 @@ langchain>=0.3.0
 langchain-text-splitters>=0.3.0
 
 # Error Tracking and Monitoring
-sentry-sdk[fastapi]>=1.38.0
+sentry-sdk[fastapi]
+
+# Financial Data
+yfinance

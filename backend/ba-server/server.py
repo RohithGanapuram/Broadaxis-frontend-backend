@@ -10,6 +10,8 @@ import traceback
 from datetime import datetime
 import tempfile
 import requests
+import yfinance as yf
+import pandas as pd
 
 # Setup Sentry for MCP server error tracking
 import sentry_sdk
@@ -920,6 +922,236 @@ def alpha_vantage_market_data(symbol: str, function: str = "TIME_SERIES_DAILY", 
         logger.error(f"Alpha Vantage data retrieval failed: {e}")
         return json.dumps({
             "error": f"Data retrieval failed: {str(e)}",
+            "status": "error"
+        })
+
+@mcp.tool()
+def batch_earnings_analysis(symbols: str, expiry: str = "nearest"):
+    """
+    Get comprehensive earnings analysis for multiple symbols in a single call.
+    
+    Args:
+        symbols: Comma-separated stock symbols (e.g., "AVAV,ORCL,SNPS,KR,ADBE,RH")
+        expiry: Options expiry date - "nearest" for closest expiry
+    
+    Returns:
+        JSON string with comprehensive analysis for all symbols including:
+        - Current stock prices
+        - Options chains with strikes, prices, volume, open interest
+        - Implied volatility and Greeks
+        - Expected moves and 200% rule calculations
+    """
+    try:
+        if not symbols or not symbols.strip():
+            return json.dumps({"error": "Stock symbols cannot be empty"})
+
+        symbol_list = [s.strip().upper() for s in symbols.split(',') if s.strip()]
+        if not symbol_list:
+            return json.dumps({"error": "No valid symbols provided"})
+
+        logger.info(f"Batch earnings analysis for {len(symbol_list)} symbols: {symbol_list}")
+
+        results = {
+            "timestamp": datetime.now().isoformat(),
+            "symbols": symbol_list,
+            "data": {}
+        }
+
+        for symbol in symbol_list:
+            try:
+                # Get current stock price
+                ticker = yf.Ticker(symbol)
+                hist = ticker.history(period="1d")
+                if hist.empty:
+                    results["data"][symbol] = {"error": f"No price data for {symbol}"}
+                    continue
+                
+                current_price = float(hist['Close'].iloc[-1])
+                
+                # Get options chain
+                expirations = ticker.options
+                if not expirations:
+                    results["data"][symbol] = {"error": f"No options data for {symbol}"}
+                    continue
+                
+                nearest_expiry = expirations[0] if expiry == "nearest" else expiry
+                options_chain = ticker.option_chain(nearest_expiry)
+                
+                # Find ATM options (closest to current price)
+                calls = options_chain.calls if hasattr(options_chain, 'calls') and not options_chain.calls.empty else pd.DataFrame()
+                puts = options_chain.puts if hasattr(options_chain, 'puts') and not options_chain.puts.empty else pd.DataFrame()
+                
+                # Find closest strikes to current price
+                if not calls.empty:
+                    call_strikes = calls['strike'].values
+                    closest_call_idx = (abs(call_strikes - current_price)).argmin()
+                    atm_call = calls.iloc[closest_call_idx]
+                else:
+                    atm_call = None
+                
+                if not puts.empty:
+                    put_strikes = puts['strike'].values
+                    closest_put_idx = (abs(put_strikes - current_price)).argmin()
+                    atm_put = puts.iloc[closest_put_idx]
+                else:
+                    atm_put = None
+                
+                # Calculate expected move and 200% rule
+                call_price = float(atm_call['lastPrice']) if atm_call is not None and not pd.isna(atm_call['lastPrice']) else 0
+                put_price = float(atm_put['lastPrice']) if atm_put is not None and not pd.isna(atm_put['lastPrice']) else 0
+                expected_move = call_price + put_price
+                
+                call_200_rule = "PASS" if expected_move >= 2 * call_price and call_price > 0 else "FAIL"
+                put_200_rule = "PASS" if expected_move >= 2 * put_price and put_price > 0 else "FAIL"
+                
+                results["data"][symbol] = {
+                    "current_price": current_price,
+                    "expiry": nearest_expiry,
+                    "call_strike": float(atm_call['strike']) if atm_call is not None else 0,
+                    "call_price": call_price,
+                    "put_strike": float(atm_put['strike']) if atm_put is not None else 0,
+                    "put_price": put_price,
+                    "expected_move": expected_move,
+                    "call_200_rule": call_200_rule,
+                    "put_200_rule": put_200_rule,
+                    "call_iv": float(atm_call['impliedVolatility']) if atm_call is not None and not pd.isna(atm_call['impliedVolatility']) else 0,
+                    "put_iv": float(atm_put['impliedVolatility']) if atm_put is not None and not pd.isna(atm_put['impliedVolatility']) else 0,
+                    "call_volume": int(atm_call['volume']) if atm_call is not None and not pd.isna(atm_call['volume']) else 0,
+                    "put_volume": int(atm_put['volume']) if atm_put is not None and not pd.isna(atm_put['volume']) else 0
+                }
+                
+            except Exception as e:
+                logger.error(f"Error processing {symbol}: {e}")
+                results["data"][symbol] = {"error": str(e)}
+        
+        logger.info(f"Batch earnings analysis completed for {len(symbol_list)} symbols")
+        return json.dumps({
+            "status": "success",
+            "data": results
+        })
+        
+    except Exception as e:
+        logger.error(f"Batch earnings analysis failed: {e}")
+        return json.dumps({
+            "error": f"Batch analysis failed: {str(e)}",
+            "status": "error"
+        })
+
+@mcp.tool()
+def yahoo_finance_options(symbol: str, expiry: str = "nearest", option_type: str = "both"):
+    """
+    Get real-time options chain data from Yahoo Finance for earnings analysis.
+
+    Args:
+        symbol: Stock symbol (e.g., "AAPL", "MSFT", "GOOGL")
+        expiry: Options expiry date - "nearest" for closest expiry, or specific date like "2024-12-20"
+        option_type: "calls", "puts", or "both" (default: "both")
+
+    Returns:
+        JSON string with options chain data including:
+        - Current stock price
+        - Options chain with strikes, prices, volume, open interest
+        - Implied volatility
+        - Greeks (delta, gamma, theta, vega)
+        - Expiry dates available
+    """
+    try:
+        if not symbol or not symbol.strip():
+            return json.dumps({"error": "Stock symbol cannot be empty"})
+
+        symbol = symbol.strip().upper()
+        logger.info(f"Fetching Yahoo Finance options data for {symbol}")
+
+        # Create ticker object
+        ticker = yf.Ticker(symbol)
+
+        # Get current stock price
+        try:
+            hist = ticker.history(period="1d")
+            if hist.empty:
+                return json.dumps({"error": f"No current price data available for {symbol}"})
+            current_price = float(hist['Close'].iloc[-1])
+        except Exception as e:
+            logger.error(f"Failed to get current price for {symbol}: {e}")
+            return json.dumps({"error": f"Failed to get current price: {str(e)}"})
+
+        # Get options chain
+        try:
+            if expiry == "nearest":
+                # Get the nearest expiry
+                expirations = ticker.options
+                if not expirations:
+                    return json.dumps({"error": f"No options data available for {symbol}"})
+                nearest_expiry = expirations[0]
+            else:
+                nearest_expiry = expiry
+
+            options_chain = ticker.option_chain(nearest_expiry)
+
+            # Process calls and puts
+            result_data = {
+                "symbol": symbol,
+                "current_price": current_price,
+                "expiry": nearest_expiry,
+                "timestamp": datetime.now().isoformat(),
+                "calls": [],
+                "puts": [],
+                "available_expiries": list(ticker.options) if hasattr(ticker, 'options') else []
+            }
+
+            # Process calls
+            if option_type in ["calls", "both"] and hasattr(options_chain, 'calls') and not options_chain.calls.empty:
+                for _, call in options_chain.calls.iterrows():
+                    call_data = {
+                        "strike": float(call.get('strike', 0)),
+                        "last_price": float(call.get('lastPrice', 0)),
+                        "bid": float(call.get('bid', 0)),
+                        "ask": float(call.get('ask', 0)),
+                        "volume": int(call.get('volume', 0)) if call.get('volume') is not None and not pd.isna(call.get('volume')) else 0,
+                        "open_interest": int(call.get('openInterest', 0)) if call.get('openInterest') is not None and not pd.isna(call.get('openInterest')) else 0,
+                        "implied_volatility": float(call.get('impliedVolatility', 0)) if call.get('impliedVolatility') is not None else 0,
+                        "delta": float(call.get('delta', 0)) if call.get('delta') is not None else 0,
+                        "gamma": float(call.get('gamma', 0)) if call.get('gamma') is not None else 0,
+                        "theta": float(call.get('theta', 0)) if call.get('theta') is not None else 0,
+                        "vega": float(call.get('vega', 0)) if call.get('vega') is not None else 0
+                    }
+                    result_data["calls"].append(call_data)
+
+            # Process puts
+            if option_type in ["puts", "both"] and hasattr(options_chain, 'puts') and not options_chain.puts.empty:
+                for _, put in options_chain.puts.iterrows():
+                    put_data = {
+                        "strike": float(put.get('strike', 0)),
+                        "last_price": float(put.get('lastPrice', 0)),
+                        "bid": float(put.get('bid', 0)),
+                        "ask": float(put.get('ask', 0)),
+                        "volume": int(put.get('volume', 0)) if put.get('volume') is not None and not pd.isna(put.get('volume')) else 0,
+                        "open_interest": int(put.get('openInterest', 0)) if put.get('openInterest') is not None and not pd.isna(put.get('openInterest')) else 0,
+                        "implied_volatility": float(put.get('impliedVolatility', 0)) if put.get('impliedVolatility') is not None else 0,
+                        "delta": float(put.get('delta', 0)) if put.get('delta') is not None else 0,
+                        "gamma": float(put.get('gamma', 0)) if put.get('gamma') is not None else 0,
+                        "theta": float(put.get('theta', 0)) if put.get('theta') is not None else 0,
+                        "vega": float(put.get('vega', 0)) if put.get('vega') is not None else 0
+                    }
+                    result_data["puts"].append(put_data)
+
+            logger.info(f"Yahoo Finance options data retrieved successfully for {symbol}")
+            return json.dumps({
+                "status": "success",
+                "data": result_data
+            })
+
+        except Exception as e:
+            logger.error(f"Failed to get options chain for {symbol}: {e}")
+            return json.dumps({
+                "error": f"Options data retrieval failed: {str(e)}",
+                "status": "error"
+            })
+
+    except Exception as e:
+        logger.error(f"Yahoo Finance options tool failed: {e}")
+        return json.dumps({
+            "error": f"Tool execution failed: {str(e)}",
             "status": "error"
         })
     

@@ -51,7 +51,7 @@ def is_trading_query(query: str, enabled_tools: List[str] = None) -> bool:
         return False
     
     # Check if trading tools are enabled
-    trading_tools = ["web_search_tool", "alpha_vantage_market_data"]
+    trading_tools = ["batch_earnings_analysis"]
     has_trading_tools = any(tool in enabled_tools for tool in trading_tools)
     
     if not has_trading_tools:
@@ -238,10 +238,10 @@ async def websocket_chat(websocket: WebSocket):
                     full_prompt = context_prompt + query
                     print(f"🤖 Sending to AI: {full_prompt[:300]}...")
                     
-                    # Check if this is a trading query and use Claude Opus 4.1
+                    # Check if this is a trading query and use Claude Sonnet 3.7
                     if is_trading_query(query, enabled_tools):
-                        print(f"🚀 Detected trading query - using Claude Opus 4.1")
-                        selected_model = "claude-opus-4-1-20250805"
+                        print(f"🚀 Detected trading query - using Claude Sonnet 3.7 (cost-optimized)")
+                        selected_model = "claude-3-7-sonnet-20250219"
                     else:
                         print(f"📝 Regular query - using standard model")
                         selected_model = model
