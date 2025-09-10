@@ -150,7 +150,7 @@ const Email: React.FC = () => {
     })) : [
     {
       id: 1,
-      email: 'proposals@broadaxis.com',
+      email: 'rfiproject@broadaxis.com',
       count: 0,
       label: 'RFP/RFI/RFQ Emails',
       subject: 'No emails fetched yet',
@@ -160,7 +160,7 @@ const Email: React.FC = () => {
     },
     {
       id: 2,
-      email: 'rfp.team@broadaxis.com',
+      email: 'sakshi.k@broadaxis.com',
       count: 0,
       label: 'RFP/RFI/RFQ Emails',
       subject: 'No emails fetched yet',
@@ -170,7 +170,7 @@ const Email: React.FC = () => {
     },
     {
       id: 3,
-      email: 'business@broadaxis.com',
+      email: 'rohith.ganapuram@broadaxis.com',
       count: 0,
       label: 'RFP/RFI/RFQ Emails',
       subject: 'No emails fetched yet',

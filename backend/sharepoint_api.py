@@ -758,7 +758,7 @@ async def get_local_files():
     try:
         import os
         import datetime
-        files_dir = os.path.join(os.path.dirname(__file__), "..", "ba-server", "generated_files")
+        files_dir = os.path.join(os.path.dirname(__file__), "ba-server", "generated_files")
         files = []
 
         if os.path.exists(files_dir):
@@ -788,7 +788,7 @@ async def download_file(filename: str):
     import os
     
     # Path to generated files directory
-    file_path = os.path.join(os.path.dirname(__file__), "..", "ba-server", "generated_files", filename)
+    file_path = os.path.join(os.path.dirname(__file__), "ba-server", "generated_files", filename)
     
     if os.path.exists(file_path):
         return FileResponse(

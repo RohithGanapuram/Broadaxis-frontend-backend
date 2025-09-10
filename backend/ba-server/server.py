@@ -9,6 +9,7 @@ import logging
 import traceback
 from datetime import datetime
 import tempfile
+import requests
 
 # Setup Sentry for MCP server error tracking
 import sentry_sdk
@@ -36,7 +37,6 @@ from reportlab.lib.pagesizes import letter, A4, legal
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 import uuid
-import datetime
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import PyPDF2
@@ -756,6 +756,172 @@ def web_search_tool(query: str):
             "error": f"Search failed: {str(e)}",
             "status": "error"
         })
+
+@mcp.tool()
+def alpha_vantage_market_data(symbol: str, function: str = "TIME_SERIES_DAILY", outputsize: str = "compact"):
+    """
+    Get real-time and historical market data using Alpha Vantage API.
+    
+    Args:
+        symbol: Stock symbol (e.g., "AAPL", "MSFT", "GOOGL")
+        function: Data function - options:
+            - "TIME_SERIES_DAILY" - Daily prices (default)
+            - "TIME_SERIES_INTRADAY" - Intraday prices (1min, 5min, 15min, 30min, 60min)
+            - "GLOBAL_QUOTE" - Latest quote
+            - "OVERVIEW" - Company overview
+            - "EARNINGS" - Earnings data
+            - "NEWS_SENTIMENT" - News sentiment
+        outputsize: "compact" (last 100 data points) or "full" (full historical data)
+    
+    Returns:
+        JSON string with market data including prices, volume, and metadata
+    """
+    try:
+        alpha_vantage_key = os.environ.get('ALPHA_VANTAGE_API_KEY')
+        if not alpha_vantage_key:
+            return json.dumps({
+                "error": "Alpha Vantage API key not configured",
+                "status": "unavailable"
+            })
+        
+        if not symbol or not symbol.strip():
+            return json.dumps({"error": "Stock symbol cannot be empty"})
+        
+        symbol = symbol.strip().upper()
+        
+        # Validate function parameter
+        valid_functions = [
+            "TIME_SERIES_DAILY", "TIME_SERIES_INTRADAY", "GLOBAL_QUOTE", 
+            "OVERVIEW", "EARNINGS", "NEWS_SENTIMENT"
+        ]
+        if function not in valid_functions:
+            return json.dumps({
+                "error": f"Invalid function. Must be one of: {', '.join(valid_functions)}"
+            })
+        
+        logger.info(f"Fetching {function} data for {symbol}")
+        
+        # Build API URL
+        base_url = "https://www.alphavantage.co/query"
+        params = {
+            "function": function,
+            "symbol": symbol,
+            "apikey": alpha_vantage_key,
+            "outputsize": outputsize
+        }
+        
+        # Add interval for intraday data
+        if function == "TIME_SERIES_INTRADAY":
+            params["interval"] = "5min"  # Default to 5-minute intervals
+        
+        # Make API request
+        response = requests.get(base_url, params=params, timeout=30)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        # Check for API errors
+        if "Error Message" in data:
+            return json.dumps({
+                "error": f"Alpha Vantage API error: {data['Error Message']}",
+                "status": "error"
+            })
+        
+        if "Note" in data:
+            return json.dumps({
+                "error": f"API limit reached: {data['Note']}",
+                "status": "rate_limited"
+            })
+        
+        # Format response based on function type
+        if function == "GLOBAL_QUOTE":
+            quote_data = data.get("Global Quote", {})
+            formatted = {
+                "symbol": symbol,
+                "price": quote_data.get("05. price", "N/A"),
+                "change": quote_data.get("09. change", "N/A"),
+                "change_percent": quote_data.get("10. change percent", "N/A"),
+                "volume": quote_data.get("06. volume", "N/A"),
+                "high": quote_data.get("03. high", "N/A"),
+                "low": quote_data.get("04. low", "N/A"),
+                "open": quote_data.get("02. open", "N/A"),
+                "previous_close": quote_data.get("08. previous close", "N/A"),
+                "last_trade_time": quote_data.get("07. latest trading day", "N/A")
+            }
+        elif function == "OVERVIEW":
+            overview_data = data.get("Overview", {})
+            formatted = {
+                "symbol": symbol,
+                "name": overview_data.get("Name", "N/A"),
+                "description": overview_data.get("Description", "N/A"),
+                "sector": overview_data.get("Sector", "N/A"),
+                "industry": overview_data.get("Industry", "N/A"),
+                "market_cap": overview_data.get("MarketCapitalization", "N/A"),
+                "pe_ratio": overview_data.get("PERatio", "N/A"),
+                "dividend_yield": overview_data.get("DividendYield", "N/A"),
+                "52_week_high": overview_data.get("52WeekHigh", "N/A"),
+                "52_week_low": overview_data.get("52WeekLow", "N/A")
+            }
+        else:
+            # For time series data, get the most recent data points
+            time_series_key = None
+            for key in data.keys():
+                if "Time Series" in key:
+                    time_series_key = key
+                    break
+            
+            if time_series_key and data[time_series_key]:
+                time_series = data[time_series_key]
+                # Get the 5 most recent data points
+                recent_dates = sorted(time_series.keys(), reverse=True)[:5]
+                recent_data = []
+                
+                for date in recent_dates:
+                    day_data = time_series[date]
+                    recent_data.append({
+                        "date": date,
+                        "open": day_data.get("1. open", "N/A"),
+                        "high": day_data.get("2. high", "N/A"),
+                        "low": day_data.get("3. low", "N/A"),
+                        "close": day_data.get("4. close", "N/A"),
+                        "volume": day_data.get("5. volume", "N/A")
+                    })
+                
+                formatted = {
+                    "symbol": symbol,
+                    "function": function,
+                    "recent_data": recent_data,
+                    "metadata": data.get("Meta Data", {})
+                }
+            else:
+                formatted = {
+                    "symbol": symbol,
+                    "function": function,
+                    "data": data,
+                    "note": "No time series data found"
+                }
+        
+        logger.info(f"Alpha Vantage data retrieved successfully for {symbol}")
+        return json.dumps({
+            "status": "success",
+            "symbol": symbol,
+            "function": function,
+            "data": formatted,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Alpha Vantage API request failed: {e}")
+        return json.dumps({
+            "error": f"API request failed: {str(e)}",
+            "status": "error"
+        })
+    except Exception as e:
+        logger.error(f"Alpha Vantage data retrieval failed: {e}")
+        return json.dumps({
+            "error": f"Data retrieval failed: {str(e)}",
+            "status": "error"
+        })
     
 @mcp.tool()
 def generate_pdf_document(title: str, content: str, filename: str = None, page_size: str = "letter", include_toc: bool = False) -> str:
@@ -924,7 +1090,7 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
             
             with open(temp_file_path, 'rb') as f:
                 file_content = f.read()
-            sharepoint_folder = f"Generated_Documents/{datetime.datetime.now().strftime('%Y-%m')}"
+            sharepoint_folder = f"Generated_Documents/{datetime.now().strftime('%Y-%m')}"
             
             logger.info(f"Attempting SharePoint upload: {filename}.pdf to {sharepoint_folder}")
             upload_result = sharepoint_manager.upload_file_to_sharepoint(
@@ -939,7 +1105,7 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
                     "filename": f"{filename}.pdf",
                     "sharepoint_path": sharepoint_folder,
                     "file_size": file_size,
-                    "created_at": datetime.datetime.now().isoformat(),
+                    "created_at": datetime.now().isoformat(),
                     "type": "pdf",
                     "page_size": page_size,
                     "has_toc": include_toc and len(headings_for_toc) > 0,
@@ -957,7 +1123,7 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
             "filename": f"{filename}.pdf",
             "file_path": temp_file_path,
             "file_size": file_size,
-            "created_at": datetime.datetime.now().isoformat(),
+            "created_at": datetime.now().isoformat(),
             "type": "pdf",
             "page_size": page_size,
             "has_toc": include_toc and len(headings_for_toc) > 0,
@@ -1138,7 +1304,7 @@ def generate_word_document(title: str, content: str, filename: str = None, inclu
         # Upload to SharePoint
         try:
             sharepoint_manager = get_sharepoint_manager()
-            sharepoint_folder = f"Generated_Documents/{datetime.datetime.now().strftime('%Y-%m')}"
+            sharepoint_folder = f"Generated_Documents/{datetime.now().strftime('%Y-%m')}"
             
             upload_result = sharepoint_manager.upload_file_to_sharepoint(
                 file_content, f"{filename}.docx", sharepoint_folder
@@ -1150,7 +1316,7 @@ def generate_word_document(title: str, content: str, filename: str = None, inclu
                     "filename": f"{filename}.docx",
                     "sharepoint_path": sharepoint_folder,
                     "file_size": len(file_content),
-                    "created_at": datetime.datetime.now().isoformat(),
+                    "created_at": datetime.now().isoformat(),
                     "type": "docx",
                     "page_orientation": page_orientation,
                     "has_toc": include_toc and len(headings_for_toc) > 0,
@@ -1164,7 +1330,7 @@ def generate_word_document(title: str, content: str, filename: str = None, inclu
             "status": "success",
             "filename": f"{filename}.docx",
             "file_size": len(file_content),
-            "created_at": datetime.datetime.now().isoformat(),
+            "created_at": datetime.now().isoformat(),
             "type": "docx",
             "page_orientation": page_orientation,
             "has_toc": include_toc and len(headings_for_toc) > 0,
@@ -1250,7 +1416,7 @@ def sharepoint_read_file(path: str, max_size_mb: int = 50, encoding: str = "utf-
         
         # Get file metadata first
         logger.info(f"Reading file from SharePoint: {clean_path}")
-        start_time = datetime.datetime.now()
+        start_time = datetime.now()
         
         result = sharepoint_manager.get_file_content(clean_path)
         
@@ -1335,7 +1501,7 @@ def sharepoint_read_file(path: str, max_size_mb: int = 50, encoding: str = "utf-
                 preview_note = ""
             
             # Calculate processing time
-            end_time = datetime.datetime.now()
+            end_time = datetime.now()
             processing_time = (end_time - start_time).total_seconds()
             
             # Build response
@@ -1356,7 +1522,7 @@ def sharepoint_read_file(path: str, max_size_mb: int = 50, encoding: str = "utf-
                 "preview_mode": preview_lines > 0,
                 "preview_lines": preview_lines if preview_lines > 0 else None,
                 "recommended_max_size_mb": file_info['recommended_max_size_mb'],
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat()
             }
             
             if preview_note:
@@ -1396,7 +1562,7 @@ def sharepoint_read_file(path: str, max_size_mb: int = 50, encoding: str = "utf-
                 "error_code": error_code,
                 "path": clean_path,
                 "suggestions": suggestions,
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat()
             })
     except Exception as e:
         logger.error(f"SharePoint read file error: {str(e)}")
@@ -1410,7 +1576,7 @@ def sharepoint_read_file(path: str, max_size_mb: int = 50, encoding: str = "utf-
                 "Verify SharePoint connection",
                 "Contact system administrator if the problem persists"
             ],
-            "timestamp": datetime.datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat()
         })
 
 
@@ -1496,7 +1662,7 @@ def sharepoint_list_files(path: str = "", file_type: str = None, sort_by: str = 
         
         # Get file listing
         logger.info(f"Listing files from SharePoint: {clean_path or 'root'}")
-        start_time = datetime.datetime.now()
+        start_time = datetime.now()
         
         result = sharepoint_manager.list_files(clean_path)
         
@@ -1579,7 +1745,7 @@ def sharepoint_list_files(path: str = "", file_type: str = None, sort_by: str = 
             enhanced_files = enhanced_files[:max_items]
             
             # Calculate processing time
-            end_time = datetime.datetime.now()
+            end_time = datetime.now()
             processing_time = (end_time - start_time).total_seconds()
             
             # Build response
@@ -1594,7 +1760,7 @@ def sharepoint_list_files(path: str = "", file_type: str = None, sort_by: str = 
                 "file_type_filter": file_type,
                 "processing_time_seconds": round(processing_time, 3),
                 "items": enhanced_files,
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat()
             }
             
             # Add summary statistics
@@ -1646,7 +1812,7 @@ def sharepoint_list_files(path: str = "", file_type: str = None, sort_by: str = 
                 "error_code": error_code,
                 "path": clean_path or "root",
                 "suggestions": suggestions,
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat()
             })
     except Exception as e:
         logger.error(f"SharePoint list files error: {str(e)}")
@@ -1660,7 +1826,7 @@ def sharepoint_list_files(path: str = "", file_type: str = None, sort_by: str = 
                 "Verify SharePoint connection",
                 "Contact system administrator if the problem persists"
             ],
-            "timestamp": datetime.datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat()
         })
 
 
@@ -1737,7 +1903,7 @@ def sharepoint_search_files(query: str, path: str = "", search_type: str = "file
         
         # Log search parameters
         logger.info(f"SharePoint search: query='{query}', path='{clean_path}', type='{search_type}', file_type='{file_type}', max_results={max_results}")
-        start_time = datetime.datetime.now()
+        start_time = datetime.now()
         
         # Perform search based on type
         if search_type.lower() == "filename":
@@ -1831,7 +1997,7 @@ def sharepoint_search_files(query: str, path: str = "", search_type: str = "file
             enhanced_results = enhanced_results[:max_results]
             
             # Calculate processing time
-            end_time = datetime.datetime.now()
+            end_time = datetime.now()
             processing_time = (end_time - start_time).total_seconds()
             
             # Build response
@@ -1846,7 +2012,7 @@ def sharepoint_search_files(query: str, path: str = "", search_type: str = "file
                 "max_results": max_results,
                 "processing_time_seconds": round(processing_time, 3),
                 "results": enhanced_results,
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat()
             }
             
             # Add search suggestions if no results
@@ -1891,7 +2057,7 @@ def sharepoint_search_files(query: str, path: str = "", search_type: str = "file
                 "query": query.strip(),
                 "path": clean_path or "all folders",
                 "suggestions": suggestions,
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat()
             })
     except Exception as e:
         return json.dumps({"status": "error", "error": str(e)})
@@ -1977,7 +2143,7 @@ def extract_pdf_text(path: str, pages: str = "all", clean_text: bool = True, pre
         
         # Log extraction parameters
         logger.info(f"PDF text extraction: path='{clean_path}', pages='{pages}', clean_text={clean_text}, preserve_structure={preserve_structure}, extract_tables={extract_tables}, max_pages={max_pages}")
-        start_time = datetime.datetime.now()
+        start_time = datetime.now()
         
         file_result = sharepoint_manager.get_file_content(clean_path, binary=True)
         
@@ -2047,7 +2213,7 @@ def extract_pdf_text(path: str, pages: str = "all", clean_text: bool = True, pre
                 })
         
         # Calculate processing time
-        end_time = datetime.datetime.now()
+        end_time = datetime.now()
         processing_time = (end_time - start_time).total_seconds()
         
         # Build response
@@ -2065,7 +2231,7 @@ def extract_pdf_text(path: str, pages: str = "all", clean_text: bool = True, pre
             "extract_tables": extract_tables,
             "processing_time_seconds": round(processing_time, 3),
             "page_details": page_texts,
-            "timestamp": datetime.datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat()
         }
         
         if tables_found:
