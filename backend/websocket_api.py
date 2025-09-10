@@ -51,7 +51,7 @@ def is_trading_query(query: str, enabled_tools: List[str] = None) -> bool:
         return False
     
     # Check if trading tools are enabled
-    trading_tools = ["batch_earnings_analysis"]
+    trading_tools = ["batch_earnings_analysis", "web_search_tool"]
     has_trading_tools = any(tool in enabled_tools for tool in trading_tools)
     
     if not has_trading_tools:
