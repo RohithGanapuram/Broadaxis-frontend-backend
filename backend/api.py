@@ -686,11 +686,11 @@ async def trading_chat(request: TradingChatRequest, current_user: UserResponse =
             "content": request.query,
             "timestamp": datetime.now().isoformat()
         })
-        # Enable web search and market data tools for trading analysis
+        # Enable web search and market data tools for trading analysis using Claude Opus 4.1
         result = await run_mcp_query(
             query=request.query,
             enabled_tools=["web_search_tool", "alpha_vantage_market_data"],  # Enable web search and real-time market data
-            model=request.model,
+            model="claude-opus-4-1-20250805",  # Use Opus 4.1 for trading analysis
             session_id=session_id,
             system_prompt=TRADING_SYSTEM_PROMPT
         )

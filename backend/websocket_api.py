@@ -45,6 +45,30 @@ class ConnectionManager:
 # Create manager instance
 manager = ConnectionManager()
 
+def is_trading_query(query: str, enabled_tools: List[str] = None) -> bool:
+    """Detect if this is a trading-related query that should use Opus 4.1"""
+    if not enabled_tools:
+        return False
+    
+    # Check if trading tools are enabled
+    trading_tools = ["web_search_tool", "alpha_vantage_market_data"]
+    has_trading_tools = any(tool in enabled_tools for tool in trading_tools)
+    
+    if not has_trading_tools:
+        return False
+    
+    # Check for trading-related keywords
+    query_lower = query.lower()
+    trading_keywords = [
+        'stock', 'stocks', 'trading', 'trade', 'market', 'price', 'quote',
+        'analyze', 'analysis', 'buy', 'sell', 'portfolio', 'investment',
+        'earnings', 'dividend', 'volatility', 'options', 'crypto', 'bitcoin',
+        'nasdaq', 'nyse', 'sp500', 'dow', 'apple', 'microsoft', 'google',
+        'tesla', 'amazon', 'meta', 'nvidia', 'amd', 'intel'
+    ]
+    
+    return any(keyword in query_lower for keyword in trading_keywords)
+
 async def websocket_chat(websocket: WebSocket):
     """WebSocket endpoint for real-time chat communication."""
     session_id = None  # Will be set from message or created new
@@ -214,9 +238,17 @@ async def websocket_chat(websocket: WebSocket):
                     full_prompt = context_prompt + query
                     print(f"🤖 Sending to AI: {full_prompt[:300]}...")
                     
+                    # Check if this is a trading query and use Claude Opus 4.1
+                    if is_trading_query(query, enabled_tools):
+                        print(f"🚀 Detected trading query - using Claude Opus 4.1")
+                        selected_model = "claude-opus-4-1-20250805"
+                    else:
+                        print(f"📝 Regular query - using standard model")
+                        selected_model = model
+                    
                     async with websocket.__gate:
                         result = await run_mcp_query(
-                            full_prompt, enabled_tools, model, session_id
+                            full_prompt, enabled_tools, selected_model, session_id
                         )
                     
                     if not isinstance(result, dict) or "response" not in result:

@@ -451,7 +451,7 @@ mcp_interface = MCPInterface()
 async def run_mcp_query(
     query: str,
     enabled_tools: List[str] = None,
-    model: str = "claude-3-5-sonnet-20241022",
+    model: str = "claude-3-5-haiku-20241022",  # Default to Haiku for cost efficiency
     session_id: str = "default",
     system_prompt: str = None
 ) -> Dict:
