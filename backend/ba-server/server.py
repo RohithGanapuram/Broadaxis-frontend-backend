@@ -1215,8 +1215,10 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
         # Ensure filename doesn't have extension
         filename = sanitize_filename(filename.replace('.pdf', ''))
 
-        # Create output directory if it doesn't exist
-        output_dir = os.path.join(BASE_DIR, "generated_files")
+        # Create date-based output directory (YYYY-MM-DD format)
+        from datetime import datetime
+        today = datetime.now().strftime("%Y-%m-%d")
+        output_dir = os.path.join(BASE_DIR, "generated_files", today)
         os.makedirs(output_dir, exist_ok=True)
         
         # Create file path
@@ -1322,7 +1324,7 @@ def generate_pdf_document(title: str, content: str, filename: str = None, page_s
             
             with open(temp_file_path, 'rb') as f:
                 file_content = f.read()
-            sharepoint_folder = f"Generated_Documents/{datetime.now().strftime('%Y-%m')}"
+            sharepoint_folder = f"Generated_Documents/{datetime.now().strftime('%Y-%m-%d')}"
             
             logger.info(f"Attempting SharePoint upload: {filename}.pdf to {sharepoint_folder}")
             upload_result = sharepoint_manager.upload_file_to_sharepoint(
@@ -1536,7 +1538,7 @@ def generate_word_document(title: str, content: str, filename: str = None, inclu
         # Upload to SharePoint
         try:
             sharepoint_manager = get_sharepoint_manager()
-            sharepoint_folder = f"Generated_Documents/{datetime.now().strftime('%Y-%m')}"
+            sharepoint_folder = f"Generated_Documents/{datetime.now().strftime('%Y-%m-%d')}"
             
             upload_result = sharepoint_manager.upload_file_to_sharepoint(
                 file_content, f"{filename}.docx", sharepoint_folder

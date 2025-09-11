@@ -762,18 +762,37 @@ async def get_local_files():
         files = []
 
         if os.path.exists(files_dir):
-            for filename in os.listdir(files_dir):
-                file_path = os.path.join(files_dir, filename)
-                if os.path.isfile(file_path):
-                    file_size = os.path.getsize(file_path)
-                    file_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-                    file_type = filename.split('.')[-1] if '.' in filename else "unknown"
+            # First, check for date-based folders (YYYY-MM-DD format)
+            for item in os.listdir(files_dir):
+                item_path = os.path.join(files_dir, item)
+                if os.path.isdir(item_path) and re.match(r'^\d{4}-\d{2}-\d{2}$', item):
+                    # This is a date folder, list files inside it
+                    for filename in os.listdir(item_path):
+                        file_path = os.path.join(item_path, filename)
+                        if os.path.isfile(file_path):
+                            file_size = os.path.getsize(file_path)
+                            file_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+                            file_type = filename.split('.')[-1] if '.' in filename else "unknown"
+
+                            files.append({
+                                "filename": filename,
+                                "file_size": file_size,
+                                "modified_at": file_modified.isoformat(),
+                                "type": file_type,
+                                "date_folder": item  # Include the date folder for reference
+                            })
+                elif os.path.isfile(item_path):
+                    # Legacy files in root directory
+                    file_size = os.path.getsize(item_path)
+                    file_modified = datetime.datetime.fromtimestamp(os.path.getmtime(item_path))
+                    file_type = item.split('.')[-1] if '.' in item else "unknown"
 
                     files.append({
-                        "filename": filename,
+                        "filename": item,
                         "file_size": file_size,
                         "modified_at": file_modified.isoformat(),
-                        "type": file_type
+                        "type": file_type,
+                        "date_folder": "legacy"  # Mark as legacy file
                     })
 
         return {"files": files, "status": "success", "message": "Using local files (SharePoint unavailable)"}
@@ -783,14 +802,40 @@ async def get_local_files():
 
 @sharepoint_router.get("/files/{filename}")
 async def download_file(filename: str):
-    """Download file from local generated_files directory"""
+    """Download file from local generated_files directory (searches in date-based folders)"""
     from fastapi.responses import FileResponse
     import os
     
-    # Path to generated files directory
-    file_path = os.path.join(os.path.dirname(__file__), "ba-server", "generated_files", filename)
+    # Base path to generated files directory
+    base_dir = os.path.join(os.path.dirname(__file__), "ba-server", "generated_files")
+    file_path = None
     
-    if os.path.exists(file_path):
+    # First, check in date-based folders (newest first)
+    if os.path.exists(base_dir):
+        # Get all date folders and sort them (newest first)
+        date_folders = []
+        for item in os.listdir(base_dir):
+            item_path = os.path.join(base_dir, item)
+            if os.path.isdir(item_path) and re.match(r'^\d{4}-\d{2}-\d{2}$', item):
+                date_folders.append(item)
+        
+        # Sort date folders (newest first)
+        date_folders.sort(reverse=True)
+        
+        # Search in date folders first
+        for date_folder in date_folders:
+            potential_path = os.path.join(base_dir, date_folder, filename)
+            if os.path.exists(potential_path):
+                file_path = potential_path
+                break
+        
+        # If not found in date folders, check legacy root directory
+        if not file_path:
+            legacy_path = os.path.join(base_dir, filename)
+            if os.path.exists(legacy_path):
+                file_path = legacy_path
+    
+    if file_path and os.path.exists(file_path):
         return FileResponse(
             path=file_path,
             filename=filename,

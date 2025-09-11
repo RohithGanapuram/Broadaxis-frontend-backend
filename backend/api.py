@@ -972,6 +972,74 @@ def _get_activity_status(last_activity: str) -> str:
     except:
         return "Unknown"
 
+@app.post("/api/admin/clear-document-cache")
+async def clear_document_cache(
+    document_path: str = None, 
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Clear document cache for consistent results (admin endpoint)"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "status": "error",
+                "message": "Session management not available"
+            }
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        await session_manager.clear_document_cache(document_path)
+        
+        return {
+            "status": "success",
+            "message": f"Document cache cleared for: {document_path or 'all documents'}"
+        }
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'clear_document_cache'})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.post("/api/admin/clear-go-no-go-cache")
+async def clear_go_no_go_cache(current_user: UserResponse = Depends(get_current_user)):
+    """Clear Go/No-Go analysis cache for fresh analysis (admin endpoint)"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "status": "error",
+                "message": "Session management not available"
+            }
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Clear all Go/No-Go analysis caches
+        pattern = "go_no_go_analysis:*"
+        keys = await session_manager.redis.keys(pattern)
+        if keys:
+            await session_manager.redis.delete(*keys)
+            print(f"🗑️ Cleared {len(keys)} Go/No-Go analysis caches")
+            return {
+                "status": "success",
+                "message": f"Cleared {len(keys)} Go/No-Go analysis caches"
+            }
+        else:
+            print("ℹ️ No Go/No-Go analysis caches found to clear")
+            return {
+                "status": "success",
+                "message": "No Go/No-Go analysis caches found to clear"
+            }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'clear_go_no_go_cache'})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
 @app.get("/api/admin/redis-keys")
 async def get_redis_keys(current_user: UserResponse = Depends(get_current_user)):
     """Get all Redis keys for debugging (admin endpoint)"""
@@ -1356,7 +1424,7 @@ async def process_rfp_folder_intelligent(request: RFPProcessingRequest, current_
 
 ### 📄 **Document: {doc.filename}**
 
-#### 📹 **What is This About?**
+#### **What is This About?**
 > A 3–5 sentence **plain-English overview** of the opportunity. Include:
 - Who issued it (organization)
 - What they need / are requesting
@@ -1455,31 +1523,30 @@ Provide your analysis in the exact format above. Be thorough, specific, and comp
                     "cached": False
                 })
         
-        # Step 5: Generate comprehensive Go/No-Go analysis using the BroadAxis-AI framework
-        go_no_go_prompt = f"""You are BroadAxis-AI, an assistant trained to evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity. The user has uploaded opportunity documents to SharePoint, and you have already analyzed them. Now perform a structured **Go/No-Go analysis** using the following steps:
+        # Step 5: Generate clean Go/No-Go analysis with caching
+        # Create a cache key for the Go/No-Go analysis based on document content
+        import hashlib
+        analysis_cache_key = f"go_no_go_analysis:{hashlib.md5(''.join([doc['analysis'] for doc in processed_documents]).encode()).hexdigest()}"
+        
+        # Check if we have a cached Go/No-Go analysis
+        summary_result = None
+        if SESSION_MANAGER_AVAILABLE and session_manager.redis:
+            cached_analysis = await session_manager.redis.get(analysis_cache_key)
+            if cached_analysis:
+                print(f"✅ Found cached Go/No-Go analysis")
+                summary_result = {"response": json.loads(cached_analysis)}
+        
+        if not summary_result:
+            # Generate new analysis
+            go_no_go_prompt = f"""You are **BroadAxis-AI**, analyzing this RFP opportunity to provide a clear Go/No-Go recommendation.
 
----
-
-# 🚀 **Intelligent RFP Processing Complete**
-
-## 📊 **Processing Summary**
-| **Metric** | **Value** |
-|------------|-----------|
-| **📁 Folder** | `{folder_path}` |
-| **📄 Total Documents** | `{len(documents)}` |
-| **🎯 Primary Documents** | `{len(primary_docs)}` |
-| **📋 Secondary Documents** | `{len(secondary_docs)}` |
-| **⚡ Processing Strategy** | Primary documents only, chunking for large files |
-
----
+**CRITICAL: You must be CONSISTENT. The same document analysis should ALWAYS produce the same Go/No-Go decision.**
 
 ## 📄 **Document Analysis Results**
 
 {chr(10).join([f"### 📄 **{doc['filename']}**\n\n{doc['analysis']}\n\n---\n" for doc in processed_documents])}
 
----
-
-## 🧠 **Comprehensive Go/No-Go Analysis**
+## 🧠 **Go/No-Go Analysis**
 
 ### 🔍 **Step 1: RFP Requirements Review**
 > **CRITICAL:** Base your analysis ONLY on the document analysis results provided above. Do not hallucinate or make assumptions.
@@ -1517,16 +1584,19 @@ Use `Broadaxis_knowledge_search` to research:
 - Identify competitive advantages (local presence, certifications, experience, technology)
 - Note potential competitive challenges or weaknesses
 
+### 🚦 **FINAL RECOMMENDATION**
+
+> **🎯 DECISION: [GO / NO-GO]**
+> 
+> **📝 RATIONALE:** [Clear, data-driven reasoning]
+> 
+> **🎯 CONFIDENCE LEVEL:** [High/Medium/Low]
+> 
+> **📊 SUCCESS PROBABILITY:** [X]% with proper preparation
+
 ---
 
-## 🚦 **FINAL RECOMMENDATION**
-
-### **Decision: [GO / NO-GO / CONDITIONAL GO]**
-
-**📝 Rationale:**
-[Clear explanation of the decision with supporting evidence from knowledge search]
-
-**🎯 Confidence Level:** [High / Medium / Low] - [Brief explanation of confidence factors]
+> **⚠️ IMPORTANT: This is the key decision point. Make it clear and prominent.**
 
 ---
 
@@ -1534,18 +1604,22 @@ Use `Broadaxis_knowledge_search` to research:
 
 ### **⚡ Immediate Actions (Next 7 Days):**
 1. [Specific capability assessment needed]
-2. [Experience documentation required]
-3. [Strategic positioning tasks]
+2. [Key stakeholder meetings required]
+3. [Critical information gathering tasks]
 
 ### **📝 RFP Response Preparation (Week 2):**
-1. [Required forms completion]
-2. [Technical response development]
-3. [Final submission preparation]
+1. [Proposal development tasks]
+2. [Technical solution design]
+3. [Cost estimation and pricing strategy]
 
-**Risk Mitigation Strategies:**
-[Specific strategies to address identified risks]
+### **⚠️ Risk Mitigation Strategies:**
+1. [Address capability gaps]
+2. [Manage timeline constraints]
+3. [Handle competitive challenges]
 
-**Success Probability:** [XX%] with proper preparation, versus [XX%] without focused effort.
+**Success Probability:** [X]% with proper preparation, versus [Y]% without focused effort.
+
+---
 
 ## ⚠️ **Important Guidelines:**
 - Use only verified internal information (via Broadaxis_knowledge_search) and the uploaded documents
@@ -1560,12 +1634,17 @@ Provide your analysis in the exact format above. Be thorough, data-driven, and a
 
 **🔧 Tools Used:** Broadaxis_knowledge_search"""
         
-        summary_result = await run_mcp_query(
-            go_no_go_prompt,
-            enabled_tools=['Broadaxis_knowledge_search'],
-            model=token_manager.get_recommended_model(go_no_go_prompt, 2000),
-            session_id=session_id
-        )
+            summary_result = await run_mcp_query(
+                go_no_go_prompt,
+                enabled_tools=['Broadaxis_knowledge_search'],
+                model=token_manager.get_recommended_model(go_no_go_prompt, 2000),
+                session_id=session_id
+            )
+            
+            # Cache the Go/No-Go analysis for consistency
+            if SESSION_MANAGER_AVAILABLE and session_manager.redis and summary_result.get("response"):
+                await session_manager.redis.setex(analysis_cache_key, 604800, json.dumps(summary_result["response"]))  # 7 days
+                print(f"✅ Cached Go/No-Go analysis for consistency")
         
         total_tokens_used += summary_result.get("tokens_used", 0)
         
@@ -1605,55 +1684,33 @@ Provide your analysis in the exact format above. Be thorough, data-driven, and a
             cleaned = re.sub(r"<a[^>]*></a>\s*", "", cleaned)
             return cleaned
 
-        # Format the response with proper markdown structure and spacing
-        formatted_response = f"""# 🚀 **Intelligent RFP Processing Complete**
+        # Create clean, concise response without redundancy
+        formatted_response = f"""**Intelligent RFP Processing Complete**
 
-## 📊 **Document Classification Results**
+## 📊 **Document Analysis**
 
-### 📘 **Primary Documents (RFP/RFQ/RFI Content) ({primary_count})**
-{chr(10).join([f"- {name}" for name in primary_names] or ['- None'])}
-
-### 📄 **Secondary Documents (Supporting Information) ({secondary_count})**
-{chr(10).join([f"- {name}" for name in secondary_names] or ['- None'])}
-
-### 📋 **Other Documents (Reference/Supporting) ({other_count})**
-{chr(10).join([f"- {name}" for name in other_names] or ['- None'])}
+| **Category** | **Count** | **Status** |
+|--------------|-----------|------------|
+| 🎯 **Primary Documents** | `{primary_count}` files | {'✅ Found' if primary_count > 0 else '❌ None'} |
+| 📋 **Secondary Documents** | `{secondary_count}` files | {'✅ Found' if secondary_count > 0 else '❌ None'} |
+| 📄 **Other Documents** | `{other_count}` files | {'✅ Found' if other_count > 0 else '❌ None'} |
+| **📊 Total Processed** | `{len(processed_documents)}` files | ✅ Complete |
 
 ---
 
-## 📄 **Detailed Summaries**
+## 📄 **Document Summaries**
 
-### 📘 **Primary Documents (RFP/RFQ/RFI Content) ({primary_count})**
-{chr(10).join([f"**{doc['filename']}**\n\n{clean_markup(doc['analysis'])}\n" for doc in processed_documents if doc.get('priority') == 'primary'] or ['No primary documents found.'])}
-
-### 📄 **Secondary Documents (Supporting Information) ({secondary_count})**
-{chr(10).join([f"**{doc['filename']}**\n\n{clean_markup(doc['analysis'])}\n" for doc in processed_documents if doc.get('priority') == 'secondary'] or ['No secondary documents found.'])}
-
-### 📋 **Other Documents (Reference/Supporting) ({other_count})**
-{chr(10).join([f"**{doc['filename']}**\n\n{clean_markup(doc['analysis'])}\n" for doc in processed_documents if doc.get('priority') not in ['primary', 'secondary']] or ['No other documents found.'])}
+{chr(10).join([f"### 📄 **{doc['filename']}**\n\n{clean_markup(doc['analysis']).replace('📄 Document: ' + doc['filename'], '').strip()}\n" for doc in processed_documents])}
 
 ---
 
-## 📋 **Summary**
-
-**Primary Documents:** {primary_count} files
-**Secondary Documents:** {secondary_count} files  
-**Other Documents:** {other_count} files
-**Total Documents Found:** {len(prioritized_filenames)}
-**Total Documents Processed (summarized):** {len(processed_documents)}
-**Total Tokens Used:** {total_tokens_used}
-
----
-
-## 🧠 **Comprehensive Go/No-Go Analysis**
+## 🎯 **FINAL RECOMMENDATION**
 
 {clean_markup(summary_result.get("response", ""))}
 
 ---
 
-## 📈 **Session Information**
-- **Session ID:** {session_id}
-- **Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+> **💡 This recommendation is based on comprehensive analysis of the RFP requirements and BroadAxis capabilities.**
 """
 
         # Store the RFP processing conversation in the session

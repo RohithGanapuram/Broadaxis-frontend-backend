@@ -160,31 +160,69 @@ class RedisSessionManager:
         return []
     
     async def store_document_summary(self, session_id: str, document_path: str, summary: Dict):
-        """Store document summary for reuse"""
+        """Store document summary for reuse - store in both global and session cache"""
         if not self.redis:
             await self.connect()
-            
+        
+        # Store in global cache (consistent across all users) with 7-day TTL
+        global_cache_key = f"document_summary:{document_path}"
+        summary_with_timestamp = {
+            "timestamp": datetime.now().isoformat(),
+            "summary": summary
+        }
+        await self.redis.setex(global_cache_key, 604800, json.dumps(summary_with_timestamp))  # 7 days
+        print(f"✅ Stored global document summary for {document_path}")
+        
+        # Also store in session cache for backward compatibility
         session = await self.get_session(session_id)
         if session:
             if "document_summaries" not in session:
                 session["document_summaries"] = {}
             
-            session["document_summaries"][document_path] = {
-                "timestamp": datetime.now().isoformat(),
-                "summary": summary
-            }
+            session["document_summaries"][document_path] = summary_with_timestamp
             
             session["updated_at"] = datetime.now().isoformat()
             await self.redis.setex(f"session:{session_id}", 172800, json.dumps(session))
-            print(f"✅ Stored document summary for {document_path}")
+            print(f"✅ Stored session document summary for {document_path}")
     
     async def get_document_summary(self, session_id: str, document_path: str) -> Optional[Dict]:
-        """Get stored document summary"""
+        """Get stored document summary - check both session and global cache"""
+        if not self.redis:
+            await self.connect()
+        
+        # First check global document cache (consistent across all users)
+        global_cache_key = f"document_summary:{document_path}"
+        global_summary = await self.redis.get(global_cache_key)
+        if global_summary:
+            print(f"✅ Found global cached summary for {document_path}")
+            return json.loads(global_summary)
+        
+        # Fallback to session-specific cache
         session = await self.get_session(session_id)
         if session:
             summaries = session.get("document_summaries", {})
             return summaries.get(document_path)
         return None
+    
+    async def clear_document_cache(self, document_path: str = None):
+        """Clear document cache - either specific document or all documents"""
+        if not self.redis:
+            await self.connect()
+        
+        if document_path:
+            # Clear specific document
+            global_cache_key = f"document_summary:{document_path}"
+            await self.redis.delete(global_cache_key)
+            print(f"🗑️ Cleared cache for document: {document_path}")
+        else:
+            # Clear all document caches
+            pattern = "document_summary:*"
+            keys = await self.redis.keys(pattern)
+            if keys:
+                await self.redis.delete(*keys)
+                print(f"🗑️ Cleared {len(keys)} document caches")
+            else:
+                print("ℹ️ No document caches found to clear")
     
     async def store_capability_match(self, session_id: str, requirement: str, match_result: Dict):
         """Store capability match results"""
