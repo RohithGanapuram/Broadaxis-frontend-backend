@@ -805,6 +805,226 @@ async def get_user_sessions(current_user: UserResponse = Depends(get_current_use
             "status": "error"
         }
 
+@app.get("/api/admin/active-users")
+async def get_active_users(current_user: UserResponse = Depends(get_current_user)):
+    """Get all active users with email addresses and organized session data (admin endpoint)"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "active_users": [],
+                "error": "Session management not available",
+                "status": "error"
+            }
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get all user session keys
+        user_session_keys = await session_manager.redis.keys("user_sessions:*")
+        user_trading_session_keys = await session_manager.redis.keys("user_trading_sessions:*")
+        
+        # Collect all unique user IDs
+        all_user_ids = set()
+        for key in user_session_keys:
+            user_id = key.replace("user_sessions:", "")
+            all_user_ids.add(user_id)
+        for key in user_trading_session_keys:
+            user_id = key.replace("user_trading_sessions:", "")
+            all_user_ids.add(user_id)
+        
+        active_users = []
+        
+        # Process each user
+        for user_id in all_user_ids:
+            # Get user email from Redis
+            user_email = await session_manager.redis.get(f"user:email:{user_id}")
+            if not user_email:
+                # Try to get email from user data
+                user_data_str = await session_manager.redis.get(f"user:{user_id}")
+                if user_data_str:
+                    user_data = json.loads(user_data_str)
+                    user_email = user_data.get("email", f"Unknown User ({user_id[:8]}...)")
+                else:
+                    user_email = f"Unknown User ({user_id[:8]}...)"
+            
+            # Get user name
+            user_name = "Unknown"
+            user_data_str = await session_manager.redis.get(f"user:{user_id}")
+            if user_data_str:
+                user_data = json.loads(user_data_str)
+                user_name = user_data.get("name", "Unknown")
+            
+            # Collect all sessions for this user
+            rfp_sessions = []
+            trading_sessions = []
+            last_activity = None
+            
+            # Get regular (RFP) sessions
+            rfp_session_ids = await session_manager.redis.smembers(f"user_sessions:{user_id}")
+            for session_id in rfp_session_ids:
+                session_data = await session_manager.get_session(session_id)
+                if session_data:
+                    session_info = {
+                        "id": session_id,
+                        "title": session_data.get("title", "RFP Chat"),
+                        "created_at": session_data.get("created_at"),
+                        "updated_at": session_data.get("updated_at"),
+                        "message_count": len(session_data.get("messages", [])),
+                        "activity_status": _get_activity_status(session_data.get("updated_at"))
+                    }
+                    rfp_sessions.append(session_info)
+                    
+                    # Track most recent activity
+                    session_updated = session_data.get("updated_at")
+                    if session_updated and (not last_activity or session_updated > last_activity):
+                        last_activity = session_updated
+            
+            # Get trading sessions
+            trading_session_ids = await session_manager.redis.smembers(f"user_trading_sessions:{user_id}")
+            for session_id in trading_session_ids:
+                session_data = await session_manager.get_session(session_id)
+                if session_data:
+                    session_info = {
+                        "id": session_id,
+                        "title": session_data.get("title", "Trading Planner"),
+                        "created_at": session_data.get("created_at"),
+                        "updated_at": session_data.get("updated_at"),
+                        "message_count": len(session_data.get("messages", [])),
+                        "activity_status": _get_activity_status(session_data.get("updated_at"))
+                    }
+                    trading_sessions.append(session_info)
+                    
+                    # Track most recent activity
+                    session_updated = session_data.get("updated_at")
+                    if session_updated and (not last_activity or session_updated > last_activity):
+                        last_activity = session_updated
+            
+            # Sort sessions by updated_at (most recent first)
+            rfp_sessions.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+            trading_sessions.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+            
+            # Only include users who have sessions
+            if rfp_sessions or trading_sessions:
+                user_info = {
+                    "user_id": user_id,
+                    "user_name": user_name,
+                    "user_email": user_email,
+                    "last_activity": last_activity,
+                    "activity_status": _get_activity_status(last_activity),
+                    "total_sessions": len(rfp_sessions) + len(trading_sessions),
+                    "rfp_chat": {
+                        "session_count": len(rfp_sessions),
+                        "sessions": rfp_sessions
+                    },
+                    "trading_planner": {
+                        "session_count": len(trading_sessions),
+                        "sessions": trading_sessions
+                    }
+                }
+                active_users.append(user_info)
+        
+        # Sort users by last activity (most recent first)
+        active_users.sort(key=lambda x: x.get("last_activity", ""), reverse=True)
+        
+        # Add summary statistics
+        total_rfp_sessions = sum(user["rfp_chat"]["session_count"] for user in active_users)
+        total_trading_sessions = sum(user["trading_planner"]["session_count"] for user in active_users)
+        
+        return {
+            "active_users": active_users,
+            "summary": {
+                "total_users": len(active_users),
+                "total_rfp_sessions": total_rfp_sessions,
+                "total_trading_sessions": total_trading_sessions,
+                "total_sessions": total_rfp_sessions + total_trading_sessions
+            },
+            "status": "success"
+        }
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_active_users'})
+        return {
+            "active_users": [],
+            "error": str(e),
+            "status": "error"
+        }
+
+def _get_activity_status(last_activity: str) -> str:
+    """Determine activity status based on last activity timestamp"""
+    if not last_activity:
+        return "Never Active"
+    
+    try:
+        from datetime import datetime, timezone
+        last_activity_dt = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        time_diff = now - last_activity_dt
+        
+        if time_diff.total_seconds() < 3600:  # Less than 1 hour
+            return "Active Now"
+        elif time_diff.total_seconds() < 86400:  # Less than 24 hours
+            return "Active Today"
+        elif time_diff.total_seconds() < 604800:  # Less than 7 days
+            return "Active This Week"
+        else:
+            return "Inactive"
+    except:
+        return "Unknown"
+
+@app.get("/api/admin/redis-keys")
+async def get_redis_keys(current_user: UserResponse = Depends(get_current_user)):
+    """Get all Redis keys for debugging (admin endpoint)"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "keys": [],
+                "error": "Session management not available",
+                "status": "error"
+            }
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get all keys
+        all_keys = await session_manager.redis.keys("*")
+        
+        # Categorize keys
+        session_keys = [k for k in all_keys if k.startswith("session:")]
+        user_session_keys = [k for k in all_keys if k.startswith("user_sessions:")]
+        user_trading_keys = [k for k in all_keys if k.startswith("user_trading_sessions:")]
+        other_keys = [k for k in all_keys if not any(k.startswith(prefix) for prefix in ["session:", "user_sessions:", "user_trading_sessions:"])]
+        
+        return {
+            "total_keys": len(all_keys),
+            "session_keys": {
+                "count": len(session_keys),
+                "keys": session_keys[:10]  # Show first 10 to avoid overwhelming response
+            },
+            "user_session_keys": {
+                "count": len(user_session_keys),
+                "keys": user_session_keys
+            },
+            "user_trading_keys": {
+                "count": len(user_trading_keys),
+                "keys": user_trading_keys
+            },
+            "other_keys": {
+                "count": len(other_keys),
+                "keys": other_keys[:10]  # Show first 10
+            },
+            "status": "success"
+        }
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_redis_keys'})
+        return {
+            "keys": [],
+            "error": str(e),
+            "status": "error"
+        }
+
 @app.delete("/api/session/{session_id}")
 async def delete_session_api(session_id: str, current_user: UserResponse = Depends(get_current_user)):
     """Delete a session and remove it from the user's session set."""
