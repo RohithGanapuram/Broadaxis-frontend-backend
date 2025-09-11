@@ -1685,15 +1685,25 @@ Provide your analysis in the exact format above. Be thorough, data-driven, and a
             return cleaned
 
         # Create clean, concise response without redundancy
+        # Group documents by category for display
+        primary_docs = [doc for doc in processed_documents if doc.get('priority') == 'primary']
+        secondary_docs = [doc for doc in processed_documents if doc.get('priority') == 'secondary']
+        other_docs = [doc for doc in processed_documents if doc.get('priority') == 'other']
+        
+        def format_doc_names(docs):
+            if not docs:
+                return "❌ None"
+            return " • ".join([doc['filename'] for doc in docs])
+        
         formatted_response = f"""**Intelligent RFP Processing Complete**
 
 ## 📊 **Document Analysis**
 
-| **Category** | **Count** | **Status** |
-|--------------|-----------|------------|
-| 🎯 **Primary Documents** | `{primary_count}` files | {'✅ Found' if primary_count > 0 else '❌ None'} |
-| 📋 **Secondary Documents** | `{secondary_count}` files | {'✅ Found' if secondary_count > 0 else '❌ None'} |
-| 📄 **Other Documents** | `{other_count}` files | {'✅ Found' if other_count > 0 else '❌ None'} |
+| **Category** | **Count** | **Documents** |
+|--------------|-----------|---------------|
+| 🎯 **Primary Documents** | `{primary_count}` files | {format_doc_names(primary_docs)} |
+| 📋 **Secondary Documents** | `{secondary_count}` files | {format_doc_names(secondary_docs)} |
+| 📄 **Other Documents** | `{other_count}` files | {format_doc_names(other_docs)} |
 | **📊 Total Processed** | `{len(processed_documents)}` files | ✅ Complete |
 
 ---
