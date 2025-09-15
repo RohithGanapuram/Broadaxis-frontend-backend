@@ -7,8 +7,9 @@ import json
 import time
 import base64
 import requests
-import imaplib
-import email
+from pydantic import BaseModel
+from typing import Optional, Literal
+
 import re
 from typing import List, Dict
 from datetime import datetime
@@ -209,6 +210,10 @@ class EmailAttachment(BaseModel):
     type: str = "file"  # "file" or "link"
     url: str = None  # For link attachments
     domain: str = None  # For link attachments
+    
+    sharepoint_path: Optional[str] = None
+    sharepoint_web_url: Optional[str] = None
+    sharepoint_download_url: Optional[str] = None
 
 class FetchedEmail(BaseModel):
     email_id: str
@@ -254,26 +259,8 @@ class EmailFetcher:
         self.graph_config['user_emails'] = [email for email in self.graph_config['user_emails'] if email]
 
         # Email configurations from environment
-        self.email_configs = {
-            'gmail': {
-                'email': os.getenv('GMAIL_EMAIL'),
-                'password': os.getenv('GMAIL_PASSWORD'),
-                'imap_server': os.getenv('GMAIL_IMAP_SERVER', 'imap.gmail.com'),
-                'imap_port': int(os.getenv('GMAIL_IMAP_PORT', 993))
-            },
-            'outlook': {
-                'email': os.getenv('OUTLOOK_EMAIL'),
-                'password': os.getenv('OUTLOOK_PASSWORD'),
-                'imap_server': os.getenv('OUTLOOK_IMAP_SERVER', 'outlook.office365.com'),
-                'imap_port': int(os.getenv('OUTLOOK_IMAP_PORT', 993))
-            },
-            'corporate': {
-                'email': os.getenv('CORPORATE_EMAIL'),
-                'password': os.getenv('CORPORATE_PASSWORD'),
-                'imap_server': os.getenv('CORPORATE_IMAP_SERVER'),
-                'imap_port': int(os.getenv('CORPORATE_IMAP_PORT', 993))
-            }
-        }
+        
+    
 
     def has_rfp_keywords(self, text: str) -> bool:
         """Check if text contains RFP/RFI/RFQ related keywords"""
@@ -416,6 +403,25 @@ class EmailFetcher:
             print(f"Error saving attachment {filename}: {e}")
             return None
 
+
+
+    def _attachments_match_keywords(self, user_email: str, message_id: str, headers: dict) -> bool:
+   
+
+        try:
+            att_url = f"https://graph.microsoft.com/v1.0/users/{user_email}/messages/{message_id}/attachments"
+            # Don't over-select; some fields differ by type. We only need "name".
+            r = requests.get(att_url, headers=headers, timeout=10)
+            r.raise_for_status()
+            for a in (r.json().get('value') or []):
+                name = (a.get('name') or '')
+                if name and self.has_rfp_keywords(name):
+                    return True
+            return False
+        except Exception:
+            return False
+
+
     def get_graph_access_token(self) -> str:
         """Get access token for Microsoft Graph API"""
         try:
@@ -523,8 +529,26 @@ class EmailFetcher:
                             continue
 
                         # Keyword filter
-                        if not self.has_rfp_keywords(email_item.get('subject', '')):
-                            continue
+                        # Build subject+body and filter on both
+                        # ----- SUBJECT + BODY keyword check -----
+                        email_content = (email_item.get('body') or {}).get('content', '') or ''
+                        # strip HTML so we can match keywords reliably if body is HTML
+                        body_text = re.sub(r'<[^>]+>', ' ', email_content)
+                        subject = (email_item.get('subject') or '')
+                        combined = f"{subject}\n{body_text}"
+
+                        matches_email_text = self.has_rfp_keywords(combined)
+
+                        # If subject/body didn't match, try attachment **filenames**
+                        should_process = matches_email_text
+                        if not should_process:
+                            if self._attachments_match_keywords(user_email, email_item['id'], headers):
+                                should_process = True
+
+                        if not should_process:
+                            continue  # skip this email entirely
+
+
 
                         # Existing attachments (from prior runs) for this email
                         existing_atts = list(existing_map.get((user_email, email_item['id']), []))
@@ -537,9 +561,7 @@ class EmailFetcher:
                         spm = SharePointManager()
 
                         # ---- LINKS (upload only if NEW) ----
-                        email_content = ""
-                        if email_item.get('body') and email_item['body'].get('content'):
-                            email_content = email_item['body']['content']
+                        
                         extracted_links = self.extract_links_from_email(email_content)
 
                         seen_links_this_email = set()
@@ -563,7 +585,9 @@ class EmailFetcher:
                                     'domain': link.get('domain'),
                                     'type': 'link',
                                     'download_date': datetime.now(timezone.utc).isoformat(),
-                                    'sharepoint_path': sp_folder
+                                    'sharepoint_path': sp_folder,
+                                    'sharepoint_web_url': (link_res or {}).get('web_url'),
+                                    'sharepoint_download_url': (link_res or {}).get('download_url'),
                                 })
                                 total_new_attachments += 1
                                 seen.add(uniq)
@@ -592,6 +616,8 @@ class EmailFetcher:
                                         saved['type'] = 'file'
                                         saved['sharepoint_path'] = sp_folder
                                         saved['download_date'] = datetime.now(timezone.utc).isoformat()
+                                        saved['sharepoint_web_url'] = (up or {}).get('web_url')
+                                        saved['sharepoint_download_url'] = (up or {}).get('download_url')
                                         new_attachments.append(saved)
                                         total_new_attachments += 1
                                         seen.add(uniq)
@@ -649,126 +675,7 @@ class EmailFetcher:
             }
 
         
-    def fetch_emails_real(self, email_account: str = 'gmail') -> dict:
-        """Fetch emails from real email account"""
-        config = self.email_configs.get(email_account)
-
-        if not config or not config['email'] or not config['password']:
-            return {
-                "status": "error",
-                "message": f"Email configuration for {email_account} not found or incomplete. Please check your .env file.",
-                "emails_found": 0,
-                "attachments_downloaded": 0,
-                "fetched_emails": []
-            }
-
-        try:
-            # Connect to email server
-            mail = imaplib.IMAP4_SSL(config['imap_server'], config['imap_port'])
-
-            # Try different authentication methods for corporate accounts
-            try:
-                mail.login(config['email'], config['password'])
-            except imaplib.IMAP4.error:
-                # Try with username only (without domain)
-                username = config['email'].split('@')[0]
-                mail.login(username, config['password'])
-            mail.select('inbox')
-
-            # Search for emails with RFP/RFI/RFQ keywords
-            search_criteria = []
-            for keyword in self.rfp_keywords:
-                search_criteria.append(f'SUBJECT "{keyword}"')
-
-            # Search in the last 30 days
-            search_query = f'(SINCE "01-Jan-2025") ({" OR ".join(search_criteria)})'
-
-            result, message_numbers = mail.search(None, search_query)
-
-            if result != 'OK':
-                return {
-                    "status": "error",
-                    "message": "Failed to search emails",
-                    "emails_found": 0,
-                    "attachments_downloaded": 0,
-                    "fetched_emails": []
-                }
-
-            email_ids = message_numbers[0].split()
-            fetched_emails = []
-            total_attachments = 0
-
-            # Process each email
-            for email_id in email_ids[-10:]:  # Limit to last 10 emails
-                result, message_data = mail.fetch(email_id, '(RFC822)')
-
-                if result == 'OK':
-                    email_message = email.message_from_bytes(message_data[0][1])
-
-                    # Extract email details
-                    sender = email_message.get('From', 'Unknown')
-                    subject = email_message.get('Subject', 'No Subject')
-                    date = email_message.get('Date', 'Unknown')
-
-                    # Check if email has RFP keywords
-                    has_keywords = self.has_rfp_keywords(subject)
-
-                    if has_keywords:
-                        attachments = []
-
-                        # Process attachments
-                        for part in email_message.walk():
-                            if part.get_content_disposition() == 'attachment':
-                                filename = part.get_filename()
-                                if filename:
-                                    attachment_data = part.get_payload(decode=True)
-                                    saved_attachment = self.save_attachment(attachment_data, filename, date)
-                                    if saved_attachment:
-                                        attachments.append(saved_attachment)
-                                        total_attachments += 1
-
-                        # Make a deep copy of attachments to avoid reference sharing
-                        import copy
-                        email_attachments = copy.deepcopy(attachments)
-
-                        fetched_emails.append({
-                            "email_id": email_id.decode(),
-                            "sender": sender,
-                            "subject": subject,
-                            "date": date,
-                            "account": config['email'],
-                            "attachments": email_attachments,
-                            "has_rfp_keywords": has_keywords
-                        })
-
-            mail.close()
-            mail.logout()
-
-            return {
-                "status": "success",
-                "message": f"Successfully fetched {len(fetched_emails)} RFP/RFI/RFQ emails from {config['email']}",
-                "emails_found": len(fetched_emails),
-                "attachments_downloaded": total_attachments,
-                "fetched_emails": fetched_emails
-            }
-
-        except imaplib.IMAP4.error as e:
-            return {
-                "status": "error",
-                "message": f"IMAP error: {str(e)}. Check your email credentials and server settings.",
-                "emails_found": 0,
-                "attachments_downloaded": 0,
-                "fetched_emails": []
-            }
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Error fetching emails: {str(e)}",
-                "emails_found": 0,
-                "attachments_downloaded": 0,
-                "fetched_emails": []
-            }
-
+    
     
 
                 
@@ -962,3 +869,32 @@ async def get_email_attachments(email_id: int):
     except Exception as e:
         print(f"Error getting email attachments: {e}")
         return {"email_id": email_id, "attachments": []}
+
+
+# at top if missing
+from pathlib import Path
+from fastapi import Query, HTTPException
+from fastapi.responses import FileResponse
+import mimetypes
+
+@email_router.get("/attachment/view")
+async def view_attachment(path: str = Query(..., description="File path returned in attachments")):
+    base = Path("email_attachments").resolve()
+
+    try:
+        p = Path(path)
+        requested = (p if p.is_absolute() else base / p).resolve()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    # Only serve files inside email_attachments
+    if base != requested and base not in requested.parents:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if not requested.exists() or not requested.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    mt, _ = mimetypes.guess_type(str(requested))
+    mt = mt or "application/octet-stream"
+    headers = {"Content-Disposition": f'inline; filename="{requested.name}"'}
+    return FileResponse(str(requested), media_type=mt, headers=headers)

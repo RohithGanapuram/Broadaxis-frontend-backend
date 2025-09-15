@@ -1,5 +1,72 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../utils/api';
+import api from '../../utils/api';
+
+type PreviewKind = 'pdf' | 'text' | 'image';
+type PreviewState = { url: string; title: string; kind: PreviewKind };
+
+function makeObjectUrl(blob: Blob) {
+  return URL.createObjectURL(blob);
+}
+
+function openPdfBlobInTab(blob: Blob, title = "Document") {
+  const pdfUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+  const w = window.open("", "_blank");
+  if (w) {
+    w.document.write(`
+      <html><head><title>${title}</title><meta charset="utf-8" /></head>
+      <body style="margin:0">
+        <iframe src="${pdfUrl}" style="border:0;width:100%;height:100vh"></iframe>
+      </body></html>
+    `);
+    w.document.close();
+  }
+  setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
+}
+
+function extOf(name?: string) {
+  return (name?.split(".").pop() || "").toLowerCase();
+}
+
+function openPdfInline(blob: Blob, title = "Document") {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result as string; // "data:application/pdf;base64,..."
+    const w = window.open("", "_blank");
+    if (w) {
+      w.document.write(`
+        <html><head><title>${title}</title><meta charset="utf-8" /></head>
+        <body style="margin:0">
+          <iframe src="${dataUrl}" style="border:0;width:100%;height:100vh"></iframe>
+        </body></html>
+      `);
+      w.document.close();
+    }
+  };
+  // Ensure correct MIME so the DataURL is pdf
+  const pdfBlob = blob.type.includes("pdf") ? blob : new Blob([blob], { type: "application/pdf" });
+  reader.readAsDataURL(pdfBlob);
+}
+
+
+function openAsText(blob: Blob, title = "Text file") {
+  const w = window.open("", "_blank");
+  if (!w) return;
+  blob.text().then((text) => {
+    w.document.write(`
+      <html>
+        <head><title>${title}</title><meta charset="utf-8" /></head>
+        <body style="margin:0">
+          <pre style="white-space:pre-wrap;word-wrap:break-word;margin:16px;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial">${text.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c] as string))}</pre>
+        </body>
+      </html>
+    `);
+    w.document.close();
+  });
+}
+
+
+
 
 interface EmailAccount {
   id: number;
@@ -23,6 +90,11 @@ interface EmailAttachment {
   domain?: string;
   email_subject?: string;
   email_date?: string;
+  file_path?: string;
+  sharepoint_web_url?: string;
+  sharepoint_download_url?: string;
+  download_date?: string;
+  file_size?: number;
 }
 
 interface FetchedEmailData {
@@ -45,6 +117,79 @@ const Email: React.FC = () => {
   });
   const [selectedEmail, setSelectedEmail] = useState<number | null>(null);
   const [emailAttachments, setEmailAttachments] = useState<EmailAttachment[]>([]);
+
+  // Inline preview state (modal)
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+  const closePreview = () => {
+    if (preview?.url) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  };
+  const guessExt = (name?: string) => (name?.split(".").pop() || "").toLowerCase();
+
+  async function handleViewAttachment(att: EmailAttachment | any) {
+    const ext = guessExt(att?.filename);
+
+    // links open directly
+    if (att?.type === "link" && att?.url) {
+      window.open(att.url, "_blank");
+      return;
+    }
+
+    // (optional) SharePoint viewers first if present
+    if (att?.sharepoint_download_url) { window.open(att.sharepoint_download_url, "_blank"); return; }
+    if (att?.sharepoint_web_url) { window.open(att.sharepoint_web_url, "_blank"); return; }
+
+    if (!att?.file_path) {
+      alert("No file path available for this attachment.");
+      return;
+    }
+
+    try {
+      const resp = await api.get("/api/attachment/view", {
+        params: { path: att.file_path },
+        responseType: "blob",
+      });
+
+      const ct = (resp.headers["content-type"] || "").toLowerCase();
+      let blob: Blob = resp.data as Blob;
+
+      // PDFs — show inline in modal (no download)
+      if (ext === "pdf" || ct.includes("application/pdf") || blob.type.includes("pdf")) {
+        if (!ct.includes("pdf") && !blob.type.includes("pdf")) {
+          blob = new Blob([resp.data], { type: "application/pdf" });
+        }
+        const url = URL.createObjectURL(blob);
+        setPreview({ url, title: att.filename || "PDF", kind: "pdf" });
+        return;
+      }
+
+      // text/csv — inline
+      if (ct.startsWith("text/") || ["txt", "csv", "log"].includes(ext)) {
+        if (!ct.startsWith("text/")) {
+          blob = new Blob([resp.data], { type: "text/plain;charset=utf-8" });
+        }
+        const url = URL.createObjectURL(blob);
+        setPreview({ url, title: att.filename || "Text file", kind: "text" });
+        return;
+      }
+
+      // images — inline
+      if (["png", "jpg", "jpeg", "gif", "webp"].includes(ext)) {
+        const url = URL.createObjectURL(blob);
+        setPreview({ url, title: att.filename || "Image", kind: "image" });
+        return;
+      }
+
+      // others (docx/xlsx) – fallback (browser may download)
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      console.error("Preview failed:", e);
+      alert("Could not open this file.");
+    }
+  }
+
   // Group attachments by email subject so multiple files from the same email appear together
   const groupedAttachments = React.useMemo(() => {
     const groups: Record<string, { subject: string; date?: string; items: EmailAttachment[] }> = {};
@@ -285,69 +430,135 @@ const Email: React.FC = () => {
                   <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
                     📎 Attachments ({emailAttachments.length})
                   </h4>
+
                   {groupedAttachments.length > 0 ? (
-                    <div className="space-y-4">
-                      {groupedAttachments.map((group, gi) => (
-                        <div key={gi} className="border border-gray-200 rounded-lg">
-                          {/* Subject header */}
-                          <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-                            <div className="font-semibold text-blue-700 truncate">
-                              📧 {group.subject}
-                            </div>
-                            {group.date && (
-                              <div className="text-xs text-gray-500">
-                                📅 {new Date(group.date).toLocaleDateString()}
+                    <>
+                      <div className="space-y-4">
+                        {groupedAttachments.map((group, gi) => (
+                          <div key={gi} className="border border-gray-200 rounded-lg">
+                            {/* Subject header */}
+                            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                              <div className="font-semibold text-blue-700 truncate">
+                                📧 {group.subject}
                               </div>
-                            )}
-                          </div>
-                          {/* Attachments under this subject */}
-                          <div className="p-3 space-y-2">
-                            {group.items.map((att, i) => (
-                              <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                                <div className="flex items-center space-x-3">
-                                  <div className="text-lg">
-                                    {att.type === 'link' ? '🔗' :
-                                    att.filename?.endsWith('.pdf') ? '📄' :
-                                    att.filename?.endsWith('.docx') ? '📝' :
-                                    att.filename?.endsWith('.xlsx') ? '📊' : '📁'}
-                                  </div>
-                                  <div>
-                                    <div className="text-xs font-medium text-gray-700">
-                                      {att.filename}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      {att.type === 'link'
-                                        ? `Link • ${att.domain || 'External'}`
-                                        : `${att.date || ''} ${att.size ? '• ' + att.size : ''}`}
-                                    </div>
-                                  </div>
+                              {group.date && (
+                                <div className="text-xs text-gray-500">
+                                  📅 {new Date(group.date).toLocaleDateString()}
                                 </div>
-                                {att.type === 'link' ? (
-                                  <a
-                                    href={att.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs bg-blue-600 text-white px-2 py-1 rounded"
-                                  >
-                                    Open
-                                  </a>
-                                ) : (
-                                  <button className="text-xs text-blue-600">View</button>
-                                )}
+                              )}
+                            </div>
+
+                            {/* Attachments under this subject */}
+                            <div className="p-3 space-y-2">
+                              {group.items?.map((att, i) => (
+                                <div
+                                  key={`${gi}-${i}`}
+                                  className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                                >
+                                  <div className="flex items-center space-x-3">
+                                    <div className="text-lg">
+                                      {att.type === "link"
+                                        ? "🔗"
+                                        : att.filename?.toLowerCase().endsWith(".pdf")
+                                        ? "📄"
+                                        : att.filename?.toLowerCase().endsWith(".docx")
+                                        ? "📝"
+                                        : att.filename?.toLowerCase().endsWith(".xlsx")
+                                        ? "📊"
+                                        : "📁"}
+                                    </div>
+                                    <div>
+                                      <div className="text-xs font-medium text-gray-700">
+                                        {att.filename}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {att.type === "link"
+                                          ? `Link • ${att.domain || "External"}`
+                                          : `${att.date || ""} ${
+                                              att.size ? "• " + att.size : ""
+                                            }`}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {att.type === "link" ? (
+                                    <a
+                                      href={att.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs bg-blue-600 text-white px-2 py-1 rounded"
+                                    >
+                                      Open
+                                    </a>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleViewAttachment(att)}
+                                      className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                                      title="View attachment"
+                                    >
+                                      View
+                                    </button>
+
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Inline Preview Modal */}
+                      {preview && (
+                        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                          <div className="bg-white w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-3 border-b">
+                              <div className="font-semibold text-gray-800 truncate pr-2">
+                                {preview.title}
                               </div>
-                            ))}
+                              <button
+                                onClick={closePreview}
+                                className="text-sm px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                              >
+                                ✕ Close
+                              </button>
+                            </div>
+                            <div className="h-[80vh] w-full">
+                              {preview.kind === "pdf" && (
+                                <iframe
+                                  src={preview.url}
+                                  className="w-full h-full"
+                                  title={preview.title}
+                                />
+                              )}
+                              {preview.kind === "text" && (
+                                <iframe
+                                  src={preview.url}
+                                  className="w-full h-full"
+                                  title={preview.title}
+                                />
+                              )}
+                              {preview.kind === "image" && (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                                  <img
+                                    src={preview.url}
+                                    alt={preview.title}
+                                    className="max-w-full max-h-[80vh] object-contain"
+                                  />
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-gray-500 text-sm text-center py-4">
                       No attachments found for this email account
                     </div>
                   )}
-
                 </div>
               )}
+
             </div>
           ))}
         </div>
