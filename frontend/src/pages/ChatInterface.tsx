@@ -106,6 +106,34 @@ const ChatInterface: React.FC = () => {
     }
   }, [isConnected, availableTools, currentSessionId])
 
+  // --- Cache-bust from Email page: clear SharePoint caches when Emails page finishes fetching ---
+const cacheBustRef = useRef<number>(0);
+
+useEffect(() => {
+  // Check once on mount
+  const v0 = Number(localStorage.getItem('sp-cache-bust') || '0');
+  if (v0 > cacheBustRef.current) {
+    cacheBustRef.current = v0;
+    setSharePointCache({}); // clear folder cache
+    setFileCache({});       // clear file cache
+  }
+
+  // Listen for updates coming from Email.tsx
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === 'sp-cache-bust') {
+      const v = Number(e.newValue || '0');
+      if (v > cacheBustRef.current) {
+        cacheBustRef.current = v;
+        setSharePointCache({});
+        setFileCache({});
+      }
+    }
+  };
+  window.addEventListener('storage', onStorage);
+  return () => window.removeEventListener('storage', onStorage);
+}, []);
+
+
   const handleWebSocketMessage = (data: any) => {
     console.log(`🔍 Received WebSocket message:`, data)
     
@@ -433,42 +461,54 @@ const ChatInterface: React.FC = () => {
     }
   }
 
+  // Add this helper somewhere near your cache state:
+  const invalidateSharePointCache = (prefix = '') => {
+    setSharePointCache(prev => {
+      const copy = { ...prev }
+      Object.keys(copy).forEach(k => {
+        if (!prefix || k.startsWith(prefix)) delete copy[k]
+      })
+      return copy
+    })
+  }
+
+  // Update fetchSubFolders to avoid caching empty lists:
   const fetchSubFolders = async (parentFolder: string, forceRefresh = false) => {
     const cacheKey = parentFolder
     const now = Date.now()
-    
-    // Check cache first (unless force refresh)
+
     if (!forceRefresh && sharePointCache[cacheKey] && (now - sharePointCache[cacheKey].timestamp) < CACHE_DURATION) {
       setSubFolders(sharePointCache[cacheKey].folders)
       return sharePointCache[cacheKey].folders.length > 0
     }
-    
+
     setIsLoadingFolders(true)
     try {
       const response = await apiClient.listSharePointFiles(parentFolder)
       if (response.status === 'success' && response.files) {
-        // Filter for folders only - backend uses 'type' field
         const folders = response.files
           .filter((item: any) => item.type === 'folder')
           .map((item: any) => item.filename)
-        
-        // Update cache
-        setSharePointCache(prev => ({
-          ...prev,
-          [cacheKey]: { folders, timestamp: now }
-        }))
+
+        // ✅ Only cache if we actually have folders
+        if (folders.length > 0) {
+          setSharePointCache(prev => ({
+            ...prev,
+            [cacheKey]: { folders, timestamp: now }
+          }))
+        }
         setSubFolders(folders)
         return folders.length > 0
       }
       return false
-    } catch (error) {
-      console.error('Error fetching subfolders:', error)
+    } catch (e) {
       toast.error('Failed to fetch subfolders')
       return false
     } finally {
       setIsLoadingFolders(false)
     }
   }
+
 
   const fetchSharePointFiles = async (folderPath: string, forceRefresh = false) => {
     const cacheKey = folderPath
@@ -835,34 +875,47 @@ If your recommendation is a Go, list down the things the user needs to complete 
       const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
+      // Check if this is Intelligent RFP Processing
       if (isIntelligentRFP) {
-        // For intelligent RFP processing, proceed directly with the selected subfolder
+        // 👇 NEW: allow deeper drill-down before processing
+        const deeperPath = `${selectedParentFolder}/${subFolderName}`;
+        const hasMore = await fetchSubFolders(deeperPath, true);
+
+        if (hasMore) {
+          // There are more subfolders — keep drilling down
+          setSelectedParentFolder(deeperPath);
+          setShowSubFolderSelection(true);
+          // keep the modal open for deeper selection
+          return;
+        }
+
+        // No more subfolders — proceed with processing this final folder
         try {
-          setIsLoading(true)
-          toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' })
-          
+          setIsLoading(true);
+          toast.loading('Starting intelligent RFP processing.', { id: 'intelligent-rfp' });
+
           const userMessage: ChatMessage = {
             id: generateMessageId(),
             type: 'user',
-            content: `Process RFP folder intelligently: ${fullPath}`,
+            content: `Process RFP folder intelligently: ${deeperPath}`,
             timestamp: new Date()
-          }
-          
+          };
+
           const assistantMessage: ChatMessage = {
             id: generateMessageId(),
             type: 'assistant',
             content: '',
             timestamp: new Date(),
             isLoading: true
-          }
-          
-          addMessage(userMessage)
-          addMessage(assistantMessage)
-          
-          // Use regular API call for intelligent RFP processing
+          };
+
+          addMessage(userMessage);
+          addMessage(assistantMessage);
+
           const response = await apiClient.processRFPFolderIntelligent(
-            fullPath,
+            deeperPath,
             currentSessionId || 'default'
+<<<<<<< Updated upstream
           )
           
           console.log('Intelligent RFP Response:', response)
@@ -882,32 +935,37 @@ If your recommendation is a Go, list down the things the user needs to complete 
                     request_id: `rfp-${Date.now()}`
                   } : undefined
                 }
+=======
+          );
+
+          setMessages(prev => prev.map(msg =>
+            msg.id === assistantMessage.id
+              ? { ...msg, content: response.summary || response.response || 'No response received', isLoading: false }
+>>>>>>> Stashed changes
               : msg
-          ))
-          
-          toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' })
-          setIsLoading(false)
-          setShowSubFolderSelection(false)
-          setSelectedPrompt(null)
-          setSelectedParentFolder('')
-          
+          ));
+
+          toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' });
+          setIsLoading(false);
+          setShowSubFolderSelection(false);
+          setSelectedPrompt(null);
+          setSelectedParentFolder('');
         } catch (error: any) {
-          console.error('Intelligent RFP processing error:', error)
-          
-          // Update the assistant message with error
-          setMessages(prev => prev.map(msg => 
-            msg.isLoading 
+          console.error('Intelligent RFP processing error:', error);
+          setMessages(prev => prev.map(msg =>
+            msg.isLoading
               ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
               : msg
-          ))
-          
-          toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' })
-          setIsLoading(false)
-          setShowSubFolderSelection(false)
-          setSelectedPrompt(null)
-          setSelectedParentFolder('')
+          ));
+          toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' });
+          setIsLoading(false);
+          setShowSubFolderSelection(false);
+          setSelectedPrompt(null);
+          setSelectedParentFolder('');
         }
-        return
+        return;
+
+
       } else if (isStep1 || isStep2) {
         // For both Step 1 and Step 2, show file selection after subfolder selection
         setSelectedFolder(fullPath)

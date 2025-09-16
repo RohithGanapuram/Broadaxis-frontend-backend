@@ -234,13 +234,21 @@ class SharePointManager:
             # normalize incoming path so it matches how we create/upload
             # Keep the original folder names for browsing; only URL-encode for Graph
             orig_path = folder_path or ""
-            encoded_path = "/".join(urllib.parse.quote(p, safe="") for p in orig_path.split("/") if p)
+            safe_path = _normalize_path(orig_path)  # <— this is the missing step
+
+
+            encoded_path = "/".join(urllib.parse.quote(p, safe="") for p in safe_path.split("/") if p)
 
             if encoded_path:
-                files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root:/{encoded_path}:/children"
+                files_url = (
+                    f"https://graph.microsoft.com/v1.0/sites/{site_id}"
+                    f"/drives/{drive_id}/root:/{encoded_path}:/children"
+                )
             else:
-                files_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root/children"
-
+                files_url = (
+                    f"https://graph.microsoft.com/v1.0/sites/{site_id}"
+                    f"/drives/{drive_id}/root/children"
+                )
 
             resp = self._session.get(files_url, headers=headers)
             if resp.status_code != 200:

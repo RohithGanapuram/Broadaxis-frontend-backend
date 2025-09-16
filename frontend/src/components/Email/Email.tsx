@@ -249,6 +249,8 @@ const Email: React.FC = () => {
         setFetchStatus(`✅ Successfully fetched ${result.emails_found} emails with ${result.attachments_downloaded} attachments!`);
         // Reload the email data
         await loadFetchedEmails();
+        localStorage.setItem('sp-cache-bust', String(Date.now()));
+
       } else {
         setFetchStatus(`❌ Error: ${result.message}`);
       }
