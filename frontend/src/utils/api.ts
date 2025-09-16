@@ -125,7 +125,7 @@ export const apiClient = {
           { name: "Step1_Identifying_documents", description: "Browse SharePoint folders to identify and categorize RFP/RFI/RFQ documents from available folders", arguments: [] },
           { name: "Step2_summarize_documents", description: "Generate a clear, high-value summary of SharePoint RFP, RFQ, or RFI documents for executive decision-making", arguments: [] },
           { name: "Step3_go_no_go_recommendation", description: "Evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity with structured Go/No-Go analysis", arguments: [] },
-          { name: "Step4_generate_capability_statement", description: "Generate high-quality capability statements and proposal documents for RFP and RFQ responses", arguments: [] },
+          { name: "Dynamic_Content_Generator", description: "Dynamic Document Generator - Create various professional documents for RFP/RFQ responses", arguments: [] },
           { name: "Step5_fill_missing_information", description: "Fill in missing fields and answer RFP/RFQ questions using verified information from internal knowledge base", arguments: [] }
         ],
         status: "fallback"

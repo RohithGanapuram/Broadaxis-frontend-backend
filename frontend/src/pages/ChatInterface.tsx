@@ -58,6 +58,11 @@ const ChatInterface: React.FC = () => {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false)
   const [fileCache, setFileCache] = useState<{[key: string]: {files: any[], timestamp: number}}>({})
   
+  // Document type input for Step 4
+  const [showDocumentTypeInput, setShowDocumentTypeInput] = useState(false)
+  const [documentTypeInput, setDocumentTypeInput] = useState('')
+  const [pendingPrompt, setPendingPrompt] = useState<any>(null)
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom
@@ -550,6 +555,65 @@ useEffect(() => {
     }
   }
 
+  // Document type input handlers for Step 4
+  const handleDocumentTypeSubmit = async () => {
+    if (!documentTypeInput.trim() || !pendingPrompt) {
+      toast.error('Please enter a document type')
+      return
+    }
+
+    const documentType = documentTypeInput.trim()
+    const promptMessage = `${pendingPrompt.description}\n\nPlease generate a ${documentType} based on the previous RFP analysis and BroadAxis knowledge base.`
+
+    setInputMessage(promptMessage)
+    setTimeout(() => {
+      if (globalWebSocket.getConnectionStatus()) {
+        const userMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'user',
+          content: promptMessage,
+          timestamp: new Date()
+        }
+        const assistantMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          isLoading: true
+        }
+        addMessage(userMessage)
+        addMessage(assistantMessage)
+        setIsLoading(true)
+        
+        const enabledTools = getToolsForPrompt(pendingPrompt)
+        console.log('Step 4 - Sending message with tools:', enabledTools)
+        console.log('Step 4 - Document type:', documentType)
+        
+        globalWebSocket.sendMessage({
+          query: promptMessage,
+          enabled_tools: enabledTools,
+          model: settings.model,
+          session_id: currentSessionId
+        })
+        setInputMessage('')
+        setShowDocumentTypeInput(false)
+        setDocumentTypeInput('')
+        setPendingPrompt(null)
+        
+        toast.success(`Generating ${documentType}...`)
+      } else {
+        console.error('WebSocket not connected')
+        toast.error('Connection lost. Please refresh the page.')
+      }
+    }, 100)
+  }
+
+  const handleDocumentTypeCancel = () => {
+    setShowDocumentTypeInput(false)
+    setDocumentTypeInput('')
+    setPendingPrompt(null)
+  }
+
   const getToolsForPrompt = (prompt: any): string[] => {
     // Check if this is Step 1 (document identification - new interactive approach)
     const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
@@ -605,6 +669,12 @@ useEffect(() => {
     const isStep2 = prompt.name === 'Step2_summarize_documents' || 
                    prompt.description.includes('Generate a clear, high-value summary')
     
+    const isStep4 = prompt.name === 'Dynamic_Content_Generator' || 
+                   prompt.name === 'Dynamic Content Generator' || 
+                   prompt.name === 'Step4_generate_capability_statement' ||
+                   prompt.description.includes('Dynamic Document Generator') ||
+                   prompt.description.includes('Generate high-quality capability statements')
+    
     if (isIntelligentRFP) {
       console.log('Intelligent RFP processing prompt detected - showing folder selection')
       setSelectedPrompt(prompt)
@@ -616,6 +686,12 @@ useEffect(() => {
       setSelectedPrompt(prompt)
       await fetchSharePointFolders()
       setShowFolderSelection(true)
+      setShowPromptsPanel(false)
+    } else if (isStep4) {
+      console.log('Step 4 prompt detected - showing document type input')
+      setPendingPrompt(prompt)
+      setDocumentTypeInput('')
+      setShowDocumentTypeInput(true)
       setShowPromptsPanel(false)
     } else {
       // For other prompts (including Step 3), use the description as the query
@@ -878,9 +954,9 @@ If your recommendation is a Go, list down the things the user needs to complete 
       // Check if this is Intelligent RFP Processing
       if (isIntelligentRFP) {
         // 👇 NEW: allow deeper drill-down before processing
-        const deeperPath = `${selectedParentFolder}/${subFolderName}`;
+        // const deeperPath = `${selectedParentFolder}/${subFolderName}`;
+        const deeperPath = fullPath;
         const hasMore = await fetchSubFolders(deeperPath, true);
-
         if (hasMore) {
           // There are more subfolders — keep drilling down
           setSelectedParentFolder(deeperPath);
@@ -1771,6 +1847,67 @@ If your recommendation is a Go, list down the things the user needs to complete 
                  </div>
                </div>
              )}
+
+            {/* Document Type Input Modal for Step 4 */}
+            {showDocumentTypeInput && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-blue-800 text-lg">📄 Generate Document</h3>
+                    <button
+                      onClick={handleDocumentTypeCancel}
+                      className="w-6 h-6 rounded-full bg-gray-500 text-white text-xs flex items-center justify-center hover:bg-gray-600 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-3">
+                      Which document would you like to generate? The system will use your previous RFP analysis and BroadAxis knowledge base.
+                    </p>
+                    
+                    <div className="space-y-2 mb-4">
+                      <p className="text-xs text-gray-500 font-medium">Common document types:</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">• Capability Statement</span>
+                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">• Statement of Work</span>
+                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">• Technical Proposal</span>
+                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">• Project Plan</span>
+                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">• Risk Management</span>
+                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">• Cost Proposal</span>
+                      </div>
+                    </div>
+                    
+                    <input
+                      type="text"
+                      value={documentTypeInput}
+                      onChange={(e) => setDocumentTypeInput(e.target.value)}
+                      placeholder="e.g., Statement of Work, Technical Proposal, etc."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onKeyPress={(e) => e.key === 'Enter' && handleDocumentTypeSubmit()}
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleDocumentTypeSubmit}
+                      disabled={!documentTypeInput.trim()}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Generate Document
+                    </button>
+                    <button
+                      onClick={handleDocumentTypeCancel}
+                      className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tools Button */}
             <div className="relative">
