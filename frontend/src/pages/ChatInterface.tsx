@@ -915,8 +915,7 @@ If your recommendation is a Go, list down the things the user needs to complete 
           const response = await apiClient.processRFPFolderIntelligent(
             deeperPath,
             currentSessionId || 'default'
-<<<<<<< Updated upstream
-          )
+          );
           
           console.log('Intelligent RFP Response:', response)
           
@@ -935,13 +934,6 @@ If your recommendation is a Go, list down the things the user needs to complete 
                     request_id: `rfp-${Date.now()}`
                   } : undefined
                 }
-=======
-          );
-
-          setMessages(prev => prev.map(msg =>
-            msg.id === assistantMessage.id
-              ? { ...msg, content: response.summary || response.response || 'No response received', isLoading: false }
->>>>>>> Stashed changes
               : msg
           ));
 
