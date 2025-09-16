@@ -146,9 +146,9 @@ class TokenManager:
     def select_model(self, task_complexity: TaskComplexity, estimated_tokens: int = 1000) -> str:
         """Select the most appropriate model for the task"""
         
-        # For very large requests, prefer Haiku to save tokens
-        if estimated_tokens > 10000:
-            return ModelType.HAIKU.value
+        # For large requests (>5000 tokens), use Claude 3-7 Sonnet for better quality
+        if estimated_tokens > 5000:
+            return ModelType.SONNET_7.value
         
         # For simple tasks, always use Haiku
         if task_complexity == TaskComplexity.SIMPLE:

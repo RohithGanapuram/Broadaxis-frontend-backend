@@ -1489,6 +1489,44 @@ async def get_document_summary(session_id: str, document_path: str):
 @app.post("/api/process-rfp-folder-intelligent")
 async def process_rfp_folder_intelligent(request: RFPProcessingRequest, current_user: UserResponse = Depends(get_current_user)):
     """Intelligently process an RFP folder with document prioritization and token management"""
+    
+    def remove_duplicate_doc_header(analysis_text: str, filename: str) -> str:
+        """Remove duplicate document headers from analysis text"""
+        if not isinstance(analysis_text, str):
+            return analysis_text
+        
+        # Remove various patterns of duplicate document headers
+        patterns_to_remove = [
+            f"📄 Document: {filename}",
+            f"Document: {filename}",
+            f"### 📄 **Document: {filename}**",
+            f"### 📄 **{filename}**",
+            f"**Document: {filename}**",
+            f"**{filename}**"
+        ]
+        
+        cleaned = analysis_text
+        for pattern in patterns_to_remove:
+            cleaned = cleaned.replace(pattern, "").strip()
+        
+        # Clean up any leftover markdown formatting
+        cleaned = re.sub(r'\*{2,}', '', cleaned)  # Remove multiple asterisks
+        cleaned = re.sub(r'#{3,}', '', cleaned)   # Remove multiple hash symbols
+        
+        # Remove any leading/trailing whitespace and empty lines
+        cleaned = re.sub(r'\n\s*\n', '\n\n', cleaned).strip()
+        
+        return cleaned
+    
+    def clean_markup(text: str) -> str:
+        """Clean simple HTML-like tags the LLM may emit"""
+        if not isinstance(text, str):
+            return text
+        cleaned = text.replace('<result>', '').replace('</result>', '')
+        # remove empty anchor tags like <a id="..."></a>
+        cleaned = re.sub(r"<a[^>]*></a>\s*", "", cleaned)
+        return cleaned
+    
     folder_path = request.folder_path
     session_id = request.session_id
     try:
@@ -1744,7 +1782,7 @@ Provide your analysis in the exact format above. Be thorough, specific, and comp
 
 ## 📄 **Document Analysis Results**
 
-{chr(10).join([f"### 📄 **{doc['filename']}**\n\n{doc['analysis']}\n\n---\n" for doc in processed_documents])}
+{chr(10).join([f"### 📄 **{doc['filename']}**\n\n{remove_duplicate_doc_header(clean_markup(doc['analysis']), doc['filename'])}\n\n---\n" for doc in processed_documents])}
 
 ## 🧠 **Go/No-Go Analysis**
 
@@ -1876,13 +1914,7 @@ Provide your analysis in the exact format above. Be thorough, data-driven, and a
         other_count = len(other_names)
 
         # Clean simple HTML-like tags the LLM may emit (e.g., <result>) and any anchors
-        def clean_markup(text: str) -> str:
-            if not isinstance(text, str):
-                return text
-            cleaned = text.replace('<result>', '').replace('</result>', '')
-            # remove empty anchor tags like <a id="..."></a>
-            cleaned = re.sub(r"<a[^>]*></a>\s*", "", cleaned)
-            return cleaned
+        
 
         # Create clean, concise response without redundancy
         # Group documents by category for display
@@ -1910,7 +1942,7 @@ Provide your analysis in the exact format above. Be thorough, data-driven, and a
 
 ## 📄 **Document Summaries**
 
-{chr(10).join([f"### 📄 **{doc['filename']}**\n\n{clean_markup(doc['analysis']).replace('📄 Document: ' + doc['filename'], '').strip()}\n" for doc in processed_documents])}
+{chr(10).join([f"### 📄 **{doc['filename']}**\n\n{remove_duplicate_doc_header(clean_markup(doc['analysis']), doc['filename'])}\n" for doc in processed_documents])}
 
 ---
 

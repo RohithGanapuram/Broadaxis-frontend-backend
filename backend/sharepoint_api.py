@@ -13,6 +13,10 @@ from fastapi.responses import FileResponse
 from fastapi import HTTPException
 from datetime import datetime, timezone
 from error_handler import error_handler
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Create router for SharePoint endpoints
 sharepoint_router = APIRouter(prefix="/api", tags=["sharepoint"])
@@ -231,13 +235,12 @@ class SharePointManager:
             access_token = self.get_graph_access_token()
             headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
 
-            # normalize incoming path so it matches how we create/upload
             # Keep the original folder names for browsing; only URL-encode for Graph
+            # Don't normalize paths for folder access as it changes folder names (e.g., "Harris county" -> "Harris-county")
             orig_path = folder_path or ""
-            safe_path = _normalize_path(orig_path)  # <— this is the missing step
-
-
-            encoded_path = "/".join(urllib.parse.quote(p, safe="") for p in safe_path.split("/") if p)
+            
+            # URL-encode the path components but preserve the original folder names
+            encoded_path = "/".join(urllib.parse.quote(p, safe="") for p in orig_path.split("/") if p)
 
             if encoded_path:
                 files_url = (
