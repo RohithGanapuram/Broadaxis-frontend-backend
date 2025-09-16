@@ -1228,6 +1228,206 @@ async def get_all_token_usage():
             "error": str(e)
         }
 
+@app.get("/api/token-usage/query/{request_id}")
+async def get_query_token_usage(request_id: str, current_user: UserResponse = Depends(get_current_user)):
+    """Get token usage for a specific query/request"""
+    try:
+        # Find the specific request in usage history
+        for usage in token_manager.usage_history:
+            if usage.request_id == request_id:
+                return {
+                    "status": "success",
+                    "query_usage": {
+                        "request_id": usage.request_id,
+                        "model": usage.model,
+                        "input_tokens": usage.input_tokens,
+                        "output_tokens": usage.output_tokens,
+                        "total_tokens": usage.total_tokens,
+                        "task_type": usage.task_type,
+                        "session_id": usage.session_id,
+                        "timestamp": usage.timestamp.isoformat()
+                    }
+                }
+        
+        return {
+            "status": "error",
+            "error": "Request not found"
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_query_token_usage'})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.get("/api/token-usage/user/{user_id}")
+async def get_user_token_usage(user_id: str, current_user: UserResponse = Depends(get_current_user)):
+    """Get total token usage for a specific user across all their sessions"""
+    try:
+        # Get all sessions for this user
+        if not SESSION_MANAGER_AVAILABLE:
+            return {
+                "status": "error",
+                "error": "Session management not available"
+            }
+        
+        # Get user sessions from Redis
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Find all sessions for this user
+        user_sessions = []
+        pattern = "session:*"
+        keys = await session_manager.redis.keys(pattern)
+        
+        for key in keys:
+            session_data = await session_manager.redis.get(key)
+            if session_data:
+                session = json.loads(session_data)
+                if session.get("user_id") == user_id:
+                    session_id = key.replace("session:", "")
+                    user_sessions.append(session_id)
+        
+        # Calculate total usage across all user sessions
+        total_tokens = 0
+        total_requests = 0
+        model_breakdown = {}
+        session_breakdown = {}
+        
+        for session_id in user_sessions:
+            session_usage = token_manager.get_usage_stats(session_id)
+            total_tokens += session_usage.get("total_tokens", 0)
+            total_requests += session_usage.get("total_requests", 0)
+            
+            # Add to session breakdown
+            session_breakdown[session_id] = {
+                "tokens": session_usage.get("total_tokens", 0),
+                "requests": session_usage.get("total_requests", 0)
+            }
+            
+            # Add to model breakdown
+            for model, stats in session_usage.get("models", {}).items():
+                if model not in model_breakdown:
+                    model_breakdown[model] = {"tokens": 0, "requests": 0}
+                model_breakdown[model]["tokens"] += stats["tokens"]
+                model_breakdown[model]["requests"] += stats["requests"]
+        
+        return {
+            "status": "success",
+            "user_usage": {
+                "user_id": user_id,
+                "total_tokens": total_tokens,
+                "total_requests": total_requests,
+                "model_breakdown": model_breakdown,
+                "session_breakdown": session_breakdown,
+                "total_sessions": len(user_sessions)
+            }
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_user_token_usage'})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.get("/api/debug/document-prioritization")
+async def debug_document_prioritization(folder_path: str, current_user: UserResponse = Depends(get_current_user)):
+    """Debug endpoint to see how documents are being prioritized"""
+    try:
+        # List files in the folder
+        list_result = await mcp_interface.session.call_tool(
+            "sharepoint_list_files",
+            arguments={"path": folder_path, "max_results": 100, "recursive": True}
+        )
+        
+        if not list_result.content:
+            return {
+                "status": "error",
+                "message": f"No documents found in folder: {folder_path}"
+            }
+        
+        # Parse the list result
+        files_data = json.loads(list_result.content[0].text)
+        if files_data.get("status") != "success":
+            return {
+                "status": "error",
+                "message": f"Failed to list files: {files_data.get('error', 'Unknown error')}"
+            }
+        
+        items = files_data.get("items", [])
+        documents = [item for item in items if not item.get("is_folder", False)]
+        
+        # Prioritize documents
+        prioritized_docs = document_prioritizer.prioritize_documents(documents)
+        
+        # Get recommendations
+        recommendation = document_prioritizer.get_processing_recommendation(prioritized_docs)
+        
+        return {
+            "status": "success",
+            "folder_path": folder_path,
+            "total_documents": len(documents),
+            "prioritized_documents": [
+                {
+                    "filename": doc.filename,
+                    "priority": doc.priority.value,
+                    "confidence": doc.confidence_score,
+                    "indicators": doc.key_indicators,
+                    "document_type": doc.document_type.value,
+                    "estimated_tokens": doc.estimated_tokens
+                }
+                for doc in prioritized_docs
+            ],
+            "recommendation": recommendation
+        }
+        
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'debug_document_prioritization'})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+@app.get("/api/token-usage/detailed/{session_id}")
+async def get_detailed_session_token_usage(session_id: str, current_user: UserResponse = Depends(get_current_user)):
+    """Get detailed token usage for a session including individual queries"""
+    try:
+        # Get session usage stats
+        session_stats = token_manager.get_usage_stats(session_id)
+        
+        # Get individual query details
+        query_details = []
+        for usage in token_manager.usage_history:
+            if usage.session_id == session_id:
+                query_details.append({
+                    "request_id": usage.request_id,
+                    "model": usage.model,
+                    "input_tokens": usage.input_tokens,
+                    "output_tokens": usage.output_tokens,
+                    "total_tokens": usage.total_tokens,
+                    "task_type": usage.task_type,
+                    "timestamp": usage.timestamp.isoformat()
+                })
+        
+        # Sort by timestamp (newest first)
+        query_details.sort(key=lambda x: x["timestamp"], reverse=True)
+        
+        return {
+            "status": "success",
+            "session_usage": {
+                "session_id": session_id,
+                "summary": session_stats,
+                "query_details": query_details,
+                "total_queries": len(query_details)
+            }
+        }
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'get_detailed_session_token_usage'})
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
 @app.get("/api/rfp-analyses/{session_id}")
 async def get_rfp_analyses(session_id: str):
     """Get stored RFP analyses for a session"""
@@ -1378,8 +1578,8 @@ async def process_rfp_folder_intelligent(request: RFPProcessingRequest, current_
         recommendation = document_prioritizer.get_processing_recommendation(prioritized_docs)
         
         # Step 4: Process primary documents first (if any)
-        primary_docs = document_prioritizer.get_primary_documents(prioritized_docs, max_count=3)
-        secondary_docs = document_prioritizer.get_secondary_documents(prioritized_docs, max_count=2)
+        primary_docs = document_prioritizer.get_primary_documents(prioritized_docs, max_count=10)  # Increased from 3 to 10
+        secondary_docs = document_prioritizer.get_secondary_documents(prioritized_docs, max_count=5)  # Increased from 2 to 5
         
         processed_documents = []
         total_tokens_used = 0
@@ -1751,6 +1951,13 @@ Provide your analysis in the exact format above. Be thorough, data-driven, and a
             "processed_docs": processed_documents,
             "summary": formatted_response,
             "total_tokens_used": total_tokens_used,
+            "token_breakdown": {
+                "total_tokens": total_tokens_used,
+                "input_tokens": int(total_tokens_used * 0.7),  # Estimate
+                "output_tokens": int(total_tokens_used * 0.3),  # Estimate
+                "model_used": "claude-3-5-sonnet-20241022",  # Default for RFP processing
+                "queries_processed": len(processed_documents) + 1  # Documents + Go/No-Go analysis
+            },
             "session_id": session_id,
             "timestamp": datetime.now().isoformat()
         }

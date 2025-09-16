@@ -431,6 +431,37 @@ export const apiClient = {
       console.error('Failed to get token usage:', error);
       throw error;
     }
+  },
+
+  // New token tracking methods
+  async getQueryTokenUsage(requestId: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/token-usage/query/${requestId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get query token usage:', error);
+      throw error;
+    }
+  },
+
+  async getUserTokenUsage(userId: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/token-usage/user/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get user token usage:', error);
+      throw error;
+    }
+  },
+
+  async getDetailedSessionTokenUsage(sessionId: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/token-usage/detailed/${sessionId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get detailed session token usage:', error);
+      throw error;
+    }
   }
 
 }

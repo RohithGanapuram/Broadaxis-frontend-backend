@@ -9,6 +9,8 @@ import { useAppContext } from '../context/AppContext'
 import { ChatMessage, FileInfo, AppSettings } from '../types'
 import ProgressTracker from '../components/ProgressTracker'
 import StatusIndicator from '../components/StatusIndicator'
+import TokenDisplay from '../components/TokenDisplay'
+import TokenDashboard from '../components/TokenDashboard'
 
 // Generate unique message IDs to prevent React key conflicts
 let messageIdCounter = 0
@@ -35,6 +37,7 @@ const ChatInterface: React.FC = () => {
   const [showPromptsPanel, setShowPromptsPanel] = useState(false)
   const [showFolderSelection, setShowFolderSelection] = useState(false)
   const [availableFolders, setAvailableFolders] = useState<string[]>([])
+  const [showTokenDashboard, setShowTokenDashboard] = useState(false)
   const [selectedPrompt, setSelectedPrompt] = useState<any>(null)
   const [selectedParentFolder, setSelectedParentFolder] = useState<string>('')
   const [subFolders, setSubFolders] = useState<string[]>([])
@@ -141,7 +144,14 @@ const ChatInterface: React.FC = () => {
               updatedMessages[i] = {
                 ...updatedMessages[i],
                 content: responseContent,
-                isLoading: false
+                isLoading: false,
+                tokenUsage: data.tokens_used ? {
+                  total_tokens: data.tokens_used,
+                  input_tokens: data.input_tokens || 0,
+                  output_tokens: data.output_tokens || 0,
+                  model_used: data.model_used || 'unknown',
+                  request_id: data.request_id || 'unknown'
+                } : undefined
               }
               foundLoadingMessage = true
               break
@@ -158,7 +168,14 @@ const ChatInterface: React.FC = () => {
               type: 'assistant',
               content: responseContent,
               timestamp: new Date(),
-              isLoading: false
+              isLoading: false,
+              tokenUsage: data.tokens_used ? {
+                total_tokens: data.tokens_used,
+                input_tokens: data.input_tokens || 0,
+                output_tokens: data.output_tokens || 0,
+                model_used: data.model_used || 'unknown',
+                request_id: data.request_id || 'unknown'
+              } : undefined
             })
           }
           return updatedMessages
@@ -696,10 +713,21 @@ If your recommendation is a Go, list down the things the user needs to complete 
             
             console.log('Intelligent RFP Response:', response)
             
-            // Update the assistant message with the response
+            // Update the assistant message with the response and token usage
             setMessages(prev => prev.map(msg => 
               msg.id === assistantMessage.id 
-                ? { ...msg, content: response.summary || response.response || 'No response received', isLoading: false }
+                ? { 
+                    ...msg, 
+                    content: response.summary || response.response || 'No response received', 
+                    isLoading: false,
+                    tokenUsage: response.token_breakdown ? {
+                      total_tokens: response.token_breakdown.total_tokens,
+                      input_tokens: response.token_breakdown.input_tokens,
+                      output_tokens: response.token_breakdown.output_tokens,
+                      model_used: response.token_breakdown.model_used,
+                      request_id: `rfp-${Date.now()}`
+                    } : undefined
+                  }
                 : msg
             ))
             
@@ -839,10 +867,21 @@ If your recommendation is a Go, list down the things the user needs to complete 
           
           console.log('Intelligent RFP Response:', response)
           
-          // Update the assistant message with the response
+          // Update the assistant message with the response and token usage
           setMessages(prev => prev.map(msg => 
             msg.id === assistantMessage.id 
-              ? { ...msg, content: response.summary || response.response || 'No response received', isLoading: false }
+              ? { 
+                  ...msg, 
+                  content: response.summary || response.response || 'No response received', 
+                  isLoading: false,
+                  tokenUsage: response.token_breakdown ? {
+                    total_tokens: response.token_breakdown.total_tokens,
+                    input_tokens: response.token_breakdown.input_tokens,
+                    output_tokens: response.token_breakdown.output_tokens,
+                    model_used: response.token_breakdown.model_used,
+                    request_id: `rfp-${Date.now()}`
+                  } : undefined
+                }
               : msg
           ))
           
@@ -1039,34 +1078,8 @@ If your recommendation is a Go, list down the things the user needs to complete 
           </button>
           
           <button 
-            onClick={async () => {
-              try {
-                const tokenStatus = await apiClient.getTokenStatus()
-                const usage = await apiClient.getTokenUsage(currentSessionId || 'default')
-                
-                const message = `📊 **Token Status**\n\n**Current Session Usage:**\n- Total Tokens: ${usage.usage?.total_tokens || 0}\n- Requests: ${usage.usage?.total_requests || 0}\n\n**Budget Status:**\n${Object.entries(tokenStatus.budgets || {}).map(([model, budget]: [string, any]) => 
-                  `- **${model}**: ${budget.hourly_remaining}/${budget.hourly_limit} tokens remaining`
-                ).join('\n')}`
-                
-                const userMessage: ChatMessage = {
-                  id: generateMessageId(),
-                  type: 'user',
-                  content: 'Show token usage status',
-                  timestamp: new Date()
-                }
-                const assistantMessage: ChatMessage = {
-                  id: generateMessageId(),
-                  type: 'assistant',
-                  content: message,
-                  timestamp: new Date(),
-                  isLoading: false
-                }
-                addMessage(userMessage)
-                addMessage(assistantMessage)
-              } catch (error) {
-                toast.error('Failed to get token status')
-                console.error('Token status error:', error)
-              }
+            onClick={() => {
+              setShowTokenDashboard(true)
             }}
             className={`w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-3 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium text-sm flex items-center justify-center space-x-2 ${isSidebarCollapsed ? 'px-2' : 'px-3'}`}
           >
@@ -1280,7 +1293,10 @@ If your recommendation is a Go, list down the things the user needs to complete 
                           {message.content}
                         </ReactMarkdown>
                       </div>
-                      {/* Token usage display removed - no longer tracked */}
+                      {/* Token usage display */}
+                      {message.tokenUsage && (
+                        <TokenDisplay tokenUsage={message.tokenUsage} compact={true} />
+                      )}
                     </>
                   )}
                 </div>
@@ -1837,6 +1853,14 @@ If your recommendation is a Go, list down the things the user needs to complete 
         </div>
       </div>
 
+      {/* Token Dashboard Modal */}
+      {showTokenDashboard && (
+        <TokenDashboard
+          sessionId={currentSessionId || 'default'}
+          userId="ecf91d9c-7041-4b20-805f-768b6d8d5ec1" // TODO: Get from auth context
+          onClose={() => setShowTokenDashboard(false)}
+        />
+      )}
 
     </div>
   )

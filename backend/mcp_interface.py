@@ -197,7 +197,9 @@ class MCPInterface:
 
 3. **Other tools** - For document generation, SharePoint operations, etc.
 
-ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis company information, location, or any company-specific details."""
+ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis company information, location, or any company-specific details.
+
+**IMPORTANT: Be concise and direct. For simple tasks like math calculations, provide the answer without unnecessary explanations.**"""
 
             # Allow callers to override the system prompt (e.g., trading planner)
             if system_prompt_override:
@@ -217,14 +219,8 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
             import uuid
             request_id = str(uuid.uuid4())
             
-            # TEMPORARILY DISABLED: Reserve tokens and check rate limits
-            # TODO: Debug and fix token manager
-            # if not await token_manager.reserve_tokens(selected_model, estimated_tokens, request_id, session_id):
-            #     return {
-            #         "response": "❌ **Rate limit or token budget exceeded. Please try again in a few minutes.**",
-            #         "tokens_used": 0,
-            #         "error": "rate_limit_exceeded"
-            #     }
+            # Track tokens (no restrictions, just monitoring)
+            await token_manager.reserve_tokens(selected_model, estimated_tokens, request_id, session_id)
             
             # Build messages for the API call
             messages = [{"role": "user", "content": query}]
@@ -420,22 +416,25 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
                 tools_info = "\n\n---\n🔧 **Tools Used:** " + ", ".join(set(tools_used))
                 full_response += tools_info
             
-            # TEMPORARILY DISABLED: Record actual token usage
-            # TODO: Debug and fix token manager
-            # actual_input_tokens = estimated_tokens  # Rough estimate
-            # actual_output_tokens = token_manager.estimate_tokens(full_response)
-            # token_manager.record_usage(
-            #     selected_model,
-            #     actual_input_tokens,
-            #     actual_output_tokens,
-            #     request_id,
-            #     task_complexity.value,
-            #     session_id
-            # )
+            # Record actual token usage
+            actual_input_tokens = estimated_tokens  # Rough estimate
+            actual_output_tokens = token_manager.estimate_tokens(full_response)
+            total_tokens = actual_input_tokens + actual_output_tokens
+            
+            token_manager.record_usage(
+                selected_model,
+                actual_input_tokens,
+                actual_output_tokens,
+                request_id,
+                task_complexity.value,
+                session_id
+            )
             
             return {
                 "response": full_response,
-                "tokens_used": 0,  # Temporarily disabled
+                "tokens_used": total_tokens,
+                "input_tokens": actual_input_tokens,
+                "output_tokens": actual_output_tokens,
                 "model_used": selected_model,
                 "request_id": request_id
             }

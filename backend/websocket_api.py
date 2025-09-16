@@ -263,14 +263,18 @@ async def websocket_chat(websocket: WebSocket):
                         }
                         await session_manager.add_message(session_id, ai_message)
                     
-                    # Send response with session_id
+                    # Send response with session_id and token details
                     await manager.send_personal_message(
                         json.dumps({
                             "type": "response",
                             "message": result["response"],
                             "session_id": session_id,
                             "status": "success",
-                            "tokens_used": result.get("tokens_used", 0)
+                            "tokens_used": result.get("tokens_used", 0),
+                            "input_tokens": result.get("input_tokens", 0),
+                            "output_tokens": result.get("output_tokens", 0),
+                            "model_used": result.get("model_used", "unknown"),
+                            "request_id": result.get("request_id", "unknown")
                         }),
                         websocket
                     )

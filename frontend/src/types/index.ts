@@ -4,6 +4,13 @@ export interface ChatMessage {
   content: string
   timestamp: Date
   isLoading?: boolean
+  tokenUsage?: {
+    total_tokens: number
+    input_tokens: number
+    output_tokens: number
+    model_used: string
+    request_id: string
+  }
 }
 
 export interface FileInfo {

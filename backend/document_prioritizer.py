@@ -60,7 +60,8 @@ class DocumentPrioritizer:
             "request for information", "rfi", "scope of work", "statement of work",
             "evaluation criteria", "submission instructions", "project objectives",
             "deliverables", "contract terms", "procurement", "solicitation",
-            "requirements", "specifications", "general requirements", "special requirements"
+            "requirements", "specifications", "general requirements", "special requirements",
+            "proposals", "engineering services", "healthcare consultant", "strategic"
         ]
         
         # Secondary document keywords (medium priority)
@@ -99,13 +100,21 @@ class DocumentPrioritizer:
             r'.*rfp.*': 0.9,
             r'.*rfq.*': 0.9,
             r'.*rfi.*': 0.9,
+            r'.*request.*proposal.*': 0.9,
+            r'.*request.*quotation.*': 0.9,
+            r'.*request.*information.*': 0.9,
             r'.*scope.*': 0.8,
             r'.*statement.*': 0.8,
-            r'.*requirements.*': 0.7,
-            r'.*specification.*': 0.7,
+            r'.*requirements.*': 0.8,
+            r'.*specification.*': 0.8,
+            r'.*general.*requirements.*': 0.8,
+            r'.*special.*requirements.*': 0.8,
+            r'.*engineering.*services.*': 0.8,
+            r'.*healthcare.*consultant.*': 0.8,
+            r'.*strategic.*': 0.8,
             r'.*terms.*': 0.6,
             r'.*pricing.*': 0.6,
-            r'.*proposal.*': 0.5,
+            r'.*proposal.*': 0.7,
             r'.*response.*': 0.5,
             r'.*submission.*': 0.5,
             r'.*template.*': 0.2,
@@ -199,42 +208,51 @@ class DocumentPrioritizer:
             doc_type = self._determine_document_type(filename_lower)
             print(f"✅ Classified as PRIMARY with confidence {confidence}")
         else:
-            # Check for secondary keywords
-            secondary_matches = [kw for kw in self.secondary_keywords if kw in filename_lower]
-            print(f"🎯 Secondary keyword matches: {secondary_matches}")
-            if secondary_matches:
-                indicators.extend(secondary_matches)
-                confidence += 0.6
-                priority = DocumentPriority.SECONDARY
+            # Check for filename patterns that should be primary
+            pattern_confidence = self._check_filename_patterns(filename_lower)
+            if pattern_confidence >= 0.8:  # High confidence patterns
+                indicators.append(f"pattern_match_{pattern_confidence}")
+                confidence = pattern_confidence
+                priority = DocumentPriority.PRIMARY
                 doc_type = self._determine_document_type(filename_lower)
-                print(f"✅ Classified as SECONDARY with confidence {confidence}")
+                print(f"✅ Classified as PRIMARY via pattern with confidence {confidence}")
             else:
-                # Check for supporting keywords
-                supporting_matches = [kw for kw in self.supporting_keywords if kw in filename_lower]
-                if supporting_matches:
-                    indicators.extend(supporting_matches)
-                    confidence += 0.4
-                    priority = DocumentPriority.SUPPORTING
-                    doc_type = DocumentType.UNKNOWN
+                # Check for secondary keywords
+                secondary_matches = [kw for kw in self.secondary_keywords if kw in filename_lower]
+                print(f"🎯 Secondary keyword matches: {secondary_matches}")
+                if secondary_matches:
+                    indicators.extend(secondary_matches)
+                    confidence += 0.6
+                    priority = DocumentPriority.SECONDARY
+                    doc_type = self._determine_document_type(filename_lower)
+                    print(f"✅ Classified as SECONDARY with confidence {confidence}")
                 else:
-                    # Check for ignore keywords
-                    ignore_matches = [kw for kw in self.ignore_keywords if kw in filename_lower]
-                    if ignore_matches:
-                        indicators.extend(ignore_matches)
-                        confidence = 0.1
-                        priority = DocumentPriority.IGNORE
+                    # Check for supporting keywords
+                    supporting_matches = [kw for kw in self.supporting_keywords if kw in filename_lower]
+                    if supporting_matches:
+                        indicators.extend(supporting_matches)
+                        confidence += 0.4
+                        priority = DocumentPriority.SUPPORTING
                         doc_type = DocumentType.UNKNOWN
                     else:
-                        # No keyword matches, use filename patterns
-                        pattern_confidence = self._check_filename_patterns(filename_lower)
-                        if pattern_confidence > 0.5:
-                            confidence = pattern_confidence
-                            priority = DocumentPriority.SECONDARY
-                            doc_type = self._determine_document_type(filename_lower)
-                        else:
-                            confidence = 0.3
-                            priority = DocumentPriority.SUPPORTING
+                        # Check for ignore keywords
+                        ignore_matches = [kw for kw in self.ignore_keywords if kw in filename_lower]
+                        if ignore_matches:
+                            indicators.extend(ignore_matches)
+                            confidence = 0.1
+                            priority = DocumentPriority.IGNORE
                             doc_type = DocumentType.UNKNOWN
+                        else:
+                            # No keyword matches, use filename patterns
+                            pattern_confidence = self._check_filename_patterns(filename_lower)
+                            if pattern_confidence > 0.5:
+                                confidence = pattern_confidence
+                                priority = DocumentPriority.SECONDARY
+                                doc_type = self._determine_document_type(filename_lower)
+                            else:
+                                confidence = 0.3
+                                priority = DocumentPriority.SUPPORTING
+                                doc_type = DocumentType.UNKNOWN
         
         return priority, confidence, indicators, doc_type
     

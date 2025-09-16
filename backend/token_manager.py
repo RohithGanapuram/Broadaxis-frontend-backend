@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class ModelType(Enum):
     HAIKU = "claude-3-haiku-20240307"
     SONNET = "claude-3-5-sonnet-20241022"
+    SONNET_7 = "claude-3-7-sonnet-20250219"
     OPUS = "claude-3-opus-20240229"
 
 class TaskComplexity(Enum):
@@ -75,6 +76,11 @@ class TokenManager:
                 daily_limit=250000,    # 250k tokens/day
                 max_concurrent_requests=3
             ),
+            ModelType.SONNET_7.value: TokenBudget(
+                hourly_limit=25000,    # 25k tokens/hour
+                daily_limit=250000,    # 250k tokens/day
+                max_concurrent_requests=3
+            ),
             ModelType.OPUS.value: TokenBudget(
                 hourly_limit=10000,    # 10k tokens/hour
                 daily_limit=100000,    # 100k tokens/day
@@ -93,6 +99,12 @@ class TokenManager:
             ModelType.SONNET.value: RateLimitInfo(
                 requests_per_minute=40,  # Increased from 20
                 requests_per_hour=1000,  # Increased from 500
+                current_requests=deque(),
+                last_cleanup=datetime.now()
+            ),
+            ModelType.SONNET_7.value: RateLimitInfo(
+                requests_per_minute=40,  # Same as SONNET
+                requests_per_hour=1000,  # Same as SONNET
                 current_requests=deque(),
                 last_cleanup=datetime.now()
             ),
@@ -161,26 +173,8 @@ class TokenManager:
         return ModelType.HAIKU.value
     
     def _can_afford_request(self, model: str, estimated_tokens: int) -> bool:
-        """Check if we can afford a request within current budget"""
-        if model not in self.budgets:
-            logger.warning(f"Model {model} not found in budgets")
-            return False
-        
-        budget = self.budgets[model]
-        self._reset_budget_if_needed(budget)
-        
-        # Check hourly limit
-        if budget.current_usage + estimated_tokens > budget.hourly_limit:
-            logger.warning(f"Hourly token limit exceeded for {model}: {budget.current_usage + estimated_tokens} > {budget.hourly_limit}")
-            return False
-        
-        # Check daily limit
-        daily_usage = self._get_daily_usage(model)
-        if daily_usage + estimated_tokens > budget.daily_limit:
-            logger.warning(f"Daily token limit exceeded for {model}: {daily_usage + estimated_tokens} > {budget.daily_limit}")
-            return False
-        
-        logger.info(f"Budget check passed for {model}: {budget.current_usage + estimated_tokens}/{budget.hourly_limit} hourly, {daily_usage + estimated_tokens}/{budget.daily_limit} daily")
+        """Check if we can afford a request within current budget - ALWAYS ALLOW FOR TRACKING"""
+        # Always return True - we're only tracking usage, not restricting
         return True
     
     def _reset_budget_if_needed(self, budget: TokenBudget):
@@ -201,61 +195,44 @@ class TokenManager:
         return daily_usage
     
     async def reserve_tokens(self, model: str, estimated_tokens: int, request_id: str, session_id: str) -> bool:
-        """Reserve tokens for a request"""
-        logger.info(f"Attempting to reserve {estimated_tokens} tokens for {model} (request {request_id})")
+        """Reserve tokens for a request - TRACKING ONLY, NO RESTRICTIONS"""
+        logger.info(f"Tracking {estimated_tokens} tokens for {model} (request {request_id})")
         
         # Start cleanup task if not already running
         self._start_cleanup_task()
         
-        if not self._can_afford_request(model, estimated_tokens):
-            logger.warning(f"Cannot afford request for {model}: {estimated_tokens} tokens")
-            return False
+        # NO BUDGET OR RATE LIMIT CHECKS - JUST TRACK USAGE
+        # Always allow requests, just track the usage
         
-        # Check rate limits
-        if not self._check_rate_limits(model):
-            logger.warning(f"Rate limit exceeded for {model}")
-            return False
+        # Ensure model exists in budgets (fallback for unknown models)
+        if model not in self.budgets:
+            logger.info(f"Adding unknown model {model} to budgets")
+            self.budgets[model] = TokenBudget(
+                hourly_limit=25000,    # Default limits
+                daily_limit=250000,
+                max_concurrent_requests=3
+            )
+            self.rate_limits[model] = RateLimitInfo(
+                requests_per_minute=40,
+                requests_per_hour=1000,
+                current_requests=deque(),
+                last_cleanup=datetime.now()
+            )
         
-        # Check concurrent requests
-        if self.active_requests[model] >= self.budgets[model].max_concurrent_requests:
-            logger.warning(f"Max concurrent requests exceeded for {model}: {self.active_requests[model]}")
-            return False
-        
-        # Reserve tokens
+        # Track tokens (for monitoring purposes only)
         self.budgets[model].current_usage += estimated_tokens
         self.budgets[model].request_count += 1
         self.active_requests[model] += 1
         
-        # Record request start time for rate limiting
+        # Record request start time for tracking
         self.rate_limits[model].current_requests.append(datetime.now())
         
         logger.info(f"Successfully reserved {estimated_tokens} tokens for {model} (request {request_id})")
         return True
     
     def _check_rate_limits(self, model: str) -> bool:
-        """Check if request is within rate limits"""
-        if model not in self.rate_limits:
-            return True
-        
-        rate_limit = self.rate_limits[model]
-        now = datetime.now()
-        
-        # Clean up old requests
-        while rate_limit.current_requests and now - rate_limit.current_requests[0] > timedelta(hours=1):
-            rate_limit.current_requests.popleft()
-        
-        # Check hourly limit
-        if len(rate_limit.current_requests) >= rate_limit.requests_per_hour:
-            logger.warning(f"Hourly rate limit exceeded for {model}: {len(rate_limit.current_requests)}/{rate_limit.requests_per_hour}")
-            return False
-        
-        # Check minute limit
-        recent_requests = [req for req in rate_limit.current_requests if now - req < timedelta(minutes=1)]
-        if len(recent_requests) >= rate_limit.requests_per_minute:
-            logger.warning(f"Minute rate limit exceeded for {model}: {len(recent_requests)}/{rate_limit.requests_per_minute}")
-            return False
-        
-        logger.info(f"Rate limit check passed for {model}: {len(recent_requests)}/{rate_limit.requests_per_minute} per minute, {len(rate_limit.current_requests)}/{rate_limit.requests_per_hour} per hour")
+        """Check if request is within rate limits - ALWAYS ALLOW FOR TRACKING"""
+        # Always return True - we're only tracking usage, not restricting
         return True
     
     def record_usage(self, model: str, input_tokens: int, output_tokens: int, 
