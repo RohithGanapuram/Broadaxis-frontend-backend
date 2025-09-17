@@ -935,150 +935,164 @@ If your recommendation is a Go, list down the things the user needs to complete 
   }
 
   const handleSubFolderSelection = async (subFolderName: string) => {
-    if (selectedPrompt && selectedParentFolder) {
-      const fullPath = `${selectedParentFolder}/${subFolderName}`
-      
-      // Check if this is intelligent RFP processing
-      const isIntelligentRFP = selectedPrompt.name === 'Intelligent_RFP_Processing' || 
-                              selectedPrompt.description.includes('intelligent RFP processing')
-      
-      // Check if this is Step 1 (should work like Step 2 - with file selection)
-      const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
-                     selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                     selectedPrompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
-      
-      // Check if this is Step 2 (needs file selection)
-      const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
-                     selectedPrompt.description.includes('Generate a clear, high-value summary')
-      
-      // Check if this is Intelligent RFP Processing
-      if (isIntelligentRFP) {
-        // 👇 NEW: allow deeper drill-down before processing
-        // const deeperPath = `${selectedParentFolder}/${subFolderName}`;
-        const deeperPath = fullPath;
-        const hasMore = await fetchSubFolders(deeperPath, true);
-        if (hasMore) {
-          // There are more subfolders — keep drilling down
-          setSelectedParentFolder(deeperPath);
-          setShowSubFolderSelection(true);
-          // keep the modal open for deeper selection
-          return;
-        }
+    if (!selectedPrompt || !selectedParentFolder) return;
 
-        // No more subfolders — proceed with processing this final folder
-        try {
-          setIsLoading(true);
-          toast.loading('Starting intelligent RFP processing.', { id: 'intelligent-rfp' });
+    const fullPath = `${selectedParentFolder}/${subFolderName}`;
 
-          const userMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'user',
-            content: `Process RFP folder intelligently: ${deeperPath}`,
-            timestamp: new Date()
-          };
+    // --- Prompt kind detection (keep your existing names/phrases) ---
+    const name = (selectedPrompt.name || '').toLowerCase();
+    const desc = (selectedPrompt.description || '').toLowerCase();
 
-          const assistantMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            isLoading: true
-          };
+    const isIntelligentRFP =
+      name.includes('intelligent_rfp_processing') ||
+      desc.includes('intelligent rfp processing');
 
-          addMessage(userMessage);
-          addMessage(assistantMessage);
+    const isStep1 =
+      name.includes('step1') ||
+      name.includes('step-1') ||
+      desc.includes('identify and categorize rfp');
 
-          const response = await apiClient.processRFPFolderIntelligent(
-            deeperPath,
-            currentSessionId || 'default'
-          );
-          
-          console.log('Intelligent RFP Response:', response)
-          
-          // Update the assistant message with the response and token usage
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { 
-                  ...msg, 
-                  content: response.summary || response.response || 'No response received', 
-                  isLoading: false,
-                  tokenUsage: response.token_breakdown ? {
-                    total_tokens: response.token_breakdown.total_tokens,
-                    input_tokens: response.token_breakdown.input_tokens,
-                    output_tokens: response.token_breakdown.output_tokens,
-                    model_used: response.token_breakdown.model_used,
-                    request_id: `rfp-${Date.now()}`
-                  } : undefined
-                }
-              : msg
-          ));
+    const isStep2 =
+      name.includes('step2') ||
+      name.includes('step-2') ||
+      desc.includes('generate a clear, high-value summary');
 
-          toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' });
-          setIsLoading(false);
-          setShowSubFolderSelection(false);
-          setSelectedPrompt(null);
-          setSelectedParentFolder('');
-        } catch (error: any) {
-          console.error('Intelligent RFP processing error:', error);
-          setMessages(prev => prev.map(msg =>
-            msg.isLoading
-              ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
-              : msg
-          ));
-          toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' });
-          setIsLoading(false);
-          setShowSubFolderSelection(false);
-          setSelectedPrompt(null);
-          setSelectedParentFolder('');
-        }
-        return;
+    const isStep3 =
+      name.includes('step3') ||
+      name.includes('step-3') ||
+      desc.includes('go/no-go');
 
+    const isStep4 =
+      name.includes('step4') ||
+      name.includes('step-4') ||
+      desc.includes('proposal') ||
+      desc.includes('capability statement');
 
-      } else if (isStep1 || isStep2) {
-        // For both Step 1 and Step 2, show file selection after subfolder selection
-        setSelectedFolder(fullPath)
-        await fetchSharePointFiles(fullPath)
-        setShowFileSelection(true)
-        setShowSubFolderSelection(false)
-        return
-      }
-      
-      // For other prompts, proceed with analysis
-      const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${fullPath}`
-      setInputMessage(promptMessage)
-      setTimeout(() => {
-        if (globalWebSocket.getConnectionStatus()) {
-          const userMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'user',
-            content: promptMessage,
-            timestamp: new Date()
-          }
-          const assistantMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            isLoading: true
-          }
-          addMessage(userMessage)
-          addMessage(assistantMessage)
-          setIsLoading(true)
-          
-          globalWebSocket.sendMessage({
-            query: promptMessage,
-            enabled_tools: getToolsForPrompt(selectedPrompt),
-            model: settings.model,
-            session_id: currentSessionId
-          })
-          setInputMessage('')
-          setShowSubFolderSelection(false)
-          setSelectedPrompt(null)
-          setSelectedParentFolder('')
-        }
-      }, 100)
+    const isStep5 =
+      name.includes('step5') ||
+      name.includes('step-5') ||
+      desc.includes('fill missing information');
+
+    // --- NEW: drill-down check for ALL prompts ---
+    const hasMore = await fetchSubFolders(fullPath, true); // force-refresh to avoid stale cache
+    if (hasMore) {
+      setSelectedParentFolder(fullPath);
+      setShowSubFolderSelection(true); // keep modal open for deeper level
+      return;
     }
-  }
+
+    // --- Leaf folder reached: act per prompt type ---
+
+    // Intelligent RFP → run folder processing API
+    if (isIntelligentRFP) {
+      try {
+        setIsLoading(true);
+        toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' });
+
+        const userMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'user',
+          content: `Process RFP folder intelligently: ${fullPath}`,
+          timestamp: new Date()
+        };
+
+        const assistantMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          isLoading: true
+        };
+
+        addMessage(userMessage);
+        addMessage(assistantMessage);
+
+        const response = await apiClient.processRFPFolderIntelligent(fullPath, currentSessionId || 'default');
+
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantMessage.id
+            ? {
+                ...msg,
+                content: response.summary || response.response || 'No response received',
+                isLoading: false,
+                tokenUsage: response.token_breakdown ? {
+                  total_tokens: response.token_breakdown.total_tokens,
+                  input_tokens: response.token_breakdown.input_tokens,
+                  output_tokens: response.token_breakdown.output_tokens,
+                  model_used: response.token_breakdown.model_used,
+                  request_id: `rfp-${Date.now()}`
+                } : undefined
+              }
+            : msg
+        ));
+
+        toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' });
+      } catch (error: any) {
+        console.error('Intelligent RFP processing error:', error);
+        setMessages(prev => prev.map(msg =>
+          msg.isLoading
+            ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
+            : msg
+        ));
+        toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' });
+      } finally {
+        setIsLoading(false);
+        setShowSubFolderSelection(false);
+        setSelectedPrompt(null);
+        setSelectedParentFolder('');
+      }
+      return;
+    }
+
+    // Step 1 & Step 2 → open file selection modal for this leaf folder
+    if (isStep1 || isStep2) {
+      setSelectedFolder(fullPath);
+      await fetchSharePointFiles(fullPath);        // you already have this loader in the component
+      setShowFileSelection(true);                  // shows your file picker UI
+      setShowSubFolderSelection(false);
+      return;
+    }
+
+    // Step 3 / Step 4 / Step 5 / Others → send a message targeting this folder
+    // (If you later want Step 4 to ask for "document type", hook your existing showDocumentTypeInput here.)
+    const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${fullPath}`;
+    setInputMessage(promptMessage);
+
+    setTimeout(() => {
+      if (globalWebSocket.getConnectionStatus()) {
+        const userMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'user',
+          content: promptMessage,
+          timestamp: new Date()
+        };
+        const assistantMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          isLoading: true
+        };
+        addMessage(userMessage);
+        addMessage(assistantMessage);
+        setIsLoading(true);
+
+        globalWebSocket.sendMessage({
+          query: promptMessage,
+          enabled_tools: getToolsForPrompt(selectedPrompt),
+          model: settings.model,
+          session_id: currentSessionId
+        });
+
+        setInputMessage('');
+        setShowSubFolderSelection(false);
+        setSelectedPrompt(null);
+        setSelectedParentFolder('');
+      }
+    }, 100);
+  };
+
+
 
   const handleFileSelection = (selectedFile: any) => {
     if (selectedPrompt && selectedFolder) {
