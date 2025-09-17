@@ -628,6 +628,12 @@ useEffect(() => {
     const isStep3 = prompt.name === 'Step3_go_no_go_recommendation' || 
                    prompt.description.includes('Generate an exec-style Go/No-Go matrix')
     
+    // Check if this is Step 4 (Dynamic Content Generator)
+    const isStep4 = prompt.name === 'Dynamic_Content_Generator' || 
+                   prompt.name === 'Dynamic Content Generator' || 
+                   prompt.name === 'Step4_generate_capability_statement' ||
+                   prompt.description.includes('Dynamic Document Generator')
+    
     if (isStep1) {
       // For Step 1, enable only specific tools for document categorization
       const allowedTools = ['sharepoint_list_files', 'extract_pdf_text']
@@ -647,6 +653,14 @@ useEffect(() => {
       const documentGenerationTools = ['generate_pdf_document', 'generate_word_document']
       const filteredTools = settings.enabledTools.filter(tool => !documentGenerationTools.includes(tool))
       console.log('Step 3 - Disabled document generation tools, enabled tools:', filteredTools)
+      return filteredTools
+    }
+    
+    if (isStep4) {
+      // For Step 4, enable knowledge search and document generation tools
+      const allowedTools = ['Broadaxis_knowledge_search', 'generate_pdf_document', 'generate_word_document']
+      const filteredTools = settings.enabledTools.filter(tool => allowedTools.includes(tool))
+      console.log('Step 4 - Enabled knowledge search and document generation tools:', filteredTools)
       return filteredTools
     }
     
