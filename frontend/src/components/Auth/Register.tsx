@@ -86,7 +86,7 @@ const Register: React.FC<RegisterProps> = ({ switchToLogin }) => {
           <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
             Create Account
           </h2>
-          <p className="mt-2 text-gray-600">Join the RFP Manager platform</p>
+          <p className="mt-2 text-gray-600">Join the Broadaxis-AI platform</p>
         </div>
  
         <form className="mt-8 space-y-6 bg-white p-8 rounded-2xl shadow-xl border border-blue-100/50" onSubmit={handleSubmit}>

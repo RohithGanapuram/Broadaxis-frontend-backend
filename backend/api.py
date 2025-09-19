@@ -784,7 +784,7 @@ async def get_user_sessions(current_user: UserResponse = Depends(get_current_use
             if session_data:
                 sessions.append({
                     "id": session_id,
-                    "title": session_data.get("title", "Untitled Chat"),
+                    "title": session_data.get("title", f"Chat {session_id[:8]}"),
                     "created_at": session_data.get("created_at"),
                     "updated_at": session_data.get("updated_at"),
                     "message_count": len(session_data.get("messages", []))

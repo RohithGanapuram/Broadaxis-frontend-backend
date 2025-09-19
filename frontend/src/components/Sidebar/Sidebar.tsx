@@ -44,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <div>
             <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              RFP Manager
+              Broadaxis-AI
             </h2>
           </div>
         </div>

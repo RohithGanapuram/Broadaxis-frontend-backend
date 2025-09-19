@@ -1511,47 +1511,83 @@ If your recommendation is a Go, list down the things the user needs to complete 
               
               {/* Prompts Dropdown */}
               {showPromptsPanel && (
-                <div className="absolute bottom-full left-0 mb-2 w-80 bg-white/90 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl z-50">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-bold text-blue-800">📝 Prompt Templates ({availablePrompts.length})</h3>
+                <div className="absolute bottom-full left-0 mb-2 w-[500px] bg-gradient-to-br from-white via-blue-50/50 to-blue-100/30 backdrop-blur-xl border-2 border-blue-200/60 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                  <div className="p-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-5 pb-3 border-b border-blue-200/50">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center shadow-lg">
+                          <span className="text-white text-lg">📝</span>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-blue-900">Prompt Templates</h3>
+                          <p className="text-xs text-blue-600">{availablePrompts.length} templates available</p>
+                        </div>
+                      </div>
                       <button
                         onClick={() => setShowPromptsPanel(false)}
-                        className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center"
+                        className="w-8 h-8 rounded-xl bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-all duration-200 hover:scale-105"
                       >
                         ×
                       </button>
                     </div>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    
+                    {/* Templates List */}
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-100">
                       {availablePrompts.length > 0 ? (
                         availablePrompts.map((prompt, index) => (
-                          <button
-                            key={index}
-                            onClick={() => handlePromptClick(prompt)}
-                            className="w-full text-left p-3 bg-blue-700/10 hover:bg-blue-700/20 rounded-lg transition-colors"
-                          >
-                            <div className="font-medium text-blue-800 text-sm">{prompt.name}</div>
-                            <div className="text-xs text-blue-600 mt-1">{prompt.description}</div>
-                                                         {/* Add indicator for Step 1 */}
-                             {(prompt.name === 'Step1_Identifying_documents' || 
-                               prompt.name === 'Step-1: Document Identification Assistant') && (
-                               <div className="text-xs text-green-600 mt-1 font-medium">
-                                 🎯 Primary RFP document categorization
-                               </div>
-                             )}
-                             
-                             {/* Add indicator for Step 3 */}
-                             {(prompt.name === 'Step3_go_no_go_recommendation') && (
-                               <div className="text-xs text-orange-600 mt-1 font-medium">
-                                 📊 Go/No-Go analysis in chat
-                               </div>
-                             )}
-                          </button>
+                          <div key={index} className="block">
+                            <button
+                              onClick={() => handlePromptClick(prompt)}
+                              className="w-full text-left p-4 rounded-xl border-2 border-blue-200/60 bg-white/60 hover:border-blue-400 hover:bg-blue-50/50 hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 flex items-center space-x-3">
+                                  <div className="flex items-center space-x-2">
+                                    <p className="text-base font-semibold text-blue-900">{prompt.name}</p>
+                                    {/* Add indicator for Step 1 */}
+                                    {(prompt.name === 'Step1_Identifying_documents' || 
+                                      prompt.name === 'Step-1: Document Identification Assistant') && (
+                                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                        🎯 Primary RFP
+                                      </span>
+                                    )}
+                                    
+                                    {/* Add indicator for Step 3 */}
+                                    {(prompt.name === 'Step3_go_no_go_recommendation') && (
+                                      <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+                                        📊 Go/No-Go
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    className="group w-7 h-7 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 flex items-center justify-center text-sm hover:from-blue-200 hover:to-blue-300 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-110"
+                                    title={prompt.description}
+                                    onClick={(e) => {
+                                      e.stopPropagation() // Prevent triggering the parent button
+                                    }}
+                                  >
+                                    ℹ️
+                                    <div className="absolute right-8 top-1/2 transform -translate-y-1/2 w-72 p-3 bg-gradient-to-br from-gray-800 to-gray-900 text-white text-sm rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-[60] border border-gray-700">
+                                      <div className="font-medium text-blue-300 mb-1">{prompt.name}</div>
+                                      <div className="text-gray-200 leading-relaxed">{prompt.description}</div>
+                                    </div>
+                                  </button>
+                                </div>
+                              </div>
+                            </button>
+                          </div>
                         ))
                       ) : (
-                        <div className="text-center py-4 text-blue-600">
-                          <p className="text-sm">No prompt templates available</p>
-                          <p className="text-xs mt-1">Check server connection</p>
+                        <div className="text-center py-8 text-blue-600">
+                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span className="text-2xl">📝</span>
+                          </div>
+                          <p className="text-base font-medium">No prompt templates available</p>
+                          <p className="text-sm mt-1 text-blue-500">Check server connection</p>
                         </div>
                       )}
                     </div>
@@ -1952,60 +1988,99 @@ If your recommendation is a Go, list down the things the user needs to complete 
               
               {/* Tools Dropdown */}
               {showToolsPanel && (
-                <div className="absolute bottom-full right-0 mb-2 w-80 bg-white/90 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl z-50">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-bold text-blue-800">🔧 Available Tools</h3>
+                <div className="absolute bottom-full left-0 mb-2 w-[500px] bg-gradient-to-br from-white via-blue-50/50 to-blue-100/30 backdrop-blur-xl border-2 border-blue-200/60 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                  <div className="p-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-5 pb-3 border-b border-blue-200/50">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center shadow-lg">
+                          <span className="text-white text-lg">🔧</span>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-blue-900">Available Tools</h3>
+                          <p className="text-xs text-blue-600">{availableTools.length} tools • {settings.enabledTools.length} enabled</p>
+                        </div>
+                      </div>
                       <button
                         onClick={() => setShowToolsPanel(false)}
-                        className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center"
+                        className="w-8 h-8 rounded-xl bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-all duration-200 hover:scale-105"
                       >
                         ×
                       </button>
                     </div>
-                    <div className="flex space-x-2 mb-3">
+                    
+                    {/* Action Buttons */}
+                    <div className="flex space-x-3 mb-5">
                       <button
                         onClick={() => {
                           const allToolNames = availableTools.map(tool => tool.name)
                           setSettings(prev => ({ ...prev, enabledTools: allToolNames }))
                           localStorage.setItem('broadaxis-enabled-tools', JSON.stringify(allToolNames))
                         }}
-                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        className="flex-1 px-4 py-2 text-sm font-medium bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
-                        Enable All
+                        ✅ Enable All
                       </button>
                       <button
                         onClick={() => {
                           setSettings(prev => ({ ...prev, enabledTools: [] }))
                           localStorage.setItem('broadaxis-enabled-tools', JSON.stringify([]))
                         }}
-                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                        className="flex-1 px-4 py-2 text-sm font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
-                        Disable All
+                        🚫 Disable All
                       </button>
                     </div>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    
+                    {/* Tools List */}
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-100">
                       {availableTools.map((tool) => (
-                        <label key={tool.name} className="group cursor-pointer block">
-                          <div className={`p-3 rounded-lg border transition-all duration-200 ${
+                        <div key={tool.name} className="block">
+                          <div className={`p-4 rounded-xl border-2 transition-all duration-300 transform hover:scale-[1.02] ${
                             settings.enabledTools.includes(tool.name)
-                              ? 'border-blue-700 bg-blue-700/10'
-                              : 'border-blue-200/50 hover:border-blue-400'
+                              ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-blue-100/50 shadow-lg'
+                              : 'border-blue-200/60 bg-white/60 hover:border-blue-400 hover:bg-blue-50/50 hover:shadow-md'
                           }`}>
-                            <div className="flex items-start space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={settings.enabledTools.includes(tool.name)}
-                                onChange={() => toggleTool(tool.name)}
-                                className="mt-0.5 w-4 h-4 rounded border-blue-300 text-blue-700 focus:ring-blue-500"
-                              />
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-blue-800">{tool.name}</p>
-                                <p className="text-xs text-blue-600 mt-1">{tool.description}</p>
+                            <div className="flex items-center space-x-3">
+                              <div className="relative">
+                                <input
+                                  type="checkbox"
+                                  checked={settings.enabledTools.includes(tool.name)}
+                                  onChange={() => toggleTool(tool.name)}
+                                  className="w-5 h-5 rounded-md border-2 border-blue-300 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 cursor-pointer"
+                                />
+                                {settings.enabledTools.includes(tool.name) && (
+                                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white text-xs">✓</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <p className="text-base font-semibold text-blue-900">{tool.name}</p>
+                                  {settings.enabledTools.includes(tool.name) && (
+                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                      Active
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    className="group w-7 h-7 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 flex items-center justify-center text-sm hover:from-blue-200 hover:to-blue-300 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-110"
+                                    title={tool.description}
+                                  >
+                                    ℹ️
+                                    <div className="absolute right-8 top-1/2 transform -translate-y-1/2 w-72 p-3 bg-gradient-to-br from-gray-800 to-gray-900 text-white text-sm rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-[60] border border-gray-700">
+                                      <div className="font-medium text-blue-300 mb-1">{tool.name}</div>
+                                      <div className="text-gray-200 leading-relaxed">{tool.description}</div>
+                                    </div>
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   </div>

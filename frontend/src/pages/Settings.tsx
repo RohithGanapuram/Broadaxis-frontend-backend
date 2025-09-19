@@ -14,7 +14,7 @@ const Settings: React.FC = () => {
   const [userProfile] = useState({
     name: 'John Doe',
     email: 'john.doe@broadaxis.com',
-    role: 'RFP Manager',
+    role: 'Broadaxis-AI',
     department: 'Business Development',
     joinDate: '2023-01-15'
   })

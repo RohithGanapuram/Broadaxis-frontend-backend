@@ -91,6 +91,14 @@ class RedisSessionManager:
                 session["messages"].append(message)
                 session["updated_at"] = datetime.now().isoformat()
                 
+                # Generate title from first user message if no title exists or title is generic
+                if not session.get("title") or session.get("title", "").startswith("New Chat") or session.get("title") == "Untitled Chat":
+                    first_user_message = next((msg for msg in session["messages"] if msg.get("role") == "user"), None)
+                    if first_user_message and first_user_message.get("content"):
+                        title = first_user_message["content"][:30] + ("..." if len(first_user_message["content"]) > 30 else "")
+                        session["title"] = title
+                        print(f"📝 Generated title for session {session_id}: {title}")
+                
                 # Keep only last 100 messages to prevent memory issues
                 if len(session["messages"]) > 100:
                     session["messages"] = session["messages"][-100:]
@@ -251,6 +259,26 @@ class RedisSessionManager:
             return matches.get(requirement)
         return None
             
+    async def update_session_title(self, session_id: str, title: str):
+        """Update session title"""
+        try:
+            if not self.redis:
+                await self.connect()
+                
+            session = await self.get_session(session_id)
+            if session:
+                session["title"] = title
+                session["updated_at"] = datetime.now().isoformat()
+                await self.redis.setex(f"session:{session_id}", 172800, json.dumps(session))
+                print(f"✅ Updated title for session {session_id}: {title}")
+                return True
+            else:
+                print(f"❌ Cannot update title for non-existent session: {session_id}")
+                return False
+        except Exception as e:
+            print(f"❌ Error updating title for session {session_id}: {e}")
+            return False
+
     async def delete_session(self, session_id: str):
         """Delete session"""
         if not self.redis:

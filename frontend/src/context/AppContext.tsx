@@ -64,7 +64,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
                 ...session, 
                 messages, 
                 updatedAt: new Date(), 
-                title: generateSessionTitle(messages)
+                title: generateSessionTitle(messages, session.title)
               }
             : session
         )
@@ -74,9 +74,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   }, [messages, currentSessionId, isSwitchingSession])
 
-  const generateSessionTitle = (messages: ChatMessage[]): string => {
+  const generateSessionTitle = (messages: ChatMessage[], currentTitle?: string): string => {
+    // If we already have a meaningful title (not the default "New Chat" pattern), keep it
+    if (currentTitle && !currentTitle.startsWith('New Chat') && currentTitle !== 'Untitled Chat') {
+      return currentTitle
+    }
+    
     const firstUserMessage = messages.find(m => m.type === 'user')
-    if (firstUserMessage) {
+    if (firstUserMessage && firstUserMessage.content.trim()) {
       return firstUserMessage.content.slice(0, 30) + (firstUserMessage.content.length > 30 ? '...' : '')
     }
     return `Chat ${new Date().toLocaleTimeString()}`
