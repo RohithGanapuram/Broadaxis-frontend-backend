@@ -37,6 +37,7 @@ export interface Tool {
 export interface Prompt {
   name: string
   description: string
+  content?: string
   arguments: any[]
 }
 

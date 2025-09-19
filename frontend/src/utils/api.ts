@@ -122,11 +122,10 @@ export const apiClient = {
           { name: "extract_pdf_text", description: "Extract and process text content from PDF files in SharePoint with enhanced features for RFP analysis", input_schema: {} }
         ],
         prompts: [
-          { name: "Step1_Identifying_documents", description: "Browse SharePoint folders to identify and categorize RFP/RFI/RFQ documents from available folders", arguments: [] },
-          { name: "Step2_summarize_documents", description: "Generate a clear, high-value summary of SharePoint RFP, RFQ, or RFI documents for executive decision-making", arguments: [] },
-          { name: "Step3_go_no_go_recommendation", description: "Evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity with structured Go/No-Go analysis", arguments: [] },
+          { name: "Summarize_Document", description: "Generate a clear, high-value summary of SharePoint RFP, RFQ, or RFI documents for executive decision-making", arguments: [] },
+          { name: "Go_No_Go_Recommendation", description: "Evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity with structured Go/No-Go analysis", arguments: [] },
           { name: "Dynamic_Content_Generator", description: "Dynamic Document Generator - Create various professional documents for RFP/RFQ responses", arguments: [] },
-          { name: "Step5_fill_missing_information", description: "Fill in missing fields and answer RFP/RFQ questions using verified information from internal knowledge base", arguments: [] }
+          { name: "Fill_Missing_Information", description: "Fill in missing fields and answer RFP/RFQ questions using verified information from internal knowledge base", arguments: [] }
         ],
         status: "fallback"
       }

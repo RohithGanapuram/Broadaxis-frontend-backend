@@ -720,18 +720,81 @@ useEffect(() => {
     setPendingPrompt(null)
   }
 
+  const handleFileSelection = async (file: any) => {
+    if (!selectedPrompt || !selectedFolder) return;
+
+    try {
+      setIsLoading(true);
+      toast.loading('Processing document...', { id: 'file-summary' });
+
+      // Use the full prompt template content from MCP server
+      const promptMessage = selectedPrompt.content || selectedPrompt.description || selectedPrompt.name || 'Please analyze this document';
+      
+      // Add file-specific context
+      const fullMessage = `${promptMessage}\n\nPlease analyze the document: ${file.name} from folder: ${selectedFolder}`;
+
+      const userMessage: ChatMessage = {
+        id: generateMessageId(),
+        type: 'user',
+        content: fullMessage,
+        timestamp: new Date()
+      };
+
+      const assistantMessage: ChatMessage = {
+        id: generateMessageId(),
+        type: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        isLoading: true
+      };
+
+      addMessage(userMessage);
+      addMessage(assistantMessage);
+
+      const enabledTools = getToolsForPrompt(selectedPrompt);
+      console.log('File selection - Sending message with tools:', enabledTools);
+      console.log('File selection - Using prompt content:', selectedPrompt.content ? 'Full template' : 'Description fallback');
+
+      if (globalWebSocket.getConnectionStatus()) {
+        globalWebSocket.sendMessage({
+          query: fullMessage,
+          enabled_tools: enabledTools,
+          model: settings.model,
+          session_id: currentSessionId
+        });
+
+        setShowFileSelection(false);
+        setSelectedPrompt(null);
+        setSelectedFolder('');
+        setAvailableFiles([]);
+
+        toast.dismiss('file-summary');
+      } else {
+        console.error('WebSocket not connected');
+        toast.error('Connection lost. Please refresh the page.', { id: 'file-summary' });
+      }
+    } catch (error: any) {
+      console.error('File selection error:', error);
+      setMessages(prev => prev.map(msg =>
+        msg.isLoading
+          ? { ...msg, content: `❌ **Error processing document:** ${error.message || error}`, isLoading: false }
+          : msg
+      ));
+      toast.error(`Error processing document: ${error.message}`, { id: 'file-summary' });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const getToolsForPrompt = (prompt: any): string[] => {
-    // Check if this is Step 1 (document identification - new interactive approach)
-    const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
-                   prompt.name === 'Step-1: Document Identification Assistant' ||
-                   prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
-    
     // Check if this is Step 2 (summary generation)
-    const isStep2 = prompt.name === 'Step2_summarize_documents' || 
+    const isStep2 = prompt.name === 'Summarize_Document' || 
+                   prompt.name === 'Step2_summarize_documents' || 
                    prompt.description.includes('Generate a clear, high-value summary')
     
     // Check if this is Step 3 (Go/No-Go recommendation)
-    const isStep3 = prompt.name === 'Step3_go_no_go_recommendation' || 
+    const isStep3 = prompt.name === 'Go_No_Go_Recommendation' || 
+                   prompt.name === 'Step3_go_no_go_recommendation' || 
                    prompt.description.includes('Generate an exec-style Go/No-Go matrix')
     
     // Check if this is Step 4 (Dynamic Content Generator)
@@ -739,14 +802,6 @@ useEffect(() => {
                    prompt.name === 'Dynamic Content Generator' || 
                    prompt.name === 'Step4_generate_capability_statement' ||
                    prompt.description.includes('Dynamic Document Generator')
-    
-    if (isStep1) {
-      // For Step 1, enable only specific tools for document categorization
-      const allowedTools = ['sharepoint_list_files', 'extract_pdf_text']
-      const filteredTools = settings.enabledTools.filter(tool => allowedTools.includes(tool))
-      console.log('Step 1 - Enabled tools:', filteredTools)
-      return filteredTools
-    }
     
     if (isStep2) {
       // For Step 2, disable document generation tools to prevent SharePoint uploads
@@ -781,12 +836,9 @@ useEffect(() => {
     const isIntelligentRFP = prompt.name === 'Intelligent_RFP_Processing' || 
                             prompt.description.includes('intelligent RFP processing')
     
-    // Check if this is the Step1 or Step2 prompt template (both need folder selection)
-    const isStep1 = prompt.name === 'Step1_Identifying_documents' || 
-                   prompt.name === 'Step-1: Document Identification Assistant' ||
-                   prompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
-    
-    const isStep2 = prompt.name === 'Step2_summarize_documents' || 
+    // Check if this is the Step2 prompt template (needs folder selection)
+    const isStep2 = prompt.name === 'Summarize_Document' || 
+                   prompt.name === 'Step2_summarize_documents' || 
                    prompt.description.includes('Generate a clear, high-value summary')
     
     const isStep4 = prompt.name === 'Dynamic_Content_Generator' || 
@@ -801,8 +853,8 @@ useEffect(() => {
       await fetchSharePointFolders()
       setShowFolderSelection(true)
       setShowPromptsPanel(false)
-    } else if (isStep1 || isStep2) {
-      console.log(`${isStep1 ? 'Step1' : 'Step2'} prompt detected - showing folder selection`)
+    } else if (isStep2) {
+      console.log('Step2 prompt detected - showing folder selection')
       setSelectedPrompt(prompt)
       await fetchSharePointFolders()
       setShowFolderSelection(true)
@@ -817,44 +869,8 @@ useEffect(() => {
       // For other prompts (including Step 3), use the description as the query
       console.log('Other prompt detected - executing directly')
       
-      // For Step-3, send the full prompt content instead of just description
-      let promptMessage
-      if (prompt.name === 'Step3_go_no_go_recommendation') {
-        promptMessage = `You are BroadAxis-AI, an assistant trained to evaluate whether BroadAxis should pursue an RFP, RFQ, or RFI opportunity. 
-
-The user has uploaded one or more opportunity documents. You have already summarized them RFP/RFI documents above. Now perform a structured **Go/No-Go analysis** using the following steps:
-
----
-
-### 🧠 Step-by-Step Evaluation Framework
-
-1. **Review the RFP Requirements**
-   - Highlight the most critical needs and evaluation criteria.
-
-2. **Search Internal Knowledge** (via Broadaxis_knowledge_search)
-   - Identify relevant past projects
-   - Retrieve proof of experience in similar domains
-   - Surface known strengths or capability gaps
-
-3. **Evaluate Capability Alignment**
-   - Estimate percentage match (e.g., "BroadAxis meets ~85% of the requirements")
-   - Note any missing capabilities or unclear requirements
-
-4. **Assess Resource Requirements**
-   - Are there any specialized skills, timelines, or staffing needs?
-   - Does BroadAxis have the necessary team or partners?
-
-5. **Evaluate Competitive Positioning**
-   - Based on known experience and domain, would BroadAxis be competitive?
-
-**IMPORTANT: Present all analysis directly in the chat interface. DO NOT generate PDF or Word documents.**
-
-Use only verified internal information (via Broadaxis_knowledge_search) and the summaries of the RFP/RFI documents. Do not guess or hallucinate capabilities. If information is missing, clearly state what else is needed for a confident decision.
-
-If your recommendation is a Go, list down the things the user needs to complete to finish the submission of RFP/RFI/RFQ.`
-      } else {
-        promptMessage = prompt.description || prompt.name || 'Please execute this prompt template.'
-      }
+      // Use the prompt content from the MCP server (full template)
+      const promptMessage = prompt.content || prompt.description || prompt.name || 'Please execute this prompt template.'
       
       setInputMessage(promptMessage)
       setTimeout(() => {
@@ -898,13 +914,9 @@ If your recommendation is a Go, list down the things the user needs to complete 
       const isIntelligentRFP = selectedPrompt.name === 'Intelligent_RFP_Processing' || 
                               selectedPrompt.description.includes('intelligent RFP processing')
       
-      // Check if this is Step 1 (should work like Step 2 - with folder/file selection)
-      const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
-                     selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                     selectedPrompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
-      
       // Check if this is Step 2 (needs file selection)
-      const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
+      const isStep2 = selectedPrompt.name === 'Summarize_Document' || 
+                     selectedPrompt.name === 'Step2_summarize_documents' || 
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
       if (isIntelligentRFP) {
@@ -989,8 +1001,8 @@ If your recommendation is a Go, list down the things the user needs to complete 
           }
         }
         return
-      } else if (isStep1 || isStep2) {
-        // For both Step 1 and Step 2, first check if this folder has subfolders
+      } else if (isStep2) {
+        // For Step 2, first check if this folder has subfolders
         const hasSubFolders = await fetchSubFolders(folderName)
         
         if (hasSubFolders) {
@@ -1214,80 +1226,6 @@ If your recommendation is a Go, list down the things the user needs to complete 
 
 
 
-  const handleFileSelection = (selectedFile: any) => {
-    if (selectedPrompt && selectedFolder) {
-      const fullPath = `${selectedFolder}/${selectedFile.name}`
-      
-      // Check if this is Step 1 or Step 2 to customize the message
-      const isStep1 = selectedPrompt.name === 'Step1_Identifying_documents' || 
-                     selectedPrompt.name === 'Step-1: Document Identification Assistant' ||
-                     selectedPrompt.description.includes('identify and categorize RFP/RFI/RFQ documents')
-      
-      const isStep2 = selectedPrompt.name === 'Step2_summarize_documents' || 
-                     selectedPrompt.description.includes('Generate a clear, high-value summary')
-      
-      let promptMessage = ''
-      let loadingMessage = ''
-      
-      if (isStep1) {
-        promptMessage = `${selectedPrompt.description}\n\nPlease categorize whether this document is a primary RFP document: ${selectedFile.name}\n\nFile path: ${fullPath}\n\nIMPORTANT: Use ONLY extract_pdf_text with pages="1" to read the first page. Do NOT use sharepoint_read_file.`
-        loadingMessage = `Categorizing document ${selectedFile.name}...`
-      } else if (isStep2) {
-        promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${selectedFolder}\n\nPlease select and summarize the document: ${selectedFile.name}`
-        loadingMessage = `Generating summary for ${selectedFile.name}...`
-      } else {
-        promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${selectedFolder}\n\nPlease select and summarize the document: ${selectedFile.name}`
-        loadingMessage = `Processing ${selectedFile.name}...`
-      }
-      
-      // Show loading toast
-      toast.loading(loadingMessage, { id: 'file-summary' })
-      
-      setInputMessage(promptMessage)
-      setTimeout(() => {
-        if (globalWebSocket.getConnectionStatus()) {
-          const userMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'user',
-            content: promptMessage,
-            timestamp: new Date()
-          }
-          const assistantMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            isLoading: true
-          }
-          addMessage(userMessage)
-          addMessage(assistantMessage)
-          setIsLoading(true)
-          
-          const enabledTools = getToolsForPrompt(selectedPrompt)
-          console.log('Step 1 - Sending message with tools:', enabledTools)
-          console.log('Step 1 - Prompt message:', promptMessage)
-          
-          globalWebSocket.sendMessage({
-            query: promptMessage,
-            enabled_tools: enabledTools,
-            model: settings.model,
-            session_id: currentSessionId
-          })
-          setInputMessage('')
-          setShowFileSelection(false)
-          setSelectedPrompt(null)
-          setSelectedFolder('')
-          setAvailableFiles([])
-          
-          // Dismiss loading toast
-          toast.dismiss('file-summary')
-        } else {
-          console.error('WebSocket not connected')
-          toast.error('Connection lost. Please refresh the page.', { id: 'file-summary' })
-        }
-      }, 100)
-    }
-  }
 
 
   return (
@@ -1671,16 +1609,9 @@ If your recommendation is a Go, list down the things the user needs to complete 
                                 <div className="flex-1 flex items-center space-x-3">
                                   <div className="flex items-center space-x-2">
                                     <p className="text-base font-semibold text-blue-900">{prompt.name}</p>
-                                    {/* Add indicator for Step 1 */}
-                                    {(prompt.name === 'Step1_Identifying_documents' || 
-                                      prompt.name === 'Step-1: Document Identification Assistant') && (
-                                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                                        🎯 Primary RFP
-                                      </span>
-                                    )}
                                     
                                     {/* Add indicator for Step 3 */}
-                                    {(prompt.name === 'Step3_go_no_go_recommendation') && (
+                                    {(prompt.name === 'Go_No_Go_Recommendation' || prompt.name === 'Step3_go_no_go_recommendation') && (
                                       <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                                         📊 Go/No-Go
                                       </span>

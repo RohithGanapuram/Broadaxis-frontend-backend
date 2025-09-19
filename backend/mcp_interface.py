@@ -113,10 +113,44 @@ class MCPInterface:
                     if not prompts_response or not hasattr(prompts_response, 'prompts'):
                         raise ExternalAPIError("Invalid prompts response from MCP server")
                     
-                    self._prompts_cache = [{
-                        "name": prompt.name,
-                        "description": prompt.description
-                    } for prompt in prompts_response.prompts]
+                    # Fetch full prompt content using get_prompt
+                    self._prompts_cache = []
+                    for prompt in prompts_response.prompts:
+                        try:
+                            # Get the full prompt content using get_prompt
+                            prompt_content = await self.session.get_prompt(prompt.name, arguments={})
+                            print(f"✅ Successfully got prompt content for '{prompt.name}'")
+                            
+                            # Extract text content from GetPromptResult messages
+                            prompt_text = ""
+                            if prompt_content and hasattr(prompt_content, 'messages'):
+                                for message in prompt_content.messages:
+                                    if hasattr(message, 'content'):
+                                        # Handle different content types
+                                        if isinstance(message.content, list):
+                                            for content_item in message.content:
+                                                if hasattr(content_item, 'text'):
+                                                    prompt_text += content_item.text
+                                        elif hasattr(message.content, 'text'):
+                                            prompt_text += message.content.text
+                                        elif isinstance(message.content, str):
+                                            prompt_text += message.content
+                            
+                            print(f"📄 Extracted prompt text length: {len(prompt_text)} characters")
+                            
+                            self._prompts_cache.append({
+                                "name": prompt.name,
+                                "description": prompt.description,
+                                "content": prompt_text if prompt_text else prompt.description  # Fallback to description if content is empty
+                            })
+                        except Exception as e:
+                            print(f"⚠️ Failed to get content for prompt {prompt.name}: {e}")
+                            # Fallback to just name and description
+                            self._prompts_cache.append({
+                                "name": prompt.name,
+                                "description": prompt.description,
+                                "content": prompt.description
+                            })
                     
                 except Exception as e:
                     self._connection_status = "offline"
