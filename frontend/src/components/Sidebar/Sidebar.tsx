@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
  
 interface MenuItem {
   id: string;
@@ -24,6 +24,22 @@ const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   currentUser
 }) => {
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   const baseItems: MenuItem[] = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'email', icon: '📧', label: 'Email' },
@@ -70,19 +86,51 @@ const Sidebar: React.FC<SidebarProps> = ({
  
       {/* Sidebar Footer */}
       <div className="p-4 border-t border-gray-200 space-y-4">
-        {/* User Info */}
-        <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-          <div className="w-10 h-10 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-lg">👤</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-medium text-gray-900 truncate">
-              {currentUser?.name || 'User'}
+        {/* User Profile Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setShowUserDropdown(!showUserDropdown)}
+            className="w-full flex items-center space-x-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all duration-200"
+          >
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-lg font-bold">
+                {(currentUser?.name || 'User').split(' ').map(n => n[0]).join('').slice(0, 2)}
+              </span>
             </div>
-            <div className="text-sm text-gray-500 truncate">
-              {currentUser?.email || 'user@example.com'}
+            <div className="flex-1 min-w-0 text-left">
+              <div className="font-medium text-gray-900 truncate">
+                {currentUser?.name || 'User'}
+              </div>
+              <div className="text-sm text-gray-500 truncate">
+                {currentUser?.email || 'user@example.com'}
+              </div>
             </div>
-          </div>
+            <span className="text-gray-400 text-sm">
+              {showUserDropdown ? '▲' : '▼'}
+            </span>
+          </button>
+
+          {/* Dropdown Menu */}
+          {showUserDropdown && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+              <div className="p-3 border-b border-gray-100">
+                <div className="text-sm font-semibold text-gray-900">Email</div>
+                <div className="text-sm text-gray-600 break-all">{currentUser?.email || 'user@example.com'}</div>
+              </div>
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    setActiveSection('settings');
+                    setShowUserDropdown(false);
+                  }}
+                  className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-blue-50 transition-colors"
+                >
+                  <span className="text-lg">⚙️</span>
+                  <span className="font-medium text-gray-700">Settings</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
  
         {/* Logout Button */}

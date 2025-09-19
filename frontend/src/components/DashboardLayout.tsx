@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.tsx'
 import Sidebar from './Sidebar/Sidebar'
 import Dashboard from './Dashboard/Dashboard'
@@ -6,13 +6,23 @@ import Email from './Email/Email'
 import SharedFolder from './SharedFolder/SharedFolder'
 import ChatInterface from '../pages/ChatInterface'
 import TradingPlanner from '../pages/TradingPlanner'
+import Settings from '../pages/Settings'
 import { useAppContext } from '../context/AppContext'
- 
+
 const DashboardLayout: React.FC = () => {
-  const [activeSection, setActiveSection] = useState('dashboard');
+  // Initialize activeSection from localStorage or default to 'dashboard'
+  const [activeSection, setActiveSection] = useState(() => {
+    const savedSection = localStorage.getItem('broadaxis-active-section')
+    return savedSection || 'dashboard'
+  });
   const { currentUser, logout } = useAuth();
   const { isConnected } = useAppContext();
- 
+
+  // Save activeSection to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('broadaxis-active-section', activeSection)
+  }, [activeSection])
+
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
@@ -29,6 +39,8 @@ const DashboardLayout: React.FC = () => {
         );
       case 'trading':
         return <TradingPlanner />;
+      case 'settings':
+        return <Settings />;
       default:
         return <Dashboard />;
     }
