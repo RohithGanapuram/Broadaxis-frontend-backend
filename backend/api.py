@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 # Set up logging
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, File, UploadFile, WebSocket, Request, Depends, HTTPException, status
+from fastapi import FastAPI, File, UploadFile, WebSocket, Request, Depends, HTTPException, status, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -70,7 +70,7 @@ from websocket_api import websocket_chat
 
 # Import API routers
 from email_api import email_router
-from sharepoint_api import sharepoint_router
+from sharepoint_api import sharepoint_router, SharePointManager
 
 # Import session manager (optional for now)
 try:
@@ -2318,6 +2318,156 @@ async def get_current_user(request: Request):
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to get user information"}
+        )
+
+
+@app.post("/api/upload-folder")
+async def upload_folder(
+    files: List[UploadFile] = File(...),
+    target_folder: str = Form(...),
+    session_id: str = Form("default"),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Upload multiple files to SharePoint folder maintaining directory structure"""
+    try:
+        if not files:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "No files provided"}
+            )
+        
+        if target_folder not in ['RFP', 'RFI', 'RFQ']:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid target folder. Must be RFP, RFI, or RFQ"}
+            )
+        
+        # Handle null session_id from frontend
+        if session_id == "null" or not session_id:
+            session_id = "default"
+        
+        upload_results = []
+        sharepoint_manager = SharePointManager()
+        
+        for file in files:
+            if not file.filename:
+                print(f"⚠️ Skipping file with no filename")
+                continue
+                
+            print(f"📁 Processing file: {file.filename}")
+            
+            # Validate file type
+            allowed_extensions = {'.pdf', '.txt', '.md', '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt'}
+            file_ext = os.path.splitext(file.filename.lower())[1]
+            print(f"🔍 File extension: {file_ext}")
+            
+            if file_ext not in allowed_extensions:
+                error_msg = f"File type {file_ext} not supported"
+                print(f"❌ {error_msg}")
+                upload_results.append({
+                    "filename": file.filename,
+                    "status": "error",
+                    "error": error_msg
+                })
+                continue
+            
+            try:
+                file_content = await file.read()
+                print(f"📊 File size: {len(file_content)} bytes")
+                
+                if not file_content:
+                    error_msg = "File is empty"
+                    print(f"❌ {error_msg}")
+                    upload_results.append({
+                        "filename": file.filename,
+                        "status": "error",
+                        "error": error_msg
+                    })
+                    continue
+                
+                # Handle folder structure - when using webkitdirectory, filename contains the full path
+                # Extract just the filename and create the proper folder path
+                if '/' in file.filename:
+                    # Split the path and filename
+                    path_parts = file.filename.split('/')
+                    filename_only = path_parts[-1]  # Get just the filename
+                    folder_structure = '/'.join(path_parts[:-1])  # Get the folder path
+                    
+                    # Create the full target path: target_folder/folder_structure
+                    full_target_path = f"{target_folder}/{folder_structure}" if folder_structure else target_folder
+                    print(f"📂 Folder structure detected: {folder_structure}")
+                    print(f"📄 Filename only: {filename_only}")
+                    print(f"🎯 Target path: {full_target_path}")
+                else:
+                    # No folder structure, just use the filename and target folder
+                    filename_only = file.filename
+                    full_target_path = target_folder
+                    print(f"📄 No folder structure, using filename: {filename_only}")
+                    print(f"🎯 Target path: {full_target_path}")
+                
+                print(f"🚀 Uploading to SharePoint...")
+                # Upload to SharePoint with proper folder structure
+                upload_result = sharepoint_manager.upload_file_to_sharepoint(
+                    file_content, 
+                    filename_only, 
+                    full_target_path
+                )
+                print(f"📋 Upload result: {upload_result}")
+                
+                if upload_result.get('status') == 'success':
+                    upload_results.append({
+                        "filename": file.filename,
+                        "uploaded_filename": filename_only,
+                        "target_path": full_target_path,
+                        "status": "success",
+                        "sharepoint_url": upload_result.get('web_url'),
+                        "size": len(file_content)
+                    })
+                else:
+                    upload_results.append({
+                        "filename": file.filename,
+                        "status": "error",
+                        "error": upload_result.get('error', 'Upload failed')
+                    })
+                    
+            except Exception as e:
+                upload_results.append({
+                    "filename": file.filename,
+                    "status": "error",
+                    "error": str(e)
+                })
+        
+        successful_uploads = [r for r in upload_results if r["status"] == "success"]
+        failed_uploads = [r for r in upload_results if r["status"] == "error"]
+        
+        print(f"📊 Upload Summary:")
+        print(f"   Total files: {len(files)}")
+        print(f"   Successful: {len(successful_uploads)}")
+        print(f"   Failed: {len(failed_uploads)}")
+        print(f"   Failed details: {failed_uploads}")
+        
+        return {
+            "status": "success" if successful_uploads else "partial_success" if upload_results else "error",
+            "target_folder": target_folder,
+            "total_files": len(files),
+            "successful_uploads": len(successful_uploads),
+            "failed_uploads": len(failed_uploads),
+            "results": upload_results,
+            "message": f"Uploaded {len(successful_uploads)}/{len(files)} files to {target_folder} directory with folder structure preserved"
+        }
+        
+    except Exception as e:
+        error_handler.log_error(e, {
+            'operation': 'upload_folder',
+            'target_folder': target_folder,
+            'file_count': len(files) if files else 0
+        })
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Failed to upload folder",
+                "details": str(e)
+            }
         )
 
 

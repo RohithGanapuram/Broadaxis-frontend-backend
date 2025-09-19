@@ -462,6 +462,34 @@ export const apiClient = {
       console.error('Failed to get detailed session token usage:', error);
       throw error;
     }
+  },
+
+  // Folder upload functionality
+  async uploadFolder(files: FileList, targetFolder: string, sessionId: string = 'default'): Promise<any> {
+    try {
+      const formData = new FormData()
+      
+      // Add files to FormData
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i])
+      }
+      
+      // Add target folder and session ID
+      formData.append('target_folder', targetFolder)
+      formData.append('session_id', sessionId)
+      
+      const response = await api.post('/api/upload-folder', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 120000, // 2 minutes timeout for folder uploads
+      })
+      
+      return response.data
+    } catch (error) {
+      console.error('Failed to upload folder:', error)
+      throw error
+    }
   }
 
 }

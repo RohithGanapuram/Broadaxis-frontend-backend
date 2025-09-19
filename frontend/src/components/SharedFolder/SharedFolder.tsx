@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { apiClient } from '../../utils/api'
+import toast from 'react-hot-toast'
 
 interface SharedFile {
   filename: string
@@ -21,6 +22,10 @@ const SharedFolder: React.FC = () => {
   const [pathHistory, setPathHistory] = useState<string[]>([''])
   const [fileCache, setFileCache] = useState<Record<string, SharedFile[]>>({})
   const [lastFetchTime, setLastFetchTime] = useState<Record<string, number>>({})
+  const [isUploading, setIsUploading] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [selectedFolder, setSelectedFolder] = useState<'RFP' | 'RFI' | 'RFQ' | ''>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { currentUser } = useAuth()
   
   const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
@@ -173,6 +178,51 @@ const SharedFolder: React.FC = () => {
     return breadcrumbs
   }
 
+  const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files
+    if (!selectedFiles || selectedFiles.length === 0 || !selectedFolder) return
+
+    setIsUploading(true)
+    const toastId = toast.loading(`Uploading ${selectedFiles.length} files to ${selectedFolder} folder...`)
+
+    try {
+      const result = await apiClient.uploadFolder(selectedFiles, selectedFolder, 'default')
+      
+      if (result.status === 'success') {
+        toast.success(`Successfully uploaded ${result.successful_uploads} files to ${selectedFolder} folder!`, { id: toastId })
+      } else if (result.status === 'partial_success') {
+        toast.success(`Uploaded ${result.successful_uploads}/${result.total_files} files to ${selectedFolder} folder`, { id: toastId })
+        if (result.failed_uploads > 0) {
+          toast.error(`${result.failed_uploads} files failed to upload`, { duration: 5000 })
+        }
+      } else {
+        toast.error('Failed to upload folder', { id: toastId })
+      }
+
+      // Refresh the current folder to show uploaded files
+      loadFiles(currentPath, true)
+      
+    } catch (error) {
+      console.error('Folder upload error:', error)
+      toast.error('Failed to upload folder. Please try again.', { id: toastId })
+    } finally {
+      setIsUploading(false)
+      setShowUploadModal(false)
+      setSelectedFolder('')
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const openUploadModal = (folder: 'RFP' | 'RFI' | 'RFQ') => {
+    setSelectedFolder(folder)
+    setShowUploadModal(true)
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -181,6 +231,35 @@ const SharedFolder: React.FC = () => {
           <p className="text-gray-600 mt-1">Team shared documents and folders - Welcome back, {currentUser?.name}</p>
         </div>
         <div className="flex gap-2">
+          {/* Folder Upload Buttons - Only show at root level */}
+          {!currentPath && (
+            <>
+              <button
+                onClick={() => openUploadModal('RFP')}
+                disabled={isUploading}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                title="Upload folder to RFP directory"
+              >
+                📁 Upload to RFP
+              </button>
+              <button
+                onClick={() => openUploadModal('RFI')}
+                disabled={isUploading}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                title="Upload folder to RFI directory"
+              >
+                📁 Upload to RFI
+              </button>
+              <button
+                onClick={() => openUploadModal('RFQ')}
+                disabled={isUploading}
+                className="px-4 py-2 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                title="Upload folder to RFQ directory"
+              >
+                📁 Upload to RFQ
+              </button>
+            </>
+          )}
           {currentPath && (
             <button
               onClick={handleBackClick}
@@ -198,6 +277,17 @@ const SharedFolder: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Hidden file input for folder uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        webkitdirectory=""
+        onChange={handleFolderUpload}
+        style={{ display: 'none' }}
+        accept=".pdf,.txt,.md,.docx,.doc,.xlsx,.xls,.pptx,.ppt"
+      />
 
       {/* Breadcrumb Navigation */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -387,6 +477,39 @@ const SharedFolder: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Folder Upload Information */}
+      {!currentPath && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg border border-blue-200 p-6">
+          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+            <span className="mr-2">📤</span>
+            Folder Upload Feature
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-white rounded-lg border border-blue-200 shadow-sm">
+              <div className="text-2xl mb-2">📋</div>
+              <div className="text-sm font-medium text-gray-700">RFP Folder</div>
+              <div className="text-xs text-gray-500">Upload RFP documents and folders</div>
+            </div>
+            <div className="text-center p-4 bg-white rounded-lg border border-indigo-200 shadow-sm">
+              <div className="text-2xl mb-2">📝</div>
+              <div className="text-sm font-medium text-gray-700">RFI Folder</div>
+              <div className="text-xs text-gray-500">Upload RFI documents and folders</div>
+            </div>
+            <div className="text-center p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
+              <div className="text-2xl mb-2">📊</div>
+              <div className="text-sm font-medium text-gray-700">RFQ Folder</div>
+              <div className="text-xs text-gray-500">Upload RFQ documents and folders</div>
+            </div>
+          </div>
+                 <div className="mt-4 p-3 bg-white rounded-lg border border-blue-200 shadow-sm">
+                   <p className="text-sm text-gray-600">
+                     <strong>How to use:</strong> Click on any of the upload buttons above to select a folder from your local machine. 
+                     The entire folder structure will be uploaded to the corresponding SharePoint directory (RFP, RFI, or RFQ) and will be available for processing in the chat interface.
+                   </p>
+                 </div>
+        </div>
+      )}
     </div>
   )
 }
