@@ -19,6 +19,15 @@ const generateMessageId = (): string => {
   return `${Date.now()}_${messageIdCounter}_${Math.random().toString(36).substr(2, 9)}`
 }
 
+// Format tool names for display
+const formatToolName = (toolName: string): string => {
+  return toolName
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase())
+    .replace(/\btool\b/gi, '')
+    .trim()
+}
+
 const ChatInterface: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('')
   const [textareaRef, setTextareaRef] = useState<HTMLTextAreaElement | null>(null)
@@ -44,6 +53,14 @@ const ChatInterface: React.FC = () => {
   const [showSubFolderSelection, setShowSubFolderSelection] = useState(false)
   const [activeProgress, setActiveProgress] = useState<ProgressTrackerType[]>([])
   const [statusUpdates, setStatusUpdates] = useState<WebSocketStatusUpdate[]>([])
+  const [currentToolStatus, setCurrentToolStatus] = useState<string>('')
+  const [toolExecutionDetails, setToolExecutionDetails] = useState<{
+    tools: string[]
+    completed: number
+    total: number
+    currentTool: string
+    step: string
+  } | null>(null)
   // Rate limiting removed from backend
   
   // SharePoint caching state
@@ -187,6 +204,9 @@ useEffect(() => {
                 } : undefined
               }
               foundLoadingMessage = true
+              // Clear current tool status when response is received
+              setCurrentToolStatus('')
+              setToolExecutionDetails(null)
               break
             }
           }
@@ -250,6 +270,9 @@ useEffect(() => {
         msg.isLoading ? { ...msg, content: `Error: ${data.message}`, isLoading: false } : msg
       ))
       setIsLoading(false)
+      // Clear current tool status on error
+      setCurrentToolStatus('')
+      setToolExecutionDetails(null)
     } else if (data.type === 'connection') {
       console.log('Connection:', data.message)
     } else if (data.type === 'heartbeat') {
@@ -272,11 +295,91 @@ useEffect(() => {
       }
     })
     
+    // Extract tool execution details from progress messages
+    if (progress.type === 'tool_execution' && progress.message) {
+      const toolMessage = progress.message
+      
+      // Parse tool execution message like "Executing 2 tools: web_search_tool, sharepoint_list_files"
+      const toolMatch = toolMessage.match(/Executing (\d+) tools?: (.+)/)
+      if (toolMatch) {
+        const totalTools = parseInt(toolMatch[1])
+        const toolNamesStr = toolMatch[2]
+        
+        // Parse tool names, handling "and X more..." case
+        let toolNames: string[] = []
+        if (toolNamesStr.includes(' and ') && toolNamesStr.includes(' more...')) {
+          const beforeAnd = toolNamesStr.split(' and ')[0]
+          toolNames = beforeAnd.split(', ').map(name => name.trim())
+        } else {
+          toolNames = toolNamesStr.split(', ').map(name => name.trim())
+        }
+        
+        setToolExecutionDetails({
+          tools: toolNames,
+          completed: 0,
+          total: totalTools,
+          currentTool: toolNames[0] || '',
+          step: progress.type
+        })
+      }
+    }
+    
+    // Update progress for tool execution
+    if (progress.type === 'tool_execution' && progress.progress !== undefined) {
+      setToolExecutionDetails(prev => {
+        if (!prev) return null
+        
+        const completed = Math.round((progress.progress / 100) * prev.total)
+        const currentIndex = Math.min(completed, prev.tools.length - 1)
+        
+        return {
+          ...prev,
+          completed,
+          currentTool: prev.tools[currentIndex] || prev.tools[prev.tools.length - 1] || ''
+        }
+      })
+    }
+    
     // Rate limiting status removed from backend
   }
 
   const handleStatusUpdate = (status: WebSocketStatusUpdate) => {
     setStatusUpdates(prev => [...prev, status])
+    setCurrentToolStatus(status.message)
+    
+    // Try to extract tool information from status messages
+    if (status.message) {
+      // Look for patterns like "Using web_search_tool" or "Calling sharepoint_list_files"
+      const toolPatterns = [
+        /Using (\w+)/,
+        /Calling (\w+)/,
+        /Executing (\w+)/,
+        /Running (\w+)/,
+        /(\w+_tool)/,
+        /(\w+_search)/,
+        /(\w+_analysis)/
+      ]
+      
+      for (const pattern of toolPatterns) {
+        const match = status.message.match(pattern)
+        if (match) {
+          const toolName = match[1]
+          setToolExecutionDetails(prev => prev ? ({
+            ...prev,
+            currentTool: toolName,
+            step: 'tool_execution'
+          }) : {
+            tools: [toolName],
+            completed: 0,
+            total: 1,
+            currentTool: toolName,
+            step: 'tool_execution'
+          })
+          break
+        }
+      }
+    }
+    
     console.log('Status update:', status.message)
   }
 
@@ -325,6 +428,9 @@ useEffect(() => {
       isLoading: true
     }
 
+    // Clear any previous tool status when starting new operation
+    setCurrentToolStatus('')
+    setToolExecutionDetails(null)
     addMessage(userMessage)
     addMessage(assistantMessage)
     setIsLoading(true)
@@ -1227,7 +1333,6 @@ If your recommendation is a Go, list down the things the user needs to complete 
             }}
             className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium text-sm flex items-center justify-center space-x-2 ${isSidebarCollapsed ? 'px-2' : 'px-3'}`}
           >
-            <span className="text-sm">✨</span>
             {!isSidebarCollapsed && <span>New Chat</span>}
           </button>
           
@@ -1296,35 +1401,6 @@ If your recommendation is a Go, list down the things the user needs to complete 
            </div>
          </div>
 
-         {/* Real-time Progress and Status Updates - Moved to bottom of sidebar */}
-         {(activeProgress.length > 0 || statusUpdates.length > 0) && (
-           <div className="bg-white/95 backdrop-blur-sm border-t border-blue-200/30 p-2">
-             {!isSidebarCollapsed && (
-               <div className="text-xs font-semibold text-blue-600 mb-2">STATUS</div>
-             )}
-             {/* Progress Trackers */}
-             {activeProgress.map((progress) => (
-               <ProgressTracker
-                 key={progress.id}
-                 progress={progress}
-                 onComplete={() => {
-                   setActiveProgress(prev => prev.filter(p => p.id !== progress.id))
-                 }}
-               />
-             ))}
-             
-             {/* Status Updates */}
-             {statusUpdates.map((status, index) => (
-               <StatusIndicator
-                 key={`${status.timestamp}-${index}`}
-                 status={status}
-                 onDismiss={() => {
-                   setStatusUpdates(prev => prev.filter((_, i) => i !== index))
-                 }}
-               />
-             ))}
-           </div>
-         )}
       </div>
 
       {/* Main Chat Area */}
@@ -1413,9 +1489,58 @@ If your recommendation is a Go, list down the things the user needs to complete 
                   }`}
                 >
                   {message.isLoading ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      <span>Processing...</span>
+                    <div className="flex items-center space-x-3 bg-gradient-to-r from-blue-50/80 to-blue-100/60 border border-blue-300/60 rounded-xl p-4 shadow-sm">
+                      <div className="relative">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-200 border-t-blue-600"></div>
+                        <div className="absolute inset-0 rounded-full border-2 border-blue-100"></div>
+                      </div>
+                      <div className="flex-1">
+                        {/* Show detailed tool execution if available */}
+                        {toolExecutionDetails ? (
+                          <div>
+                            <div className="text-sm font-semibold text-blue-900">
+                              {toolExecutionDetails.currentTool ? `Using ${formatToolName(toolExecutionDetails.currentTool)}` : 'Executing Tools'}
+                            </div>
+                            <div className="text-xs text-blue-700 mt-1 flex items-center space-x-2">
+                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                              <span>
+                                {toolExecutionDetails.total > 1 
+                                  ? `Tool ${toolExecutionDetails.completed + 1} of ${toolExecutionDetails.total}`
+                                  : 'Processing with AI tools'
+                                }
+                              </span>
+                            </div>
+                            {/* Show tool list if multiple tools */}
+                            {toolExecutionDetails.tools.length > 1 && (
+                              <div className="text-xs text-blue-600 mt-1">
+                                Tools: {toolExecutionDetails.tools.map(formatToolName).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        ) : currentToolStatus ? (
+                          <div>
+                            <div className="text-sm font-semibold text-blue-900">
+                              {currentToolStatus}
+                            </div>
+                            <div className="text-xs text-blue-700 mt-1 flex items-center space-x-1">
+                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                              <span>AI is working with tools to provide the best response</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="text-sm font-semibold text-blue-900">
+                              Processing your request...
+                            </div>
+                            <div className="text-xs text-blue-600 mt-1">
+                              Preparing response...
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs text-blue-500 font-medium">
+                        {toolExecutionDetails || currentToolStatus ? 'Active' : 'Starting'}
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -1459,6 +1584,7 @@ If your recommendation is a Go, list down the things the user needs to complete 
           )}
           <div ref={messagesEndRef} />
         </div>
+
 
         {/* Input Area with Integrated Buttons */}
         <div className="bg-white/70 backdrop-blur-md border-t border-blue-200/50 p-4 shadow-lg relative">
@@ -2119,6 +2245,8 @@ If your recommendation is a Go, list down the things the user needs to complete 
                    // Clear progress and status updates
                    setActiveProgress([])
                    setStatusUpdates([])
+                   setCurrentToolStatus('')
+                   setToolExecutionDetails(null)
                    // Rate limiting status removed
                    toast.success('Operation stopped')
                  }}
@@ -2135,7 +2263,7 @@ If your recommendation is a Go, list down the things the user needs to complete 
                disabled={isLoading || (!inputMessage.trim() && uploadedFiles.length === 0)}
                className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
              >
-               🚀
+               ↑
              </button>
           </div>
           

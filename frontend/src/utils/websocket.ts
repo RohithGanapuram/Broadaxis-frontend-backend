@@ -135,7 +135,7 @@ class GlobalWebSocketManager {
     
     const tracker: ProgressTracker = {
       id: progressId,
-      type: this.determineProgressType(progress.message),
+      type: this.determineProgressType(progress.message, progress.step),
       title: this.extractProgressTitle(progress.message),
       progress: progress.progress,
       message: progress.message,
@@ -180,7 +180,10 @@ class GlobalWebSocketManager {
     this.messageHandlers.forEach(handler => handler(connection))
   }
 
-  private determineProgressType(message: string): ProgressTracker['type'] {
+  private determineProgressType(message: string, step?: string): ProgressTracker['type'] {
+    // Use step if provided (from backend)
+    if (step === 'tool_execution') return 'tool_execution'
+    
     const lowerMessage = message.toLowerCase()
     if (lowerMessage.includes('upload') || lowerMessage.includes('file')) return 'upload'
     if (lowerMessage.includes('search') || lowerMessage.includes('query')) return 'search'
