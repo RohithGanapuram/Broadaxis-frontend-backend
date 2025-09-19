@@ -247,8 +247,17 @@ async def websocket_chat(websocket: WebSocket):
                         selected_model = model
                     
                     async with websocket.__gate:
+                        # Create callback function to send progress updates
+                        async def send_progress_callback(message: str, ws: WebSocket = None):
+                            try:
+                                await manager.send_personal_message(message, websocket)
+                            except Exception as e:
+                                print(f"Error sending progress message: {e}")
+                        
                         result = await run_mcp_query(
-                            full_prompt, enabled_tools, selected_model, session_id
+                            full_prompt, enabled_tools, selected_model, session_id,
+                            system_prompt=None, websocket=websocket, 
+                            send_message_callback=send_progress_callback
                         )
                     
                     if not isinstance(result, dict) or "response" not in result:

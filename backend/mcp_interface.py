@@ -452,7 +452,9 @@ async def run_mcp_query(
     enabled_tools: List[str] = None,
     model: str = "claude-3-5-haiku-20241022",  # Default to Haiku for cost efficiency
     session_id: str = "default",
-    system_prompt: str = None
+    system_prompt: str = None,
+    websocket = None,
+    send_message_callback = None
 ) -> Dict:
     """
     Run MCP query with the specified parameters.
@@ -462,5 +464,7 @@ async def run_mcp_query(
         enabled_tools=enabled_tools,
         model=model,
         session_id=session_id,
+        websocket=websocket,
+        send_message_callback=send_message_callback,
         system_prompt_override=system_prompt
     )
