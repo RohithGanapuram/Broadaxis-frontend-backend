@@ -71,7 +71,19 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+export type UploadedDocPreview = {
+  doc_id: string;
+  filename: string;
+  pages: number;
+  text_preview: string;
+};
 
+export type UploadedDocChunk = {
+  page_start: number;
+  page_end: number;
+  text: string;
+  score?: number;
+};
 // API functions
 export const apiClient = {
   // Health check
@@ -222,6 +234,32 @@ export const apiClient = {
       throw error
     }
   },
+
+
+   async uploadLocal(file: File, sessionId: string): Promise<UploadedDocPreview> {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("session_id", sessionId);
+    const res = await fetch("/api/upload-local", { method: "POST", body: form });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async searchUploadedDoc(
+    docId: string,
+    sessionId: string,
+    query: string,
+    k = 8
+  ): Promise<{ chunks: UploadedDocChunk[] }> {
+    const res = await fetch(`/api/upload-local/${docId}/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, query, k }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
 
   async readSharePointFile(path: string, maxSizeMb: number = 50, encoding: string = "utf-8", previewLines: number = 0): Promise<any> {
     try {

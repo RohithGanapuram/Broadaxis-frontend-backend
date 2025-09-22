@@ -24,6 +24,20 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from pydantic import BaseModel, ValidationError as PydanticValidationError
 from dotenv import load_dotenv
+# NEW imports for local-upload flow
+import io
+import os
+import uuid
+import re
+from typing import Dict, List, Tuple
+try:
+    import PyPDF2  # we use PyPDF2 because it's already in requirements
+except Exception:
+    PyPDF2 = None
+try:
+    import docx  # python-docx
+except Exception:
+    docx = None
 
 
 # Load environment variables from parent directory
@@ -114,6 +128,98 @@ app.add_middleware(
 # Include API routers
 app.include_router(email_router)
 app.include_router(sharepoint_router)
+
+
+
+# ===== Local Upload Store (per-process) =====
+# Shape: { session_id: { doc_id: { filename, pages, chunks, preview } } }
+UPLOAD_STORE: Dict[str, Dict[str, Dict]] = {}
+
+MAX_CHARS_PER_CHUNK = 1500   # ~400–500 tokens each
+PREVIEW_CHARS = 1200         # what we return to UI on upload
+MAX_RETURN_CHUNKS = 10       # cap search results
+
+def _safe_text(s: str) -> str:
+    return (s or "").replace("\x00", " ").strip()
+
+def _pdf_to_pages(file_bytes: bytes) -> List[str]:
+    if not PyPDF2:
+        raise HTTPException(500, "PyPDF2 not installed on server")
+    reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+    pages: List[str] = []
+    for p in reader.pages:
+        try:
+            t = p.extract_text() or ""
+        except Exception:
+            t = ""
+        pages.append(_safe_text(t))
+    return pages
+
+def _docx_to_text(file_bytes: bytes) -> str:
+    if not docx:
+        raise HTTPException(500, "python-docx not installed on server")
+    f = io.BytesIO(file_bytes)
+    d = docx.Document(f)
+    return "\n".join(_safe_text(p.text) for p in d.paragraphs)
+
+def _split_into_chunks(pages: List[str], max_chars: int = MAX_CHARS_PER_CHUNK) -> List[Dict]:
+    """
+    Turn page strings into chunk objects with page ranges.
+    Each chunk: {page_start, page_end, text}
+    """
+    chunks: List[Dict] = []
+    cur: List[str] = []
+    cur_len = 0
+    start_idx = 0
+    for i, page in enumerate(pages):
+        t = _safe_text(page)
+        if not t:
+            continue
+        # flush if adding this page would exceed max
+        if cur and cur_len + len(t) + 1 > max_chars:
+            chunks.append({
+                "page_start": start_idx + 1,
+                "page_end": start_idx + len(cur),
+                "text": "\n".join(cur)
+            })
+            cur, cur_len = [], 0
+            start_idx = i
+        if not cur:
+            start_idx = i
+        cur.append(t)
+        cur_len += len(t) + 1
+    if cur:
+        chunks.append({
+            "page_start": start_idx + 1,
+            "page_end": start_idx + len(cur),
+            "text": "\n".join(cur)
+        })
+    return chunks
+
+_word = re.compile(r"[A-Za-z0-9_]+", re.UNICODE)
+def _tokenize(s: str) -> List[str]:
+    return [w.lower() for w in _word.findall(s or "")]
+
+def _score_chunks(query: str, chunks: List[Dict]) -> List[Tuple[float, Dict]]:
+    """
+    Light scoring: term overlap + small phrase boost.
+    Swap later for embeddings/BM25 without changing the API.
+    """
+    q_tokens = _tokenize(query)
+    if not q_tokens:
+        return [(0.0, c) for c in chunks]
+    qset = set(q_tokens)
+    phrase = " ".join(q_tokens)
+
+    scored: List[Tuple[float, Dict]] = []
+    for c in chunks:
+        t = c["text"]
+        toks = _tokenize(t)
+        overlap = sum(1 for tok in toks if tok in qset)
+        phrase_boost = 2 if phrase and phrase in t.lower() else 0
+        scored.append((float(overlap + phrase_boost), c))
+    scored.sort(key=lambda x: (-x[0], x[1]["page_start"]))
+    return scored
 
 # Global exception handlers
 @app.exception_handler(BroadAxisError)
@@ -219,6 +325,15 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+    
+class LocalSearchRequest(BaseModel):
+    session_id: str
+    query: str
+    k: Optional[int] = 8
+class SearchBody(BaseModel):
+    session_id: str
+    query: str
+    k: int = 8
 
 # Trading access allowlist (comma-separated user emails in env), fallback to predefined emails
 _env_allow = os.getenv("TRADING_ALLOWED_EMAILS")
@@ -2319,6 +2434,102 @@ async def get_current_user(request: Request):
             status_code=500,
             content={"error": "Failed to get user information"}
         )
+
+from fastapi import Form  # ← add this import
+
+@app.post("/api/upload-local")
+async def upload_local(file: UploadFile = File(...), session_id: str = Form("default")):
+    """
+    Accept a local file, extract text, chunk, and store by session_id.
+    Returns: {doc_id, filename, pages, text_preview}
+    """
+    filename = file.filename or "upload"
+    ext = os.path.splitext(filename.lower())[1]
+    allowed = {".pdf", ".docx", ".doc", ".txt", ".md"}
+    if ext not in allowed:
+        raise HTTPException(400, f"Unsupported file type: {ext}")
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(400, "Uploaded file is empty")
+    if len(raw) > 50 * 1024 * 1024:
+        raise HTTPException(400, "File exceeds 50MB limit")
+
+    # Extract into pages list
+    if ext == ".pdf":
+        pages = _pdf_to_pages(raw)
+        full_text = "\n".join(pages)
+    elif ext in {".docx", ".doc"}:
+        full_text = _docx_to_text(raw)
+        pages = [full_text]  # docx/doc: treat as one big page for now
+    else:  # .txt/.md
+        full_text = _safe_text(raw.decode("utf-8", errors="ignore"))
+        pages = full_text.split("\f") if "\f" in full_text else [full_text]
+
+    chunks = _split_into_chunks(pages)
+    doc_id = str(uuid.uuid4())
+
+    # store in-process
+    if session_id not in UPLOAD_STORE:
+        UPLOAD_STORE[session_id] = {}
+    UPLOAD_STORE[session_id][doc_id] = {
+        "filename": filename,
+        "pages": len(pages),
+        "chunks": chunks,
+        "preview": full_text[:PREVIEW_CHARS]
+    }
+
+    return {
+        "doc_id": doc_id,
+        "filename": filename,
+        "pages": len(pages),
+        "text_preview": full_text[:PREVIEW_CHARS]
+    }
+
+@app.get("/api/upload-local/{doc_id}/text")
+async def get_uploaded_text(doc_id: str, session_id: str):
+    """
+    Optional helper: return concatenated text (capped) for debugging/continuations.
+    """
+    sess = UPLOAD_STORE.get(session_id, {})
+    doc = sess.get(doc_id)
+    if not doc:
+        raise HTTPException(404, "Document not found in this session")
+    joined = "\n\n".join(c["text"] for c in doc["chunks"])
+    return {"doc_id": doc_id, "session_id": session_id, "text": joined[:200000]}
+
+@app.post("/api/upload-local/{doc_id}/search")
+async def search_uploaded_doc(doc_id: str, payload: LocalSearchRequest):
+    """
+    Lightweight retrieval over stored chunks.
+    Body: {session_id, query, k}
+    Returns: {chunks: [{page_start, page_end, text, score}]}
+    """
+    sess = UPLOAD_STORE.get(payload.session_id, {})
+    doc = sess.get(doc_id)
+    if not doc:
+        raise HTTPException(404, "Document not found in this session")
+
+    chunks = doc["chunks"]
+    k = max(1, min(int(payload.k or 8), MAX_RETURN_CHUNKS))
+    scored = _score_chunks(payload.query, chunks)
+    top = [(s, c) for (s, c) in scored[:k]]
+
+    # If no overlap at all, still return first k chunks so UI has context
+    if not any(s > 0 for s, _ in top) and chunks:
+        top = [(0.0, c) for c in chunks[:k]]
+
+    return {
+        "chunks": [
+            {
+                "page_start": c["page_start"],
+                "page_end": c["page_end"],
+                "text": c["text"][:4000],  # trim per-chunk for payload size
+                "score": float(s)
+            }
+            for (s, c) in top
+        ]
+    }
 
 
 @app.post("/api/upload-folder")
