@@ -240,9 +240,13 @@ export const apiClient = {
     const form = new FormData();
     form.append("file", file);
     form.append("session_id", sessionId);
-    const res = await fetch("/api/upload-local", { method: "POST", body: form });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    const res = await api.post('/api/upload-local', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // if you rely on cookies, uncomment:
+      // withCredentials: true,
+      timeout: 120000
+    });
+    return res.data;
   },
 
   async searchUploadedDoc(
@@ -251,13 +255,13 @@ export const apiClient = {
     query: string,
     k = 8
   ): Promise<{ chunks: UploadedDocChunk[] }> {
-    const res = await fetch(`/api/upload-local/${docId}/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId, query, k }),
+    const res = await api.post(`/api/upload-local/${docId}/search`, {
+      session_id: sessionId, query, k
+    }, {
+      // withCredentials: true,
+      timeout: 60000
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return res.data;
   },
 
 
