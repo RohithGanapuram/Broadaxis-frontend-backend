@@ -80,6 +80,7 @@ const ChatInterface: React.FC = () => {
   filename: string;
   pages: number;
   text_preview: string;
+  sessionId: string; 
 } | null>(null);
   
 
@@ -469,7 +470,7 @@ useEffect(() => {
           const k = 4;
           const { chunks } = await apiClient.searchUploadedDoc(
             uploadedDoc.doc_id,
-            currentSessionId || 'default',
+            uploadedDoc.sessionId, 
             retrievalQuery,
             k
           );
@@ -515,7 +516,7 @@ useEffect(() => {
    doc_id: doc.doc_id,
    filename: doc.filename,
    pages: doc.pages,
-   text_preview: doc.text_preview});
+   text_preview: doc.text_preview,sessionId: currentSessionId || 'default', });
     toast.success(`${doc.filename} ready for prompts`, { id: 'local-upload' });
   } catch (e: any) {
     console.error(e);
