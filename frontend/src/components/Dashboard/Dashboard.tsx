@@ -33,8 +33,8 @@ const Dashboard: React.FC = () => {
       {/* Recent Documents */}
       <RecentDocuments />
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+      {/* Quick Actions - Commented out for now, can be added later */}
+      {/* <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button className="p-4 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-colors text-left">
@@ -55,7 +55,7 @@ const Dashboard: React.FC = () => {
             <p className="text-sm text-gray-600">Access your RFP analysis reports</p>
           </button>
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }

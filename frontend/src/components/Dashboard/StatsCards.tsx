@@ -34,11 +34,26 @@ const StatsCards: React.FC = () => {
         const list = Array.isArray(acct.emails) ? acct.emails : [];
         for (const em of list) {
           if (!isToday(em.date)) continue;
-          const subj = (em.subject || '').toLowerCase();
-          if (subj.includes('rfp') || subj.includes('request for proposal')) rfp++;
-          else if (subj.includes('rfi') || subj.includes('request for information')) rfi++;
-          else if (subj.includes('rfq') || subj.includes('request for quotation')) rfq++;
+
+          const subject = (em.subject || '').toLowerCase();
+          const body    = (em.body_text || '').toLowerCase();              // NEW
+          const attText = Array.isArray(em.attachment_names)                // NEW
+            ? em.attachment_names.join(' ').toLowerCase()
+            : ((em.attachments || []).map((a:any) =>
+                (a.filename || a.file_path || a.url || '')
+              ).join(' ').toLowerCase());
+
+          const haystack = `${subject}\n${body}\n${attText}`;
+
+          const isRFP = /\brfp\b|request\s+for\s+proposal/.test(haystack);
+          const isRFI = /\brfi\b|request\s+for\s+information/.test(haystack);
+          const isRFQ = /\brfq\b|request\s+for\s+quotation/.test(haystack);
+
+          if (isRFP) rfp++;
+          else if (isRFI) rfi++;
+          else if (isRFQ) rfq++;
         }
+
       }
       setCounts({ rfp, rfi, rfq });
     } catch (e) {
@@ -82,13 +97,13 @@ const StatsCards: React.FC = () => {
       color: '#10b981',
       icon: '✅'
     },
-    {
-      title: 'No-Go Recommendations',
-      count: 4,
-      subtitle: 'Declined',
-      color: '#ef4444',
-      icon: '❌'
-    }
+    // {
+    //   title: 'No-Go Recommendations',
+    //   count: 4,
+    //   subtitle: 'Declined',
+    //   color: '#ef4444',
+    //   icon: '❌'
+    // }
   ];
 
   return (
@@ -108,7 +123,7 @@ const StatsCards: React.FC = () => {
         </button>
 
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <div
             key={index}

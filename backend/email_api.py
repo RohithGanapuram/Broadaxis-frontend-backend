@@ -621,9 +621,14 @@ class EmailFetcher:
                                         new_attachments.append(saved)
                                         total_new_attachments += 1
                                         seen.add(uniq)
-
+                        
                         # Combine existing + new so UI shows everything
                         all_atts = _dedup_attachments(existing_atts + new_attachments)
+                        attachment_names = []
+                        for a in all_atts:
+                            name = (a.get('filename') or a.get('file_path') or a.get('url') or '').strip()
+                            if name:
+                                attachment_names.append(name)
                         batch_all.append({
                             "email_id": email_item['id'],
                             "sender": email_item['sender']['emailAddress']['address'],
@@ -631,7 +636,10 @@ class EmailFetcher:
                             "date": email_item['receivedDateTime'],
                             "account": user_email,
                             "attachments": all_atts,
-                            "has_rfp_keywords": True
+                            "has_rfp_keywords": True,
+                            "body_text": body_text[:4000],          # NEW: plain-text body preview (safe size)
+                            "attachment_names": attachment_names     # NEW: flattened filenames/URLs
+
                         })
 
                     # Pagination
