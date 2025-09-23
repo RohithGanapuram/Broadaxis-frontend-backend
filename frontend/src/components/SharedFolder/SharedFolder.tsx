@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useAppContext } from '../../context/AppContext'
 import { apiClient } from '../../utils/api'
 import toast from 'react-hot-toast'
 
@@ -20,13 +21,12 @@ const SharedFolder: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [currentPath, setCurrentPath] = useState<string>('')
   const [pathHistory, setPathHistory] = useState<string[]>([''])
-  const [fileCache, setFileCache] = useState<Record<string, SharedFile[]>>({})
-  const [lastFetchTime, setLastFetchTime] = useState<Record<string, number>>({})
   const [isUploading, setIsUploading] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState<'RFP' | 'RFI' | 'RFQ' | ''>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { currentUser } = useAuth()
+  const { sharePointCache, setSharePointCache } = useAppContext()
   
   const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
@@ -38,11 +38,11 @@ const SharedFolder: React.FC = () => {
     const cacheKey = folderPath || 'root'
     const now = Date.now()
     
-    // Check if we have cached data that's still fresh
-    if (!forceRefresh && fileCache[cacheKey] && lastFetchTime[cacheKey]) {
-      const timeSinceLastFetch = now - lastFetchTime[cacheKey]
+    // Check if we have global cached data that's still fresh and matches current path
+    if (!forceRefresh && sharePointCache && sharePointCache.currentPath === cacheKey) {
+      const timeSinceLastFetch = now - sharePointCache.lastFetchTime
       if (timeSinceLastFetch < CACHE_DURATION) {
-        setFiles(fileCache[cacheKey])
+        setFiles(sharePointCache.files)
         return
       }
     }
@@ -92,9 +92,12 @@ const SharedFolder: React.FC = () => {
 
         setFiles(sorted)
 
-        // cache as before…
-        setFileCache(prev => ({ ...prev, [cacheKey]: sorted }))
-        setLastFetchTime(prev => ({ ...prev, [cacheKey]: now }))
+        // Update global cache
+        setSharePointCache({
+          files: sorted,
+          lastFetchTime: now,
+          currentPath: cacheKey
+        })
 
 
       } else {
@@ -333,11 +336,21 @@ const SharedFolder: React.FC = () => {
                 </p>
               )}
             </div>
-            <div className="text-sm text-gray-500 flex-shrink-0">
-              <div className="flex gap-4">
-                <span>📄 {files.filter(f => f.type !== 'folder').length} files</span>
-                <span>📁 {files.filter(f => f.type === 'folder').length} folders</span>
+            <div className="flex items-center gap-4 flex-shrink-0">
+              <div className="text-sm text-gray-500">
+                <div className="flex gap-4">
+                  <span>📄 {files.filter(f => f.type !== 'folder').length} files</span>
+                  <span>📁 {files.filter(f => f.type === 'folder').length} folders</span>
+                </div>
               </div>
+              <button
+                onClick={() => loadFiles(currentPath, true)}
+                disabled={isLoading}
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                title="Refresh folder contents"
+              >
+                🔄 Refresh
+              </button>
             </div>
           </div>
 

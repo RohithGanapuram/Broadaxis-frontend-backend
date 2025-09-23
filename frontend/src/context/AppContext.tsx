@@ -1,6 +1,22 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
 import { Tool, Prompt, ChatMessage, ChatSession } from '../types'
 
+interface SharedFile {
+  filename: string
+  type: 'file' | 'folder'
+  size?: number
+  modified_at?: string
+  download_url?: string
+  path: string
+  id?: string
+}
+
+interface SharePointCache {
+  files: SharedFile[]
+  lastFetchTime: number
+  currentPath: string
+}
+
 interface AppContextType {
   tools: Tool[]
   prompts: Prompt[]
@@ -18,6 +34,10 @@ interface AppContextType {
   deleteSession: (sessionId: string) => void
   updateSessionId: (newSessionId: string) => void
   loadUserSessions: () => Promise<void>
+  // SharePoint cache
+  sharePointCache: SharePointCache | null
+  setSharePointCache: (cache: SharePointCache | null) => void
+  clearSharePointCache: () => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -42,6 +62,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [isSwitchingSession, setIsSwitchingSession] = useState(false)
+  const [sharePointCache, setSharePointCache] = useState<SharePointCache | null>(null)
 
   // Initialize with empty sessions - all data comes from Redis
   useEffect(() => {
@@ -229,6 +250,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setMessages(prev => [...prev, message])
   }
 
+  const clearSharePointCache = () => {
+    setSharePointCache(null)
+  }
+
   return (
     <AppContext.Provider value={{
       tools,
@@ -246,7 +271,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       switchToSession,
       deleteSession,
       updateSessionId,
-      loadUserSessions
+      loadUserSessions,
+      sharePointCache,
+      setSharePointCache,
+      clearSharePointCache
     }}>
       {children}
     </AppContext.Provider>
