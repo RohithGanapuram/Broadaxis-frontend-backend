@@ -79,6 +79,10 @@ interface EmailAccount {
   iconColor: string;
   latest_date?: string;
   latest_file?: string;
+  latest_subject?: string;
+  latest_files?: number;
+
+  // optional: keep old field for backward compat (unused
 }
 
 interface EmailAttachment {
@@ -221,15 +225,28 @@ const Email: React.FC = () => {
 
   const currentUser = getCurrentUser();
 
+
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+
   // Load fetched emails on component mount
   useEffect(() => {
-    loadFetchedEmails();
+     try {
+        const cached = localStorage.getItem('emailDataCache');
+        if (cached) {
+          setEmailData(JSON.parse(cached));
+        }
+      } catch {}
+      (async () => {
+        await loadFetchedEmails();
+        setIsBootstrapping(false); })();
   }, []);
 
   const loadFetchedEmails = async () => {
     try {
       const data = await apiClient.getFetchedEmails();
       setEmailData(data);
+      localStorage.setItem('emailDataCache', JSON.stringify(data)); // add this
+
     } catch (error) {
       console.error('Failed to load fetched emails:', error);
     }
@@ -290,7 +307,9 @@ const Email: React.FC = () => {
     emailData.emails.map(email => ({
       ...email,
       label: 'RFP/RFI/RFQ Emails',
-      subject: email.latest_file || 'No recent files',
+      // use the actual backend fields
+      subject: email.latest_subject || 'No Subject',
+      latest_files: email.latest_files ?? 0,
       bgColor: email.id === 1 ? '#f0fdf4' : email.id === 2 ? '#faf5ff' : '#fff7ed',
       textColor: email.id === 1 ? '#16a34a' : email.id === 2 ? '#9333ea' : '#ea580c',
       iconColor: email.id === 1 ? '#16a34a' : email.id === 2 ? '#9333ea' : '#ea580c'
@@ -412,14 +431,18 @@ const Email: React.FC = () => {
                 <div className="text-sm text-gray-600 mb-4">{account.label}</div>
 
                 <div className="space-y-1">
-                  <div className="text-xs font-medium text-gray-500">Latest File:</div>
+                  <div className="text-xs font-medium text-gray-500">Latest email:</div>
                   <div className="text-sm text-gray-700">{account.subject}</div>
                   {account.latest_date && (
                     <div className="text-xs text-gray-500">
-                      Last updated: {new Date(account.latest_date).toLocaleDateString()}
+                      Received: {new Date(account.latest_date).toLocaleDateString()}
                     </div>
                   )}
+                  <div className="text-xs text-gray-500">
+                    Total files: {account.latest_files ?? 0}
+                  </div>
                 </div>
+
 
                 <div className="mt-4 text-xs text-blue-600 font-medium">
                   {selectedEmail === account.id ? '▼ Hide attachments' : '▶ Click to view attachments'}

@@ -1,11 +1,42 @@
 [
   {
-    "email_id": "AAMkADgxNzU1MWQ1LWIwZWEtNGQzMS1hNzNlLTZmNWI5NDFiNmI3MgBGAAAAAAD31Ex7dOyxSa_Xwk6Ic_OvBwBxDRrnVNRURoVyVmVWMBDcAAAAAAEMAABxDRrnVNRURoVyVmVWMBDcAAAq8YfVAAA=",
-    "sender": "help@sentry.io",
-    "subject": "Your trial expires in 1 day",
-    "date": "2025-09-20T15:47:08Z",
+    "email_id": "AAMkADgxNzU1MWQ1LWIwZWEtNGQzMS1hNzNlLTZmNWI5NDFiNmI3MgBGAAAAAAD31Ex7dOyxSa_Xwk6Ic_OvBwBxDRrnVNRURoVyVmVWMBDcAAAAAAEMAABxDRrnVNRURoVyVmVWMBDcAAAr6MW2AAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "heyyy",
+    "date": "2025-09-23T16:21:42Z",
     "account": "rfiproject@broadaxis.com",
-    "attachments": [],
+    "attachments": [
+      {
+        "filename": "14-Special-Requirements (3).pdf",
+        "file_path": "email_attachments/2025-09-23/14-Special-Requirements (3).pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-23T18:28:56.298203+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rfiproject@broadaxis.com/2025-09-23_heyyy",
+        "sharepoint_web_url": "https://broadaxis.sharepoint.com/sites/RFI-project/Shared%20Documents/Emails/rfiproject@broadaxis.com/2025-09-23_heyyy/14-Special-Requirements-(3).pdf",
+        "sharepoint_download_url": "https://broadaxis.sharepoint.com/sites/RFI-project/_layouts/15/download.aspx?UniqueId=7c830483-c5a0-4f3a-96e0-ab512c9c0e29&Translate=false&tempauth=v1.eyJzaXRlaWQiOiJmYWJhNDJiYS1lZWNlLTQyNjEtYmU5Ni1lMjI3M2JjYjY0ZGYiLCJhcHBfZGlzcGxheW5hbWUiOiJyZnAtZW1haWwtZmV0Y2hlciIsIm5hbWVpZCI6ImMxNjBkMDFmLTg4OTEtNDllYy04YmYxLTRiMWYyOTEwYmE5MEBkMTAwMjY2NS1jZjllLTRmMGMtYmExYS1hMGIyYjVlMjBkNjIiLCJhdWQiOiIwMDAwMDAwMy0wMDAwLTBmZjEtY2UwMC0wMDAwMDAwMDAwMDAvYnJvYWRheGlzLnNoYXJlcG9pbnQuY29tQGQxMDAyNjY1LWNmOWUtNGYwYy1iYTFhLWEwYjJiNWUyMGQ2MiIsImV4cCI6IjE3NTg2NTU3MzYifQ.CkAKDGVudHJhX2NsYWltcxIwQ0xyTHk4WUdFQUFhRmtkVVF6QkxhMHB4Vm1zeVgzTk5URE5RZDJvMVFVRXFBQT09CjIKCmFjdG9yYXBwaWQSJDAwMDAwMDAzLTAwMDAtMDAwMC1jMDAwLTAwMDAwMDAwMDAwMAoKCgRzbmlkEgI2NBILCJ7z-uqitr0-EAUaDjIwLjE5MC4xNTcuMTYwKixPRjR0NTNXYmtSUUg2Q2hJOXBIUmRXTkxzRks5VkhUZ0tUK0xIaGZ3OXpnPTCKATgBQhChyKAtJhAAoEHpZeGE_rjqShBoYXNoZWRwcm9vZnRva2VuegExugE5YWxsc2l0ZXMucmVhZCBhbGxzaXRlcy53cml0ZSBhbGxmaWxlcy53cml0ZSBhbGxmaWxlcy5yZWFkyAEB.oQ8JPKqs14nesbhFg_HHkTqBWkT77sVE_WDaU3WLgnA&ApiVersion=2.0"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADBkOWZmYTMzLWUwZDAtNDVmZC05MjY3LThkMmQ3OGFjMGQ1YwBGAAAAAACnyMWE8qLuTaC1fc9F2IZ7BwBgtmbTAABWQYPKffbDBW8IAAAAAAEMAABgtmbTAABWQYPKffbDBW8IAABG3wYgAAA=",
+    "sender": "sakshi.k@broadaxis.com",
+    "subject": "rfp",
+    "date": "2025-09-23T17:29:15Z",
+    "account": "rohith.ganapuram@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "rfp-426-20-strategic-healthcare-consultant-and-preparation-of-plan-issuance-9-2-2020.pdf",
+        "file_path": "email_attachments/2025-09-23/rfp-426-20-strategic-healthcare-consultant-and-preparation-of-plan-issuance-9-2-2020.pdf",
+        "file_size": 600527,
+        "download_date": "2025-09-23T18:28:59.252191+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/rohith.ganapuram@broadaxis.com/2025-09-23_rfp",
+        "sharepoint_web_url": "https://broadaxis.sharepoint.com/sites/RFI-project/Shared%20Documents/Emails/rohith.ganapuram@broadaxis.com/2025-09-23_rfp/rfp-426-20-strategic-healthcare-consultant-and-preparation-of-plan-issuance-9-2-2020.pdf",
+        "sharepoint_download_url": "https://broadaxis.sharepoint.com/sites/RFI-project/_layouts/15/download.aspx?UniqueId=79b44342-fc8c-41b0-89b3-e30f02b17fa2&Translate=false&tempauth=v1.eyJzaXRlaWQiOiJmYWJhNDJiYS1lZWNlLTQyNjEtYmU5Ni1lMjI3M2JjYjY0ZGYiLCJhcHBfZGlzcGxheW5hbWUiOiJyZnAtZW1haWwtZmV0Y2hlciIsIm5hbWVpZCI6ImMxNjBkMDFmLTg4OTEtNDllYy04YmYxLTRiMWYyOTEwYmE5MEBkMTAwMjY2NS1jZjllLTRmMGMtYmExYS1hMGIyYjVlMjBkNjIiLCJhdWQiOiIwMDAwMDAwMy0wMDAwLTBmZjEtY2UwMC0wMDAwMDAwMDAwMDAvYnJvYWRheGlzLnNoYXJlcG9pbnQuY29tQGQxMDAyNjY1LWNmOWUtNGYwYy1iYTFhLWEwYjJiNWUyMGQ2MiIsImV4cCI6IjE3NTg2NTU3MzkifQ.CkAKDGVudHJhX2NsYWltcxIwQ0wzTHk4WUdFQUFhRm5WM1JGVlBPVEJmVmpCeFZHOVBiR3gwYzJWTFFVRXFBQT09CjIKCmFjdG9yYXBwaWQSJDAwMDAwMDAzLTAwMDAtMDAwMC1jMDAwLTAwMDAwMDAwMDAwMAoKCgRzbmlkEgI2NBILCITX7oajtr0-EAUaDDQwLjEyNi4yOS45NiosZjU1b1dwbVFZMldyYlJBbkFTU0VkOEIzR3F4Z2ppUCtDSm93ZmpGM0ZWQT0wigE4AUIQocigLdvwAKBB6WnVkLCxIEoQaGFzaGVkcHJvb2Z0b2tlbnoBMboBOWFsbHNpdGVzLnJlYWQgYWxsc2l0ZXMud3JpdGUgYWxsZmlsZXMud3JpdGUgYWxsZmlsZXMucmVhZMgBAQ.7zotYxpZF6sNDf89HHsBsFlbJJCLpXwltM0uS-eNRmc&ApiVersion=2.0"
+      }
+    ],
     "has_rfp_keywords": true
   },
   {
@@ -24,6 +55,46 @@
         "sharepoint_path": "Emails/rohith.ganapuram@broadaxis.com/2025-09-23_RFP-for-Haris-county",
         "sharepoint_web_url": "https://broadaxis.sharepoint.com/sites/RFI-project/Shared%20Documents/Emails/rohith.ganapuram@broadaxis.com/2025-09-23_RFP-for-Haris-county/Lower_Nazareth_Township_IT_RFP_Decision.pdf",
         "sharepoint_download_url": "https://broadaxis.sharepoint.com/sites/RFI-project/_layouts/15/download.aspx?UniqueId=33f16a23-5273-4735-bdf9-798744bebd03&Translate=false&tempauth=v1.eyJzaXRlaWQiOiJmYWJhNDJiYS1lZWNlLTQyNjEtYmU5Ni1lMjI3M2JjYjY0ZGYiLCJhcHBfZGlzcGxheW5hbWUiOiJyZnAtZW1haWwtZmV0Y2hlciIsIm5hbWVpZCI6ImMxNjBkMDFmLTg4OTEtNDllYy04YmYxLTRiMWYyOTEwYmE5MEBkMTAwMjY2NS1jZjllLTRmMGMtYmExYS1hMGIyYjVlMjBkNjIiLCJhdWQiOiIwMDAwMDAwMy0wMDAwLTBmZjEtY2UwMC0wMDAwMDAwMDAwMDAvYnJvYWRheGlzLnNoYXJlcG9pbnQuY29tQGQxMDAyNjY1LWNmOWUtNGYwYy1iYTFhLWEwYjJiNWUyMGQ2MiIsImV4cCI6IjE3NTg2NDU5MzMifQ.CkAKDGVudHJhX2NsYWltcxIwQ1BEK3lzWUdFQUFhRms5cFUwdFFOalZwVkd0bFlVMWxjbFZtYVZCTlFVRXFBQT09CjIKCmFjdG9yYXBwaWQSJDAwMDAwMDAzLTAwMDAtMDAwMC1jMDAwLTAwMDAwMDAwMDAwMAoKCgRzbmlkEgI2NBILCNLlucDIsL0-EAUaDDQwLjEyNi4yOS45OSosTzVPK3dOVUVFOTlZMDc0QjA1Y3Z2VEt4djlsdGdmT1A1d1kySVowcWVjMD0wigE4AUIQociW1AMAAKBB6WfNSkRMNEoQaGFzaGVkcHJvb2Z0b2tlbnoBMboBOWFsbHNpdGVzLnJlYWQgYWxsc2l0ZXMud3JpdGUgYWxsZmlsZXMud3JpdGUgYWxsZmlsZXMucmVhZMgBAQ.eV3ZcfUIYUlT2gcO5C4oYSG-GIBuHS-cO_PfigzaaPU&ApiVersion=2.0"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADM0OGZjNjNhLTQwN2EtNDI4ZC05MjgzLTU2MzM5ODkyNzk1ZgBGAAAAAAB1AeHIUCTJR4_9j_ceg_HIBwC0P_1bLFGrRIYoYsifJgPEAAAAAAEMAAC0P_1bLFGrRIYoYsifJgPEAACLUqR6AAA=",
+    "sender": "rohith.ganapuram@broadaxis.com",
+    "subject": "rfp for fairfax",
+    "date": "2025-09-23T18:09:34Z",
+    "account": "sakshi.k@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "Lower_Nazareth_Township_IT_RFP_Decision.pdf",
+        "file_path": "email_attachments/2025-09-23/Lower_Nazareth_Township_IT_RFP_Decision.pdf",
+        "file_size": 6404,
+        "download_date": "2025-09-23T18:29:02.640021+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/sakshi.k@broadaxis.com/2025-09-23_rfp-for-fairfax",
+        "sharepoint_web_url": "https://broadaxis.sharepoint.com/sites/RFI-project/Shared%20Documents/Emails/sakshi.k@broadaxis.com/2025-09-23_rfp-for-fairfax/Lower_Nazareth_Township_IT_RFP_Decision.pdf",
+        "sharepoint_download_url": "https://broadaxis.sharepoint.com/sites/RFI-project/_layouts/15/download.aspx?UniqueId=30a5963d-393b-477c-b3ea-283ec40ee161&Translate=false&tempauth=v1.eyJzaXRlaWQiOiJmYWJhNDJiYS1lZWNlLTQyNjEtYmU5Ni1lMjI3M2JjYjY0ZGYiLCJhcHBfZGlzcGxheW5hbWUiOiJyZnAtZW1haWwtZmV0Y2hlciIsIm5hbWVpZCI6ImMxNjBkMDFmLTg4OTEtNDllYy04YmYxLTRiMWYyOTEwYmE5MEBkMTAwMjY2NS1jZjllLTRmMGMtYmExYS1hMGIyYjVlMjBkNjIiLCJhdWQiOiIwMDAwMDAwMy0wMDAwLTBmZjEtY2UwMC0wMDAwMDAwMDAwMDAvYnJvYWRheGlzLnNoYXJlcG9pbnQuY29tQGQxMDAyNjY1LWNmOWUtNGYwYy1iYTFhLWEwYjJiNWUyMGQ2MiIsImV4cCI6IjE3NTg2NTU3NDIifQ.CkAKDGVudHJhX2NsYWltcxIwQ01ETHk4WUdFQUFhRmpOSlMxTXphMWRsU2pCSGJUTTBiVzlGU2pOVFFVRXFBQT09CjIKCmFjdG9yYXBwaWQSJDAwMDAwMDAzLTAwMDAtMDAwMC1jMDAwLTAwMDAwMDAwMDAwMAoKCgRzbmlkEgI2NBILCKaekqejtr0-EAUaDDQwLjEyNi4yOS45NiosQ3IzZE5xVlZZQk5qZkN0U1o1RTVYMjZuSVVhcnFPdUx2cEZjMHhHR0Fuaz0wigE4AUIQocigLrRgAKBgKJMB68CA-UoQaGFzaGVkcHJvb2Z0b2tlbnoBMboBOWFsbHNpdGVzLnJlYWQgYWxsc2l0ZXMud3JpdGUgYWxsZmlsZXMud3JpdGUgYWxsZmlsZXMucmVhZMgBAQ.YhJh_0i2Qn8tOCT4rtTSUZlpJmoUzKT37fUh_WS73_w&ApiVersion=2.0"
+      }
+    ],
+    "has_rfp_keywords": true
+  },
+  {
+    "email_id": "AAMkADM0OGZjNjNhLTQwN2EtNDI4ZC05MjgzLTU2MzM5ODkyNzk1ZgBGAAAAAAB1AeHIUCTJR4_9j_ceg_HIBwC0P_1bLFGrRIYoYsifJgPEAAAAAAEMAAC0P_1bLFGrRIYoYsifJgPEAACLUqR5AAA=",
+    "sender": "rfiproject@broadaxis.com",
+    "subject": "Proposal document for harris county",
+    "date": "2025-09-23T16:22:51Z",
+    "account": "sakshi.k@broadaxis.com",
+    "attachments": [
+      {
+        "filename": "14-Special Requirements.pdf",
+        "file_path": "email_attachments/2025-09-23/14-Special Requirements.pdf",
+        "file_size": 180847,
+        "download_date": "2025-09-23T18:29:05.273048+00:00",
+        "type": "file",
+        "sharepoint_path": "Emails/sakshi.k@broadaxis.com/2025-09-23_Proposal-document-for-harris-county",
+        "sharepoint_web_url": "https://broadaxis.sharepoint.com/sites/RFI-project/Shared%20Documents/Emails/sakshi.k@broadaxis.com/2025-09-23_Proposal-document-for-harris-county/14-Special-Requirements.pdf",
+        "sharepoint_download_url": "https://broadaxis.sharepoint.com/sites/RFI-project/_layouts/15/download.aspx?UniqueId=ab929d52-bd4b-4d3b-a94d-f2db27761149&Translate=false&tempauth=v1.eyJzaXRlaWQiOiJmYWJhNDJiYS1lZWNlLTQyNjEtYmU5Ni1lMjI3M2JjYjY0ZGYiLCJhcHBfZGlzcGxheW5hbWUiOiJyZnAtZW1haWwtZmV0Y2hlciIsIm5hbWVpZCI6ImMxNjBkMDFmLTg4OTEtNDllYy04YmYxLTRiMWYyOTEwYmE5MEBkMTAwMjY2NS1jZjllLTRmMGMtYmExYS1hMGIyYjVlMjBkNjIiLCJhdWQiOiIwMDAwMDAwMy0wMDAwLTBmZjEtY2UwMC0wMDAwMDAwMDAwMDAvYnJvYWRheGlzLnNoYXJlcG9pbnQuY29tQGQxMDAyNjY1LWNmOWUtNGYwYy1iYTFhLWEwYjJiNWUyMGQ2MiIsImV4cCI6IjE3NTg2NTU3NDUifQ.CkAKDGVudHJhX2NsYWltcxIwQ01QTHk4WUdFQUFhRm1WdGEyVTFSRFp4VWtWbE5XNDRRM1JNWjJOVVFVRXFBQT09CjIKCmFjdG9yYXBwaWQSJDAwMDAwMDAzLTAwMDAtMDAwMC1jMDAwLTAwMDAwMDAwMDAwMAoKCgRzbmlkEgI2NBILCO66ocCjtr0-EAUaDDQwLjEyNi4yOS45NiosREJMYWVqelVsZUFqRG9XaGE0Ykg2UmdtS2JwZGprMkJYaUQySGxUeTZLdz0wigE4AUIQocigL1cAAKBB6W-dq0Zv00oQaGFzaGVkcHJvb2Z0b2tlbnoBMboBOWFsbHNpdGVzLnJlYWQgYWxsc2l0ZXMud3JpdGUgYWxsZmlsZXMud3JpdGUgYWxsZmlsZXMucmVhZMgBAQ.uRn6zkNTduLro5Pk39QKrA1lmlB_5h8ZTkGdOCbI9zY&ApiVersion=2.0"
       }
     ],
     "has_rfp_keywords": true
