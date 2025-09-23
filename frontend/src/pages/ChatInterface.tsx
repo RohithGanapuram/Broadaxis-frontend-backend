@@ -12,6 +12,7 @@ import StatusIndicator from '../components/StatusIndicator'
 import TokenDisplay from '../components/TokenDisplay'
 import TokenDashboard from '../components/TokenDashboard'
 
+
 // Generate unique message IDs to prevent React key conflicts
 let messageIdCounter = 0
 const generateMessageId = (): string => {
@@ -74,7 +75,16 @@ const ChatInterface: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState<string>('')
   const [isLoadingFiles, setIsLoadingFiles] = useState(false)
   const [fileCache, setFileCache] = useState<{[key: string]: {files: any[], timestamp: number}}>({})
+  const [uploadedDoc, setUploadedDoc] = useState<{
+  doc_id: string;
+  filename: string;
+  pages: number;
+  text_preview: string;
+  sessionId: string; 
+} | null>(null);
   
+
+
   // Document type input for Step 4
   const [showDocumentTypeInput, setShowDocumentTypeInput] = useState(false)
   const [documentTypeInput, setDocumentTypeInput] = useState('')
@@ -451,8 +461,34 @@ useEffect(() => {
         } else {
           console.log(`📤 Sending message without session_id - backend will create new session`)
         }
+
+        let finalQuery = inputMessage.trim();
+
+        if (uploadedDoc && finalQuery) {
+          // keep retrieval short for chat questions
+          const retrievalQuery = finalQuery.slice(0, 160);
+          const k = 4;
+          const { chunks } = await apiClient.searchUploadedDoc(
+            uploadedDoc.doc_id,
+            uploadedDoc.sessionId, 
+            retrievalQuery,
+            k
+          );
+          const contextBlock = [
+            '[BEGIN SELECTED DOC EXCERPTS]',
+            ...chunks.map((c, i) => {
+              const snippet = c.text.length > 800 ? c.text.slice(0, 800) + '…' : c.text;
+              return `--- Excerpt ${i + 1} (pages ${c.page_start}-${c.page_end}) ---\n${snippet}`;
+            }),
+            '[END SELECTED DOC EXCERPTS]',
+          ].join('\n');
+          finalQuery = `${finalQuery}\n\n${contextBlock}`;
+        }
+        // then send queryToSend instead of inputMessage
         
-        globalWebSocket.sendMessage(messageData)
+
+        globalWebSocket.sendMessage({query: finalQuery,enabled_tools: settings.enabledTools,model: settings.model,session_id: currentSessionId
+})
       } else {
         toast.error('Not connected to server. Please refresh the page.')
         setIsLoading(false)
@@ -471,39 +507,23 @@ useEffect(() => {
   }
 
   const handleFileUpload = async (files: File[]) => {
-    // Limit to 3 files total
-    const currentFileCount = uploadedFiles.length
-    const newFilesCount = files.length
-    const totalFiles = currentFileCount + newFilesCount
-    
-    if (totalFiles > 3) {
-      toast.error(`Maximum 3 files allowed. You have ${currentFileCount} files, trying to add ${newFilesCount} more.`)
-      return
-    }
-    
-    for (const file of files) {
-      try {
-        toast.loading(`Processing ${file.name}...`, { id: file.name })
-        
-        const fileInfo = await apiClient.uploadFile(file, currentSessionId || 'default')
-        setUploadedFiles(prev => [...prev, fileInfo])
-        
-        // Add upload confirmation to chat
-        const uploadMessage: ChatMessage = {
-          id: generateMessageId(),
-          type: 'assistant',
-          content: fileInfo.message || `Document '${file.name}' processed and ready for intelligent Q&A! 🧠`,
-          timestamp: new Date()
-        }
-        addMessage(uploadMessage)
-        
-        toast.success(`${file.name} ready for Q&A`, { id: file.name })
-      } catch (error) {
-        console.error('Upload error:', error)
-        toast.error(`Failed to process ${file.name}`, { id: file.name })
-      }
-    }
+  const file = files[0];
+  if (!file) return;
+  try {
+    toast.loading(`Uploading ${file.name}…`, { id: 'local-upload' });
+    const doc = await apiClient.uploadLocal(file, currentSessionId || 'default');
+    setUploadedDoc({
+   doc_id: doc.doc_id,
+   filename: doc.filename,
+   pages: doc.pages,
+   text_preview: doc.text_preview,sessionId: currentSessionId || 'default', });
+    toast.success(`${doc.filename} ready for prompts`, { id: 'local-upload' });
+  } catch (e: any) {
+    console.error(e);
+    toast.error(`Upload failed: ${e.message || e}`);
   }
+};
+
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleFileUpload,
@@ -829,6 +849,63 @@ useEffect(() => {
     return settings.enabledTools
   }
 
+  async function runPromptWithUploadedDoc(prompt: any) {
+    if (!uploadedDoc) return;
+    const retrievalQuery =
+      (prompt?.description?.slice(0, 120) ?? prompt?.name ?? 'overview');
+
+    // fetch relevant chunks to keep tokens safe
+    const k = 5; // ↓ keep inputs small
+    const { chunks } = await apiClient.searchUploadedDoc(
+      uploadedDoc.doc_id,
+      currentSessionId || 'default',
+      retrievalQuery,
+      k
+    );
+
+    // trim each excerpt to ~1200 chars to keep tokens low
+    const contextBlock = [
+      '[BEGIN SELECTED DOC EXCERPTS]',
+      ...chunks.map((c, i) => {
+        const snippet = c.text.length > 1200 ? c.text.slice(0, 1200) + '…' : c.text;
+        return `--- Excerpt ${i + 1} (pages ${c.page_start}-${c.page_end}) ---\n${snippet}`;
+      }),
+      '[END SELECTED DOC EXCERPTS]',
+    ].join('\n');
+
+
+    const promptMessage = `${prompt.description || prompt.name}\n\n${contextBlock}`;
+
+    // your existing websocket send flow
+    const userMessage = {
+      id: generateMessageId(),
+      type: 'user' as const,
+      content: promptMessage,
+      timestamp: new Date()
+    };
+    const assistantMessage = {
+      id: generateMessageId(),
+      type: 'assistant' as const,
+      content: '',
+      timestamp: new Date(),
+      isLoading: true
+    };
+    addMessage(userMessage);
+    addMessage(assistantMessage);
+
+    globalWebSocket.sendMessage({
+      query: promptMessage,
+      enabled_tools: getToolsForPrompt(prompt),
+      model: settings.model,
+      session_id: currentSessionId
+      // optional: include a hint
+      // , metadata: { uploaded_doc_id: uploadedDoc.doc_id }
+    });
+
+    setShowPromptsPanel(false);
+  }
+
+
   const handlePromptClick = async (prompt: any) => {
     console.log('Prompt clicked:', prompt)
     
@@ -846,8 +923,28 @@ useEffect(() => {
                    prompt.name === 'Step4_generate_capability_statement' ||
                    prompt.description.includes('Dynamic Document Generator') ||
                    prompt.description.includes('Generate high-quality capability statements')
-    
-    if (isIntelligentRFP) {
+    // If we have an uploaded file, offer to run the selected prompt on it
+    if (uploadedDoc) {
+      const runOnUploaded = window.confirm(
+        `Run "${prompt.name}" on uploaded file "${uploadedDoc.filename}"?\n\n` +
+        `OK = Uploaded file, Cancel = pick a SharePoint folder`
+      );
+      if (runOnUploaded) {
+   // single send via retrieval-aware helper
+        await runPromptWithUploadedDoc(prompt);
+        setSelectedPrompt(null);
+        return;
+ }
+        setSelectedPrompt(prompt);
+        await fetchSharePointFolders();   // or fetchSharePointFolders(true) if you want a fresh list
+        setShowFolderSelection(true);
+        setShowPromptsPanel(false);
+        return;
+    }
+// ...existing flow continues here (open SharePoint folder picker, etc.)
+
+
+     else if (isIntelligentRFP) {
       console.log('Intelligent RFP processing prompt detected - showing folder selection')
       setSelectedPrompt(prompt)
       await fetchSharePointFolders()
