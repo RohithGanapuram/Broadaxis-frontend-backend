@@ -13,6 +13,10 @@ from error_handler import BroadAxisError, ExternalAPIError, error_handler
 # Import the MCP interface and manager from mcp_interface.py
 from mcp_interface import mcp_interface, run_mcp_query
 
+# Global cancellation tokens for ongoing operations
+cancellation_tokens = {}
+active_tasks = {}  # Store active tasks for cancellation
+
 # Import session manager (optional for now)
 try:
     from session_manager import session_manager
@@ -99,6 +103,32 @@ async def websocket_chat(websocket: WebSocket):
 
                 # Handle different message types
                 message_type = message_data.get("type", "")
+                
+                # Handle cancellation requests
+                if message_type == "cancel":
+                    print(f"🛑 Cancellation requested for session {session_id}")
+                    
+                    # Cancel the active task for this session if it exists
+                    if session_id in active_tasks:
+                        task = active_tasks[session_id]
+                        if not task.done():
+                            print(f"🛑 Cancelling active task for session {session_id}")
+                            task.cancel()
+                        del active_tasks[session_id]
+                    
+                    # Set cancellation token for this session
+                    cancellation_tokens[session_id] = True
+                    
+                    await manager.send_personal_message(
+                        json.dumps({
+                            "type": "cancelled",
+                            "message": "Operation cancelled by user",
+                            "status": "cancelled",
+                            "timestamp": datetime.now().isoformat()
+                        }),
+                        websocket
+                    )
+                    continue
                 
                 # Handle heartbeat/ping messages
                 if message_type in ["ping", "pong", "heartbeat"]:
@@ -247,6 +277,12 @@ async def websocket_chat(websocket: WebSocket):
                         selected_model = model
                     
                     async with websocket.__gate:
+                        # Check for cancellation before starting
+                        if cancellation_tokens.get(session_id, False):
+                            print(f"🛑 Operation cancelled before starting for session {session_id}")
+                            cancellation_tokens.pop(session_id, None)  # Clear the token
+                            continue
+                        
                         # Create callback function to send progress updates
                         async def send_progress_callback(message: str, ws: WebSocket = None):
                             try:
@@ -254,11 +290,37 @@ async def websocket_chat(websocket: WebSocket):
                             except Exception as e:
                                 print(f"Error sending progress message: {e}")
                         
-                        result = await run_mcp_query(
-                            full_prompt, enabled_tools, selected_model, session_id,
-                            system_prompt=None, websocket=websocket, 
-                            send_message_callback=send_progress_callback
-                        )
+                        # Create a wrapper that checks for cancellation
+                        async def run_with_cancellation():
+                            try:
+                                return await run_mcp_query(
+                                    full_prompt, enabled_tools, selected_model, session_id,
+                                    system_prompt=None, websocket=websocket, 
+                                    send_message_callback=send_progress_callback
+                                )
+                            except asyncio.CancelledError:
+                                print(f"🛑 Operation cancelled during execution for session {session_id}")
+                                raise
+                        
+                        # Run with cancellation checking
+                        try:
+                            # Create and store the task
+                            task = asyncio.create_task(run_with_cancellation())
+                            active_tasks[session_id] = task
+                            
+                            result = await task
+                            
+                            # Remove the task from active tasks when completed
+                            if session_id in active_tasks:
+                                del active_tasks[session_id]
+                                
+                        except asyncio.CancelledError:
+                            print(f"🛑 Operation cancelled for session {session_id}")
+                            # Clear cancellation token and active task
+                            cancellation_tokens.pop(session_id, None)
+                            if session_id in active_tasks:
+                                del active_tasks[session_id]
+                            continue
                     
                     if not isinstance(result, dict) or "response" not in result:
                         raise ExternalAPIError("Invalid response from query processor")
