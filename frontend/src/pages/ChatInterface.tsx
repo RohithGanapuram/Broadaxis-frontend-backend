@@ -461,7 +461,7 @@ useEffect(() => {
         } else {
           console.log(`📤 Sending message without session_id - backend will create new session`)
         }
-
+        
         let finalQuery = inputMessage.trim();
 
         if (uploadedDoc && finalQuery) {
@@ -607,12 +607,12 @@ useEffect(() => {
   const fetchSubFolders = async (parentFolder: string, forceRefresh = false) => {
     const cacheKey = parentFolder
     const now = Date.now()
-
+    
     if (!forceRefresh && sharePointCache[cacheKey] && (now - sharePointCache[cacheKey].timestamp) < CACHE_DURATION) {
       setSubFolders(sharePointCache[cacheKey].folders)
       return sharePointCache[cacheKey].folders.length > 0
     }
-
+    
     setIsLoadingFolders(true)
     try {
       const response = await apiClient.listSharePointFiles(parentFolder)
@@ -620,13 +620,13 @@ useEffect(() => {
         const folders = response.files
           .filter((item: any) => item.type === 'folder')
           .map((item: any) => item.filename)
-
+        
         // ✅ Only cache if we actually have folders
         if (folders.length > 0) {
-          setSharePointCache(prev => ({
-            ...prev,
-            [cacheKey]: { folders, timestamp: now }
-          }))
+        setSharePointCache(prev => ({
+          ...prev,
+          [cacheKey]: { folders, timestamp: now }
+        }))
         }
         setSubFolders(folders)
         return folders.length > 0
@@ -908,6 +908,21 @@ useEffect(() => {
 
   const handlePromptClick = async (prompt: any) => {
     console.log('Prompt clicked:', prompt)
+    
+    // Check if this is the fill_missing_information prompt (preview mode)
+    const isFillMissingInfo = prompt.name.toLowerCase().includes('fill_missing_information') || 
+                             prompt.name.toLowerCase().includes('fill missing information') ||
+                             prompt.description.toLowerCase().includes('fill missing information') ||
+                             prompt.name === 'fill_missing_information'
+    
+    if (isFillMissingInfo) {
+      toast.loading('🔧 Preview Mode: This feature is still in development', { 
+        id: 'preview-mode',
+        duration: 3000 
+      })
+      setShowPromptsPanel(false)
+      return
+    }
     
     // Check if this is the intelligent RFP processing prompt
     const isIntelligentRFP = prompt.name === 'Intelligent_RFP_Processing' || 
@@ -1213,24 +1228,24 @@ useEffect(() => {
     // --- Leaf folder reached: act per prompt type ---
 
     // Intelligent RFP → run folder processing API
-    if (isIntelligentRFP) {
-      try {
+      if (isIntelligentRFP) {
+        try {
         setIsLoading(true);
         toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' });
-
-        const userMessage: ChatMessage = {
-          id: generateMessageId(),
-          type: 'user',
-          content: `Process RFP folder intelligently: ${fullPath}`,
-          timestamp: new Date()
+          
+          const userMessage: ChatMessage = {
+            id: generateMessageId(),
+            type: 'user',
+            content: `Process RFP folder intelligently: ${fullPath}`,
+            timestamp: new Date()
         };
-
-        const assistantMessage: ChatMessage = {
-          id: generateMessageId(),
-          type: 'assistant',
-          content: '',
-          timestamp: new Date(),
-          isLoading: true
+          
+          const assistantMessage: ChatMessage = {
+            id: generateMessageId(),
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isLoading: true
         };
 
         addMessage(userMessage);
@@ -1238,8 +1253,8 @@ useEffect(() => {
 
         const response = await apiClient.processRFPFolderIntelligent(fullPath, currentSessionId || 'default');
 
-        setMessages(prev => prev.map(msg =>
-          msg.id === assistantMessage.id
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessage.id 
             ? {
                 ...msg,
                 content: response.summary || response.response || 'No response received',
@@ -1256,12 +1271,12 @@ useEffect(() => {
         ));
 
         toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' });
-      } catch (error: any) {
+        } catch (error: any) {
         console.error('Intelligent RFP processing error:', error);
-        setMessages(prev => prev.map(msg =>
-          msg.isLoading
-            ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
-            : msg
+          setMessages(prev => prev.map(msg => 
+            msg.isLoading 
+              ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
+              : msg
         ));
         toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' });
       } finally {
@@ -1287,30 +1302,30 @@ useEffect(() => {
     const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${fullPath}`;
     setInputMessage(promptMessage);
 
-    setTimeout(() => {
-      if (globalWebSocket.getConnectionStatus()) {
-        const userMessage: ChatMessage = {
-          id: generateMessageId(),
-          type: 'user',
-          content: promptMessage,
-          timestamp: new Date()
+      setTimeout(() => {
+        if (globalWebSocket.getConnectionStatus()) {
+          const userMessage: ChatMessage = {
+            id: generateMessageId(),
+            type: 'user',
+            content: promptMessage,
+            timestamp: new Date()
         };
-        const assistantMessage: ChatMessage = {
-          id: generateMessageId(),
-          type: 'assistant',
-          content: '',
-          timestamp: new Date(),
-          isLoading: true
+          const assistantMessage: ChatMessage = {
+            id: generateMessageId(),
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isLoading: true
         };
         addMessage(userMessage);
         addMessage(assistantMessage);
         setIsLoading(true);
-
-        globalWebSocket.sendMessage({
-          query: promptMessage,
-          enabled_tools: getToolsForPrompt(selectedPrompt),
-          model: settings.model,
-          session_id: currentSessionId
+          
+          globalWebSocket.sendMessage({
+            query: promptMessage,
+            enabled_tools: getToolsForPrompt(selectedPrompt),
+            model: settings.model,
+            session_id: currentSessionId
         });
 
         setInputMessage('');
@@ -1386,7 +1401,7 @@ useEffect(() => {
          <div className="flex-1 overflow-y-auto">
            <div className="p-2">
              {!isSidebarCollapsed && (
-               <h3 className="text-xs font-semibold text-blue-600 mb-2 px-2">CHAT HISTORY</h3>
+             <h3 className="text-xs font-semibold text-blue-600 mb-2 px-2">CHAT HISTORY</h3>
              )}
              <div className="space-y-1">
                {chatSessions.slice().reverse().map((session) => (
@@ -1404,26 +1419,26 @@ useEffect(() => {
                        <span className="text-lg">💬</span>
                      ) : (
                        <>
-                         <div className="truncate font-medium">{session.title}</div>
-                         <div className="text-xs text-blue-400 mt-1">
-                           {session.updatedAt.toLocaleDateString()}
-                         </div>
+                     <div className="truncate font-medium">{session.title}</div>
+                     <div className="text-xs text-blue-400 mt-1">
+                       {session.updatedAt.toLocaleDateString()}
+                     </div>
                        </>
                      )}
                    </button>
                    {!isSidebarCollapsed && (
-                     <button
-                       onClick={(e) => {
-                         e.stopPropagation()
-                         if (confirm('Delete this chat?')) {
-                           deleteSession(session.id)
-                           toast.success('Chat deleted')
-                         }
-                       }}
-                       className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-xs bg-red-100 text-red-600 hover:bg-red-200 transition-all"
-                     >
-                       ×
-                     </button>
+                   <button
+                     onClick={(e) => {
+                       e.stopPropagation()
+                       if (confirm('Delete this chat?')) {
+                         deleteSession(session.id)
+                         toast.success('Chat deleted')
+                       }
+                     }}
+                     className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-xs bg-red-100 text-red-600 hover:bg-red-200 transition-all"
+                   >
+                     ×
+                   </button>
                    )}
                  </div>
                ))}
@@ -1698,19 +1713,36 @@ useEffect(() => {
                       {availablePrompts.length > 0 ? (
                         availablePrompts.map((prompt, index) => (
                           <div key={index} className="block">
-                            <button
-                              onClick={() => handlePromptClick(prompt)}
-                              className="w-full text-left p-4 rounded-xl border-2 border-blue-200/60 bg-white/60 hover:border-blue-400 hover:bg-blue-50/50 hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]"
+                          <button
+                            onClick={() => handlePromptClick(prompt)}
+                              className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-300 transform hover:scale-[1.02] ${
+                                (prompt.name.toLowerCase().includes('fill_missing_information') || 
+                                 prompt.name.toLowerCase().includes('fill missing information') ||
+                                 prompt.description.toLowerCase().includes('fill missing information') ||
+                                 prompt.name === 'fill_missing_information')
+                                  ? 'border-amber-200/60 bg-gradient-to-r from-amber-50/60 to-orange-50/60 hover:border-amber-400 hover:bg-amber-50/80 hover:shadow-md'
+                                  : 'border-blue-200/60 bg-white/60 hover:border-blue-400 hover:bg-blue-50/50 hover:shadow-md'
+                              }`}
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex-1 flex items-center space-x-3">
                                   <div className="flex items-center space-x-2">
                                     <p className="text-base font-semibold text-blue-900">{prompt.name}</p>
-                                    
-                                    {/* Add indicator for Step 3 */}
+                             
+                             {/* Add indicator for Step 3 */}
                                     {(prompt.name === 'Go_No_Go_Recommendation' || prompt.name === 'Step3_go_no_go_recommendation') && (
                                       <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                                         📊 Go/No-Go
+                                      </span>
+                                    )}
+                                    
+                                    {/* Add preview indicator for fill_missing_information */}
+                                    {(prompt.name.toLowerCase().includes('fill_missing_information') || 
+                                      prompt.name.toLowerCase().includes('fill missing information') ||
+                                      prompt.description.toLowerCase().includes('fill missing information') ||
+                                      prompt.name === 'fill_missing_information') && (
+                                      <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                                        🔧 Preview
                                       </span>
                                     )}
                                   </div>
@@ -1729,7 +1761,7 @@ useEffect(() => {
                                       <div className="font-medium text-blue-300 mb-1">{prompt.name}</div>
                                       <div className="text-gray-200 leading-relaxed">{prompt.description}</div>
                                     </div>
-                                  </button>
+                          </button>
                                 </div>
                               </div>
                             </button>
@@ -2119,13 +2151,13 @@ useEffect(() => {
                     <button
                       onClick={handleDocumentTypeCancel}
                       className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+                     >
+                       Cancel
+                     </button>
+                   </div>
+                 </div>
+               </div>
+             )}
 
             {/* Tools Button */}
             <div className="relative">
@@ -2197,18 +2229,18 @@ useEffect(() => {
                           }`}>
                             <div className="flex items-center space-x-3">
                               <div className="relative">
-                                <input
-                                  type="checkbox"
-                                  checked={settings.enabledTools.includes(tool.name)}
-                                  onChange={() => toggleTool(tool.name)}
+                              <input
+                                type="checkbox"
+                                checked={settings.enabledTools.includes(tool.name)}
+                                onChange={() => toggleTool(tool.name)}
                                   className="w-5 h-5 rounded-md border-2 border-blue-300 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 cursor-pointer"
                                 />
                                 {settings.enabledTools.includes(tool.name) && (
                                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
                                     <span className="text-white text-xs">✓</span>
-                                  </div>
-                                )}
                               </div>
+                                )}
+                            </div>
                               <div className="flex-1 flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   <p className="text-base font-semibold text-blue-900">{tool.name}</p>
@@ -2217,7 +2249,7 @@ useEffect(() => {
                                       Active
                                     </span>
                                   )}
-                                </div>
+                          </div>
                                 <div className="relative">
                                   <button
                                     type="button"

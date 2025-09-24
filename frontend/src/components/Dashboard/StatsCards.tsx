@@ -7,6 +7,7 @@ interface StatItem {
   subtitle: string;
   color: string;
   icon: string;
+  isPreview?: boolean;
 }
 
 const isToday = (iso?: string) => {
@@ -93,9 +94,10 @@ const StatsCards: React.FC = () => {
     {
       title: 'Go Recommendations',
       count: 8,
-      subtitle: 'Approved',
+      subtitle: 'Preview Mode',
       color: '#10b981',
-      icon: '✅'
+      icon: '✅',
+      isPreview: true
     },
     // {
     //   title: 'No-Go Recommendations',
@@ -127,18 +129,31 @@ const StatsCards: React.FC = () => {
         {stats.map((stat, index) => (
           <div
             key={index}
-            className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-200"
+            className={`rounded-xl shadow-lg border p-6 hover:shadow-xl transition-shadow duration-200 ${
+              stat.isPreview 
+                ? 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200' 
+                : 'bg-white border-gray-100'
+            }`}
           >
             <div className="flex items-center justify-between mb-4">
               <span className="text-2xl">{stat.icon}</span>
-              <h3 className="text-sm font-medium text-gray-600 text-right">
-                {stat.title}
-              </h3>
+              <div className="text-right">
+                <h3 className="text-sm font-medium text-gray-600">
+                  {stat.title}
+                </h3>
+                {stat.isPreview && (
+                  <div className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full mt-1">
+                    🔧 Preview
+                  </div>
+                )}
+              </div>
             </div>
             <div className="text-3xl font-bold mb-2" style={{ color: stat.color }}>
               {stat.count}
             </div>
-            <div className="text-sm text-gray-500">{stat.subtitle}</div>
+            <div className={`text-sm ${stat.isPreview ? 'text-amber-600 font-medium' : 'text-gray-500'}`}>
+              {stat.subtitle}
+            </div>
           </div>
         ))}
       </div>
