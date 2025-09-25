@@ -531,9 +531,35 @@ export const apiClient = {
       console.error('Failed to upload folder:', error)
       throw error
     }
-  }
+  },
 
-}
+  async getUploadedText(
+    docId: string,
+    sessionId: string,
+    startPage?: number,
+    endPage?: number
+  ): Promise<{ text: string }> {
+    const url = new URL(`${API_BASE_URL}/api/upload-local/${docId}/text`);
+    url.searchParams.set('session_id', sessionId);
+    if (typeof startPage === 'number') url.searchParams.set('start_page', String(startPage));
+    if (typeof endPage === 'number')   url.searchParams.set('end_page', String(endPage));
+
+    const res = await fetch(url.toString(), { method: 'GET' });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(body || `HTTP ${res.status}`);
+    }
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Unexpected response type: ${ct}. Body: ${body.slice(0, 300)}`);
+    }
+    return res.json();
+  },
+
+
+
+};
 
 // WebSocket utility
 export class ChatWebSocket {

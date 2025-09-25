@@ -326,24 +326,24 @@ const Email: React.FC = () => {
     },
     {
       id: 2,
-      email: 'sakshi.k@broadaxis.com',
+      email: 'masood@broadaxis.com',
       count: 0,
       label: 'RFP/RFI/RFQ Emails',
       subject: 'No emails fetched yet',
       bgColor: '#faf5ff',
       textColor: '#9333ea',
       iconColor: '#9333ea'
-    },
-    {
-      id: 3,
-      email: 'rohith.ganapuram@broadaxis.com',
-      count: 0,
-      label: 'RFP/RFI/RFQ Emails',
-      subject: 'No emails fetched yet',
-      bgColor: '#fff7ed',
-      textColor: '#ea580c',
-      iconColor: '#ea580c'
     }
+    // {
+    //   id: 3,
+    //   email: 'rohith.ganapuram@broadaxis.com',
+    //   count: 0,
+    //   label: 'RFP/RFI/RFQ Emails',
+    //   subject: 'No emails fetched yet',
+    //   bgColor: '#fff7ed',
+    //   textColor: '#ea580c',
+    //   iconColor: '#ea580c'
+    // }
   ];
  
   return (

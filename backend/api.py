@@ -162,64 +162,106 @@ def _docx_to_text(file_bytes: bytes) -> str:
     d = docx.Document(f)
     return "\n".join(_safe_text(p.text) for p in d.paragraphs)
 
-def _split_into_chunks(pages: List[str], max_chars: int = MAX_CHARS_PER_CHUNK) -> List[Dict]:
+def _split_into_chunks(pages: List[str], max_chars: int = 1200, overlap_chars: int = 200) -> List[Dict]:
     """
-    Turn page strings into chunk objects with page ranges.
-    Each chunk: {page_start, page_end, text}
+    Sliding window chunking: smaller chunks with tail overlap so content that
+    straddles boundaries (e.g., contact blocks, definitions) is still retrievable.
     """
     chunks: List[Dict] = []
-    cur: List[str] = []
-    cur_len = 0
-    start_idx = 0
+    buf, buf_len, start_idx = [], 0, 0
+ 
+    def flush(end_i):
+        if not buf: return
+        text = "\n".join(buf)
+        chunks.append({
+            "page_start": start_idx + 1,
+            "page_end": end_i + 1,
+            "text": text
+        })
+ 
     for i, page in enumerate(pages):
         t = _safe_text(page)
         if not t:
             continue
-        # flush if adding this page would exceed max
-        if cur and cur_len + len(t) + 1 > max_chars:
-            chunks.append({
-                "page_start": start_idx + 1,
-                "page_end": start_idx + len(cur),
-                "text": "\n".join(cur)
-            })
-            cur, cur_len = [], 0
-            start_idx = i
-        if not cur:
-            start_idx = i
-        cur.append(t)
-        cur_len += len(t) + 1
-    if cur:
-        chunks.append({
-            "page_start": start_idx + 1,
-            "page_end": start_idx + len(cur),
-            "text": "\n".join(cur)
-        })
+        if buf and buf_len + len(t) + 1 > max_chars:
+            flush(i - 1)
+            # keep an overlapping tail from previous chunk
+            if chunks:
+                tail = chunks[-1]["text"][-overlap_chars:]
+                buf = [tail, t] if tail else [t]
+                buf_len = len("\n".join(buf))
+                start_idx = i - 1
+            else:
+                buf, buf_len, start_idx = [t], len(t), i
+        else:
+            if not buf:
+                start_idx = i
+            buf.append(t)
+            buf_len += len(t) + 1
+ 
+    flush(len(pages) - 1)
     return chunks
-
+ 
+ 
 _word = re.compile(r"[A-Za-z0-9_]+", re.UNICODE)
 def _tokenize(s: str) -> List[str]:
     return [w.lower() for w in _word.findall(s or "")]
-
+ 
+import math, re
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+PHONE = re.compile(r"\b(?:\+?\d{1,2}\s*)?(?:\(?\d{3}\)?[\s.-]*)?\d{3}[\s.-]?\d{4}\b")
+ 
 def _score_chunks(query: str, chunks: List[Dict]) -> List[Tuple[float, Dict]]:
-    """
-    Light scoring: term overlap + small phrase boost.
-    Swap later for embeddings/BM25 without changing the API.
-    """
     q_tokens = _tokenize(query)
     if not q_tokens:
         return [(0.0, c) for c in chunks]
-    qset = set(q_tokens)
-    phrase = " ".join(q_tokens)
-
-    scored: List[Tuple[float, Dict]] = []
+ 
+    # corpus stats
+    N = len(chunks)
+    chunk_tokens = []
+    df = {}
     for c in chunks:
-        t = c["text"]
-        toks = _tokenize(t)
-        overlap = sum(1 for tok in toks if tok in qset)
-        phrase_boost = 2 if phrase and phrase in t.lower() else 0
-        scored.append((float(overlap + phrase_boost), c))
+        toks = _tokenize(c["text"])
+        chunk_tokens.append(toks)
+        seen = set()
+        for t in toks:
+            if t not in seen:
+                df[t] = df.get(t, 0) + 1
+                seen.add(t)
+ 
+    idf = {t: math.log((N - df_t + 0.5) / (df_t + 0.5) + 1.0) for t, df_t in df.items()}
+    k1, b = 1.5, 0.75
+    qset = set(q_tokens)
+    phrase = " ".join(q_tokens).strip()
+ 
+    scored = []
+    avgdl = max(sum(len(ct) for ct in chunk_tokens) / N, 1)
+    for i, c in enumerate(chunks):
+        toks = chunk_tokens[i]
+        dl = max(len(toks), 1)
+        tf = {}
+        for t in toks:
+            if t in qset:
+                tf[t] = tf.get(t, 0) + 1
+ 
+        score = 0.0
+        for t, f in tf.items():
+            score += idf.get(t, 0.0) * (f * (k1 + 1)) / (f + k1 * (1 - b + b * (dl / avgdl)))
+ 
+        if phrase and phrase in c["text"].lower():
+            score += 1.5  # small phrase bonus
+ 
+        if c["page_start"] <= 2:
+            score += 0.8  # front-matter bias
+        if EMAIL.search(c["text"]) or PHONE.search(c["text"]):
+            score += 0.8  # likely contact/info blocks
+ 
+        scored.append((float(score), c))
+ 
     scored.sort(key=lambda x: (-x[0], x[1]["page_start"]))
     return scored
+ 
+ 
 
 # Global exception handlers
 @app.exception_handler(BroadAxisError)

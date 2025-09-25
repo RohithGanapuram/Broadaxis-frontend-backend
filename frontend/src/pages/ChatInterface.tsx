@@ -34,7 +34,6 @@ const ChatInterface: React.FC = () => {
   const [textareaRef, setTextareaRef] = useState<HTMLTextAreaElement | null>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isStopping, setIsStopping] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<FileInfo[]>([])
   const { tools: availableTools, prompts: availablePrompts, isConnected, messages, setMessages, addMessage, chatSessions, currentSessionId, createNewSession, switchToSession, deleteSession, updateSessionId } = useAppContext()
   const [settings, setSettings] = useState<AppSettings>({
@@ -169,24 +168,6 @@ useEffect(() => {
 
   const handleWebSocketMessage = (data: any) => {
     console.log(`🔍 Received WebSocket message:`, data)
-    
-    // Handle cancellation response
-    if (data.type === 'cancelled') {
-      console.log('🛑 Operation cancelled by backend')
-      setIsLoading(false)
-      setIsStopping(false)
-      setMessages(prev => prev.map(msg => 
-        msg.isLoading ? { ...msg, content: '❌ Operation cancelled by user', isLoading: false } : msg
-      ))
-      setActiveProgress([])
-      setStatusUpdates([])
-      setCurrentToolStatus('')
-      setToolExecutionDetails(null)
-      toast.success('🛑 Operation cancelled successfully', {
-        duration: 3000
-      })
-      return
-    }
     
     if (data.type === 'response') {
       // Always update session ID if provided in response (for Redis testing)
@@ -427,39 +408,6 @@ useEffect(() => {
     })
   }
 
-  const handleStopOperation = () => {
-    if (isStopping) return // Prevent multiple clicks
-    
-    setIsStopping(true)
-    
-    // Send cancellation message to backend
-    if (globalWebSocket.getConnectionStatus()) {
-      globalWebSocket.sendMessage({
-        type: 'cancel',
-        message: 'User requested operation cancellation',
-        session_id: currentSessionId
-      })
-    }
-    
-    // Stop the current operation
-    setIsLoading(false)
-    setIsStopping(false)
-    
-    // Clear any loading messages
-    setMessages(prev => prev.map(msg => 
-      msg.isLoading ? { ...msg, content: '❌ Operation cancelled by user', isLoading: false } : msg
-    ))
-    
-    // Clear progress and status updates
-    setActiveProgress([])
-    setStatusUpdates([])
-    setCurrentToolStatus('')
-    setToolExecutionDetails(null)
-    
-    toast.success('🛑 Operation stopped successfully', {
-      duration: 3000
-    })
-  }
 
   // Auto-expand textarea function
   const autoExpandTextarea = (textarea: HTMLTextAreaElement) => {
@@ -513,7 +461,7 @@ useEffect(() => {
         } else {
           console.log(`📤 Sending message without session_id - backend will create new session`)
         }
-        
+
         let finalQuery = inputMessage.trim();
 
         if (uploadedDoc && finalQuery) {
@@ -539,8 +487,8 @@ useEffect(() => {
         // then send queryToSend instead of inputMessage
         
 
-        globalWebSocket.sendMessage({query: finalQuery,enabled_tools: settings.enabledTools,model: settings.model,session_id: currentSessionId
-})
+        const toolsForThisMessage = uploadedDoc ? [] : settings.enabledTools;
+        globalWebSocket.sendMessage({ query: finalQuery, enabled_tools: toolsForThisMessage, model: settings.model, session_id: currentSessionId })
       } else {
         toast.error('Not connected to server. Please refresh the page.')
         setIsLoading(false)
@@ -659,12 +607,12 @@ useEffect(() => {
   const fetchSubFolders = async (parentFolder: string, forceRefresh = false) => {
     const cacheKey = parentFolder
     const now = Date.now()
-    
+
     if (!forceRefresh && sharePointCache[cacheKey] && (now - sharePointCache[cacheKey].timestamp) < CACHE_DURATION) {
       setSubFolders(sharePointCache[cacheKey].folders)
       return sharePointCache[cacheKey].folders.length > 0
     }
-    
+
     setIsLoadingFolders(true)
     try {
       const response = await apiClient.listSharePointFiles(parentFolder)
@@ -672,13 +620,13 @@ useEffect(() => {
         const folders = response.files
           .filter((item: any) => item.type === 'folder')
           .map((item: any) => item.filename)
-        
+
         // ✅ Only cache if we actually have folders
         if (folders.length > 0) {
-        setSharePointCache(prev => ({
-          ...prev,
-          [cacheKey]: { folders, timestamp: now }
-        }))
+          setSharePointCache(prev => ({
+            ...prev,
+            [cacheKey]: { folders, timestamp: now }
+          }))
         }
         setSubFolders(folders)
         return folders.length > 0
@@ -890,11 +838,10 @@ useEffect(() => {
     }
     
     if (isStep4) {
-      // For Step 4 (Dynamic Content Generator), enable knowledge search and Word document generation only
-      // PDF generation is disabled to ensure users get editable Word documents instead of static PDFs
-      const allowedTools = ['Broadaxis_knowledge_search', 'generate_word_document']
+      // For Step 4, enable knowledge search and document generation tools
+      const allowedTools = ['Broadaxis_knowledge_search', 'generate_pdf_document', 'generate_word_document']
       const filteredTools = settings.enabledTools.filter(tool => allowedTools.includes(tool))
-      console.log('Step 4 - Enabled knowledge search and Word document generation (PDF disabled for editable format):', filteredTools)
+      console.log('Step 4 - Enabled knowledge search and document generation tools:', filteredTools)
       return filteredTools
     }
     
@@ -911,10 +858,28 @@ useEffect(() => {
     const k = 5; // ↓ keep inputs small
     const { chunks } = await apiClient.searchUploadedDoc(
       uploadedDoc.doc_id,
-      currentSessionId || 'default',
+      uploadedDoc.sessionId,
       retrievalQuery,
       k
     );
+
+    let excerpts = chunks || [];
+  if (!excerpts.length) {
+    // optional: add a client helper in api.ts:
+    // getUploadedText(docId, sessionId, startPage=1, endPage=3)
+    try {
+      const { text } = await apiClient.getUploadedText(
+        uploadedDoc.doc_id,
+        uploadedDoc.sessionId,
+        1, 3
+      );
+      if (text?.trim()) {
+        excerpts = [{ page_start: 1, page_end: 3, text }];
+      }
+    } catch (_) {
+      // swallow; we’ll proceed with no excerpts if backend is unavailable
+    }
+  }
 
     // trim each excerpt to ~1200 chars to keep tokens low
     const contextBlock = [
@@ -962,39 +927,14 @@ useEffect(() => {
   const handlePromptClick = async (prompt: any) => {
     console.log('Prompt clicked:', prompt)
     
-    // Check if this is the fill_missing_information prompt (preview mode)
-    const isFillMissingInfo = prompt.name.toLowerCase().includes('fill_missing_information') || 
-                             prompt.name.toLowerCase().includes('fill missing information') ||
-                             prompt.description.toLowerCase().includes('fill missing information') ||
-                             prompt.name === 'fill_missing_information'
-    
-    if (isFillMissingInfo) {
-      toast.loading('🔧 Preview Mode: This feature is still in development', { 
-        id: 'preview-mode',
-        duration: 3000 
-      })
-      setShowPromptsPanel(false)
-      return
-    }
-    
     // Check if this is the intelligent RFP processing prompt
     const isIntelligentRFP = prompt.name === 'Intelligent_RFP_Processing' || 
                             prompt.description.includes('intelligent RFP processing')
     
-    // Check if this is the Step1 prompt template (Go/No-Go Analysis - needs file selection)
-    const isStep1 = prompt.name === 'Go_No_Go_Analysis' || 
-                   prompt.name === 'Step1_go_no_go_analysis' || 
-                   prompt.description.includes('identify and categorize rfp')
-    
-    // Check if this is the Step2 prompt template (needs file selection)
+    // Check if this is the Step2 prompt template (needs folder selection)
     const isStep2 = prompt.name === 'Summarize_Document' || 
                    prompt.name === 'Step2_summarize_documents' || 
                    prompt.description.includes('Generate a clear, high-value summary')
-    
-    // Check if this is the Step3 prompt template (Go/No-Go Recommendation - no file/folder selection needed)
-    const isStep3 = prompt.name === 'Go_No_Go_Recommendation' || 
-                   prompt.name === 'Step3_go_no_go_recommendation' || 
-                   prompt.description.includes('Generate an exec-style Go/No-Go matrix')
     
     const isStep4 = prompt.name === 'Dynamic_Content_Generator' || 
                    prompt.name === 'Dynamic Content Generator' || 
@@ -1028,21 +968,11 @@ useEffect(() => {
       await fetchSharePointFolders()
       setShowFolderSelection(true)
       setShowPromptsPanel(false)
-    } else if (isStep1 || isStep2) {
-      console.log(`${isStep1 ? 'Step1' : 'Step2'} prompt detected - showing file selection`)
+    } else if (isStep2) {
+      console.log('Step2 prompt detected - showing folder selection')
       setSelectedPrompt(prompt)
-      // For Step 1 and Step 2, we need to show folder selection first to navigate to files
-      // But we'll prevent folder selection and show an error message
       await fetchSharePointFolders()
       setShowFolderSelection(true)
-      setShowPromptsPanel(false)
-    } else if (isStep3) {
-      console.log('Step 3 (Go/No-Go Recommendation) prompt detected - placing content in input bar for user to send')
-      // Use the prompt content from the MCP server (full template)
-      const promptMessage = prompt.content || prompt.description || prompt.name || 'Please execute this prompt template.'
-      
-      // Just place the content in the input bar - don't send automatically
-      setInputMessage(promptMessage)
       setShowPromptsPanel(false)
     } else if (isStep4) {
       console.log('Step 4 prompt detected - showing document type input')
@@ -1103,31 +1033,6 @@ useEffect(() => {
       const isStep2 = selectedPrompt.name === 'Summarize_Document' || 
                      selectedPrompt.name === 'Step2_summarize_documents' || 
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
-      
-      // Check if this is Step 1 (Go/No-Go Analysis - needs file selection)
-      const isStep1 = selectedPrompt.name === 'Go_No_Go_Analysis' || 
-                     selectedPrompt.name === 'Step1_go_no_go_analysis' || 
-                     selectedPrompt.description.includes('identify and categorize rfp')
-      
-      // For Step 1 and Step 2, check if this folder has subfolders
-      if (isStep1 || isStep2) {
-        const hasSubFolders = await fetchSubFolders(folderName)
-        
-        if (hasSubFolders) {
-          // Show subfolder selection to navigate deeper
-          setSelectedParentFolder(folderName)
-          setShowSubFolderSelection(true)
-          setShowFolderSelection(false)
-          return
-        } else {
-          // No subfolders, show file selection for this folder
-          setSelectedFolder(folderName)
-          await fetchSharePointFiles(folderName)
-          setShowFileSelection(true)
-          setShowFolderSelection(false)
-          return
-        }
-      }
       
       if (isIntelligentRFP) {
         // For intelligent RFP processing, first check if this folder has subfolders
@@ -1210,7 +1115,25 @@ useEffect(() => {
             setSelectedPrompt(null)
           }
         }
+        return
+      } else if (isStep2) {
+        // For Step 2, first check if this folder has subfolders
+        const hasSubFolders = await fetchSubFolders(folderName)
+        
+        if (hasSubFolders) {
+          // Show subfolder selection first
+          setSelectedParentFolder(folderName)
+          setShowSubFolderSelection(true)
+          setShowFolderSelection(false)
           return
+        } else {
+          // No subfolders, show file selection directly
+          setSelectedFolder(folderName)
+          await fetchSharePointFiles(folderName)
+          setShowFileSelection(true)
+          setShowFolderSelection(false)
+          return
+        }
       }
       
       // For other prompts, check if this folder has subfolders
@@ -1266,7 +1189,7 @@ useEffect(() => {
     // --- Prompt kind detection (keep your existing names/phrases) ---
     const name = (selectedPrompt.name || '').toLowerCase();
     const desc = (selectedPrompt.description || '').toLowerCase();
-    
+
     const isIntelligentRFP =
       name.includes('intelligent_rfp_processing') ||
       desc.includes('intelligent rfp processing');
@@ -1312,24 +1235,24 @@ useEffect(() => {
     // --- Leaf folder reached: act per prompt type ---
 
     // Intelligent RFP → run folder processing API
-      if (isIntelligentRFP) {
-        try {
+    if (isIntelligentRFP) {
+      try {
         setIsLoading(true);
         toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' });
-          
-          const userMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'user',
-            content: `Process RFP folder intelligently: ${fullPath}`,
-            timestamp: new Date()
+
+        const userMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'user',
+          content: `Process RFP folder intelligently: ${fullPath}`,
+          timestamp: new Date()
         };
-          
-          const assistantMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            isLoading: true
+
+        const assistantMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          isLoading: true
         };
 
         addMessage(userMessage);
@@ -1337,8 +1260,8 @@ useEffect(() => {
 
         const response = await apiClient.processRFPFolderIntelligent(fullPath, currentSessionId || 'default');
 
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantMessage.id
             ? {
                 ...msg,
                 content: response.summary || response.response || 'No response received',
@@ -1355,12 +1278,12 @@ useEffect(() => {
         ));
 
         toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' });
-        } catch (error: any) {
+      } catch (error: any) {
         console.error('Intelligent RFP processing error:', error);
-          setMessages(prev => prev.map(msg => 
-            msg.isLoading 
-              ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
-              : msg
+        setMessages(prev => prev.map(msg =>
+          msg.isLoading
+            ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
+            : msg
         ));
         toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' });
       } finally {
@@ -1386,30 +1309,30 @@ useEffect(() => {
     const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${fullPath}`;
     setInputMessage(promptMessage);
 
-      setTimeout(() => {
-        if (globalWebSocket.getConnectionStatus()) {
-          const userMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'user',
-            content: promptMessage,
-            timestamp: new Date()
+    setTimeout(() => {
+      if (globalWebSocket.getConnectionStatus()) {
+        const userMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'user',
+          content: promptMessage,
+          timestamp: new Date()
         };
-          const assistantMessage: ChatMessage = {
-            id: generateMessageId(),
-            type: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            isLoading: true
+        const assistantMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          isLoading: true
         };
         addMessage(userMessage);
         addMessage(assistantMessage);
         setIsLoading(true);
-          
-          globalWebSocket.sendMessage({
-            query: promptMessage,
-            enabled_tools: getToolsForPrompt(selectedPrompt),
-            model: settings.model,
-            session_id: currentSessionId
+
+        globalWebSocket.sendMessage({
+          query: promptMessage,
+          enabled_tools: getToolsForPrompt(selectedPrompt),
+          model: settings.model,
+          session_id: currentSessionId
         });
 
         setInputMessage('');
@@ -1485,7 +1408,7 @@ useEffect(() => {
          <div className="flex-1 overflow-y-auto">
            <div className="p-2">
              {!isSidebarCollapsed && (
-             <h3 className="text-xs font-semibold text-blue-600 mb-2 px-2">CHAT HISTORY</h3>
+               <h3 className="text-xs font-semibold text-blue-600 mb-2 px-2">CHAT HISTORY</h3>
              )}
              <div className="space-y-1">
                {chatSessions.slice().reverse().map((session) => (
@@ -1503,26 +1426,26 @@ useEffect(() => {
                        <span className="text-lg">💬</span>
                      ) : (
                        <>
-                     <div className="truncate font-medium">{session.title}</div>
-                     <div className="text-xs text-blue-400 mt-1">
-                       {session.updatedAt.toLocaleDateString()}
-                     </div>
+                         <div className="truncate font-medium">{session.title}</div>
+                         <div className="text-xs text-blue-400 mt-1">
+                           {session.updatedAt.toLocaleDateString()}
+                         </div>
                        </>
                      )}
                    </button>
                    {!isSidebarCollapsed && (
-                   <button
-                     onClick={(e) => {
-                       e.stopPropagation()
-                       if (confirm('Delete this chat?')) {
-                         deleteSession(session.id)
-                         toast.success('Chat deleted')
-                       }
-                     }}
-                     className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-xs bg-red-100 text-red-600 hover:bg-red-200 transition-all"
-                   >
-                     ×
-                   </button>
+                     <button
+                       onClick={(e) => {
+                         e.stopPropagation()
+                         if (confirm('Delete this chat?')) {
+                           deleteSession(session.id)
+                           toast.success('Chat deleted')
+                         }
+                       }}
+                       className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-xs bg-red-100 text-red-600 hover:bg-red-200 transition-all"
+                     >
+                       ×
+                     </button>
                    )}
                  </div>
                ))}
@@ -1797,36 +1720,19 @@ useEffect(() => {
                       {availablePrompts.length > 0 ? (
                         availablePrompts.map((prompt, index) => (
                           <div key={index} className="block">
-                          <button
-                            onClick={() => handlePromptClick(prompt)}
-                              className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-300 transform hover:scale-[1.02] ${
-                                (prompt.name.toLowerCase().includes('fill_missing_information') || 
-                                 prompt.name.toLowerCase().includes('fill missing information') ||
-                                 prompt.description.toLowerCase().includes('fill missing information') ||
-                                 prompt.name === 'fill_missing_information')
-                                  ? 'border-amber-200/60 bg-gradient-to-r from-amber-50/60 to-orange-50/60 hover:border-amber-400 hover:bg-amber-50/80 hover:shadow-md'
-                                  : 'border-blue-200/60 bg-white/60 hover:border-blue-400 hover:bg-blue-50/50 hover:shadow-md'
-                              }`}
+                            <button
+                              onClick={() => handlePromptClick(prompt)}
+                              className="w-full text-left p-4 rounded-xl border-2 border-blue-200/60 bg-white/60 hover:border-blue-400 hover:bg-blue-50/50 hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]"
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex-1 flex items-center space-x-3">
                                   <div className="flex items-center space-x-2">
                                     <p className="text-base font-semibold text-blue-900">{prompt.name}</p>
-                             
-                             {/* Add indicator for Step 3 */}
+                                    
+                                    {/* Add indicator for Step 3 */}
                                     {(prompt.name === 'Go_No_Go_Recommendation' || prompt.name === 'Step3_go_no_go_recommendation') && (
                                       <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                                         📊 Go/No-Go
-                                      </span>
-                                    )}
-                                    
-                                    {/* Add preview indicator for fill_missing_information */}
-                                    {(prompt.name.toLowerCase().includes('fill_missing_information') || 
-                                      prompt.name.toLowerCase().includes('fill missing information') ||
-                                      prompt.description.toLowerCase().includes('fill missing information') ||
-                                      prompt.name === 'fill_missing_information') && (
-                                      <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                                        🔧 Preview
                                       </span>
                                     )}
                                   </div>
@@ -1845,7 +1751,7 @@ useEffect(() => {
                                       <div className="font-medium text-blue-300 mb-1">{prompt.name}</div>
                                       <div className="text-gray-200 leading-relaxed">{prompt.description}</div>
                                     </div>
-                          </button>
+                                  </button>
                                 </div>
                               </div>
                             </button>
@@ -1902,17 +1808,15 @@ useEffect(() => {
                      <div className="p-4 border-b border-gray-100">
                        <p className="text-sm text-gray-600">
                          Choose the SharePoint folder you want to 
-                         {selectedPrompt && (selectedPrompt.name === 'Go_No_Go_Analysis' || 
-                          selectedPrompt.name === 'Step1_go_no_go_analysis' || 
-                          selectedPrompt.description.includes('identify and categorize rfp'))
+                         {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                          selectedPrompt.name === 'Step-1: Document Identification Assistant')
                            ? ' categorize primary RFP documents from:'
                            : ' analyze for RFP/RFI/RFQ documents:'}
                        </p>
                        
                        {/* Show special message for Step 1 */}
-                       {selectedPrompt && (selectedPrompt.name === 'Go_No_Go_Analysis' || 
-                         selectedPrompt.name === 'Step1_go_no_go_analysis' || 
-                         selectedPrompt.description.includes('identify and categorize rfp')) && (
+                       {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                         selectedPrompt.name === 'Step-1: Document Identification Assistant') && (
                          <div className="bg-green-50 border border-green-200 rounded-lg p-2 mt-2">
                            <div className="flex items-start space-x-2">
                              <span className="text-green-600 text-sm">ℹ️</span>
@@ -2071,9 +1975,8 @@ useEffect(() => {
                   <div className="bg-white/95 backdrop-blur-md border border-blue-100/50 rounded-xl shadow-xl p-6 max-w-2xl w-full mx-4">
                     <div className="flex items-center justify-between mb-4">
                                              <h3 className="font-bold text-blue-800 text-lg">
-                         {selectedPrompt && (selectedPrompt.name === 'Go_No_Go_Analysis' || 
-                          selectedPrompt.name === 'Step1_go_no_go_analysis' || 
-                          selectedPrompt.description.includes('identify and categorize rfp'))
+                         {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                          selectedPrompt.name === 'Step-1: Document Identification Assistant')
                            ? '📄 Select Document to Categorize' 
                            : '📄 Select Document to Summarize'}
                        </h3>
@@ -2102,9 +2005,8 @@ useEffect(() => {
                    
                                                             <p className="text-sm text-blue-600 mb-4">
                        Choose a document from <span className="font-medium">{selectedFolder}</span> to 
-                       {selectedPrompt && (selectedPrompt.name === 'Go_No_Go_Analysis' || 
-                        selectedPrompt.name === 'Step1_go_no_go_analysis' || 
-                        selectedPrompt.description.includes('identify and categorize rfp'))
+                       {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                        selectedPrompt.name === 'Step-1: Document Identification Assistant')
                          ? ' categorize as primary RFP document or not:'
                          : ' generate an executive summary:'}
                      </p>
@@ -2133,9 +2035,8 @@ useEffect(() => {
                                </div>
                              </div>
                                                            <div className="text-blue-600 text-sm">
-                                {selectedPrompt && (selectedPrompt.name === 'Go_No_Go_Analysis' || 
-                                 selectedPrompt.name === 'Step1_go_no_go_analysis' || 
-                                 selectedPrompt.description.includes('identify and categorize rfp'))
+                                {selectedPrompt && (selectedPrompt.name === 'Step1_Identifying_documents' || 
+                                 selectedPrompt.name === 'Step-1: Document Identification Assistant')
                                   ? 'Click to categorize →'
                                   : 'Click to summarize →'}
                               </div>
@@ -2240,13 +2141,13 @@ useEffect(() => {
                     <button
                       onClick={handleDocumentTypeCancel}
                       className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                     >
-                       Cancel
-                     </button>
-                   </div>
-                 </div>
-               </div>
-             )}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tools Button */}
             <div className="relative">
@@ -2318,18 +2219,18 @@ useEffect(() => {
                           }`}>
                             <div className="flex items-center space-x-3">
                               <div className="relative">
-                              <input
-                                type="checkbox"
-                                checked={settings.enabledTools.includes(tool.name)}
-                                onChange={() => toggleTool(tool.name)}
+                                <input
+                                  type="checkbox"
+                                  checked={settings.enabledTools.includes(tool.name)}
+                                  onChange={() => toggleTool(tool.name)}
                                   className="w-5 h-5 rounded-md border-2 border-blue-300 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 cursor-pointer"
                                 />
                                 {settings.enabledTools.includes(tool.name) && (
                                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
                                     <span className="text-white text-xs">✓</span>
-                              </div>
+                                  </div>
                                 )}
-                            </div>
+                              </div>
                               <div className="flex-1 flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   <p className="text-base font-semibold text-blue-900">{tool.name}</p>
@@ -2338,7 +2239,7 @@ useEffect(() => {
                                       Active
                                     </span>
                                   )}
-                          </div>
+                                </div>
                                 <div className="relative">
                                   <button
                                     type="button"
@@ -2381,29 +2282,28 @@ useEffect(() => {
               style={{ height: 'auto' }}
             />
 
-                         {/* Professional Stop Button - Show when loading */}
+                         {/* Stop Button - Show when loading */}
              {isLoading && (
                <button
-                 onClick={handleStopOperation}
-                 disabled={isStopping}
-                 className={`px-6 py-4 rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium flex items-center space-x-2 ${
-                   isStopping 
-                     ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white cursor-not-allowed' 
-                     : 'bg-gradient-to-r from-red-400 to-red-500 text-white hover:from-red-500 hover:to-red-600'
-                 }`}
-                 title={isStopping ? "Stopping operation..." : "Stop current operation"}
+                 onClick={() => {
+                   // Stop the current operation
+                   setIsLoading(false)
+                   // Clear any loading messages
+                   setMessages(prev => prev.map(msg => 
+                     msg.isLoading ? { ...msg, content: 'Operation cancelled by user', isLoading: false } : msg
+                   ))
+                   // Clear progress and status updates
+                   setActiveProgress([])
+                   setStatusUpdates([])
+                   setCurrentToolStatus('')
+                   setToolExecutionDetails(null)
+                   // Rate limiting status removed
+                   toast.success('Operation stopped')
+                 }}
+                 className="px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl hover:from-red-700 hover:to-red-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-medium"
+                 title="Stop current operation"
                >
-                 {isStopping ? (
-                   <>
-                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                     <span>Stopping...</span>
-                   </>
-                 ) : (
-                   <>
-                     <span>🛑</span>
-                     <span>Stop</span>
-                   </>
-                 )}
+                 ⏹️
                </button>
              )}
 
