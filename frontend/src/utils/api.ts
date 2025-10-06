@@ -298,6 +298,16 @@ export const apiClient = {
     }
   },
 
+  async deleteSharePointFile(filePath: string): Promise<any> {
+    try {
+      const response = await api.delete(`/api/files/${encodePath(filePath)}`, { timeout: 30000 })
+      return response.data
+    } catch (error) {
+      console.error('Failed to delete SharePoint file:', error)
+      throw error
+    }
+  },
+
   // Get SharePoint folder counts for dashboard
   async getSharePointFolderCounts(): Promise<{ rfp: number; rfi: number; rfq: number }> {
     try {

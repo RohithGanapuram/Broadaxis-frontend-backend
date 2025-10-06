@@ -24,6 +24,8 @@ const SharedFolder: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState<'RFP' | 'RFI' | 'RFQ' | ''>('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [fileToDelete, setFileToDelete] = useState<SharedFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { currentUser } = useAuth()
   const { sharePointCache, setSharePointCache } = useAppContext()
@@ -226,6 +228,35 @@ const SharedFolder: React.FC = () => {
     }
   }
 
+  const handleDeleteClick = (file: SharedFile) => {
+    setFileToDelete(file)
+    setShowDeleteModal(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!fileToDelete) return
+
+    try {
+      await apiClient.deleteSharePointFile(fileToDelete.path)
+      toast.success(`Successfully deleted ${fileToDelete.type === 'folder' ? 'folder' : 'file'}: ${fileToDelete.filename}`)
+      
+      // Clear cache to force refresh
+      setSharePointCache({})
+      loadFiles(currentPath, true)
+      
+      setShowDeleteModal(false)
+      setFileToDelete(null)
+    } catch (error) {
+      console.error('Delete failed:', error)
+      toast.error(`Failed to delete ${fileToDelete.type === 'folder' ? 'folder' : 'file'}. Please try again.`)
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false)
+    setFileToDelete(null)
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -407,36 +438,49 @@ const SharedFolder: React.FC = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  {file.type !== 'folder' && (
-                    <div className="flex gap-2 pt-2 border-t border-gray-100">
-                      {file.web_url && (
-                        <a
-                          href={file.web_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 text-center bg-green-50 text-green-600 hover:bg-green-100 px-3 py-2 rounded text-xs font-medium transition-colors"
-                          title="Open in SharePoint"
-                        >
-                          🌐 SharePoint
-                        </a>
-                      )}
-                      {file.download_url && (
-                        <a
-                          href={file.download_url}
-                          download
-                          className="flex-1 text-center bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded text-xs font-medium transition-colors"
-                          title="Download file"
-                        >
-                          ⬇️ Download
-                        </a>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex gap-2 pt-2 border-t border-gray-100">
+                    {file.type !== 'folder' && (
+                      <>
+                        {file.web_url && (
+                          <a
+                            href={file.web_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 text-center bg-green-50 text-green-600 hover:bg-green-100 px-3 py-2 rounded text-xs font-medium transition-colors"
+                            title="Open in SharePoint"
+                          >
+                            🌐 SharePoint
+                          </a>
+                        )}
+                        {file.download_url && (
+                          <a
+                            href={file.download_url}
+                            download
+                            className="flex-1 text-center bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded text-xs font-medium transition-colors"
+                            title="Download file"
+                          >
+                            ⬇️ Download
+                          </a>
+                        )}
+                      </>
+                    )}
+                    <button
+                      onClick={() => handleDeleteClick(file)}
+                      className={`flex-1 text-center px-3 py-2 rounded text-xs font-medium transition-colors ${
+                        file.type === 'folder' 
+                          ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                          : 'bg-red-50 text-red-600 hover:bg-red-100'
+                      }`}
+                      title={file.type === 'folder' ? 'Delete folder' : 'Delete file'}
+                    >
+                      🗑️ Delete {file.type === 'folder' ? 'Folder' : 'File'}
+                    </button>
+                  </div>
 
-                  {/* Folder Click Hint */}
+                  {/* Folder Click Hint - Only show if no delete button is present */}
                   {file.type === 'folder' && (
                     <div className="text-xs text-blue-600 text-center pt-2 border-t border-blue-100">
-                      📂 Click to open
+                      📂 Click to open folder
                     </div>
                   )}
                 </div>
@@ -521,6 +565,43 @@ const SharedFolder: React.FC = () => {
                      The entire folder structure will be uploaded to the corresponding SharePoint directory (RFP, RFI, or RFQ) and will be available for processing in the chat interface.
                    </p>
                  </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && fileToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="text-red-500 text-2xl mr-3">⚠️</div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Delete {fileToDelete.type === 'folder' ? 'Folder' : 'File'}
+              </h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{fileToDelete.filename}</strong>?
+              {fileToDelete.type === 'folder' && (
+                <span className="block mt-2 text-red-600 font-medium">
+                  ⚠️ This will delete the entire folder and all its contents!
+                </span>
+              )}
+              <span className="block mt-2">This action cannot be undone.</span>
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleDeleteCancel}
+                className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors"
+              >
+                Delete {fileToDelete.type === 'folder' ? 'Folder' : 'File'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

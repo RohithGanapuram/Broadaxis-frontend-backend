@@ -471,7 +471,7 @@ class SharePointManager:
         return self.get_folder_contents_by_path(path)
 
     def delete_file(self, path: str) -> dict:
-        """Delete a file from SharePoint"""
+        """Delete a file or folder from SharePoint"""
         try:
             access_token = self.get_graph_access_token()
             if not access_token:
@@ -499,7 +499,7 @@ class SharePointManager:
             delete_response = requests.delete(delete_url, headers=headers)
             
             if delete_response.status_code == 204:
-                return {"status": "success", "message": "File deleted successfully"}
+                return {"status": "success", "message": "Item deleted successfully"}
             else:
                 return {"status": "error", "message": f"Delete failed: {delete_response.status_code}"}
                 
@@ -817,4 +817,20 @@ async def download_file(filename: str):
         )
     else:
         raise HTTPException(status_code=404, detail="File not found")
+
+@sharepoint_router.delete("/files/{file_path:path}")
+async def delete_sharepoint_file(file_path: str):
+    """Delete a file or folder from SharePoint"""
+    try:
+        manager = SharePointManager()
+        result = manager.delete_file(file_path)
+        
+        if result["status"] == "success":
+            return {"status": "success", "message": f"Successfully deleted: {file_path}"}
+        else:
+            raise HTTPException(status_code=400, detail=result["message"])
+            
+    except Exception as e:
+        error_handler.log_error(e, {'operation': 'delete_sharepoint_file', 'file_path': file_path})
+        raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
 

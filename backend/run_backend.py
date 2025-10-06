@@ -5,6 +5,10 @@ Startup script for the FastAPI backend server
 import subprocess
 import sys
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 def main():
     """Launch the FastAPI backend server"""
