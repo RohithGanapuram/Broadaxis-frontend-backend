@@ -2412,6 +2412,375 @@ async def logout_user(request: Request):
             content={"error": "Logout failed"}
         )
 
+@app.get("/api/auth/users", response_model=List[UserResponse])
+async def get_all_users(current_user: UserResponse = Depends(get_current_user)):
+    """Get all registered users"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get all user keys - try different patterns
+        user_keys = await session_manager.redis.keys("user:*")
+        print(f"🔍 Found {len(user_keys)} user keys: {user_keys}")
+        
+        # Also check for any other user-related keys
+        all_keys = await session_manager.redis.keys("*")
+        user_related_keys = [key for key in all_keys if "user" in key.lower()]
+        print(f"🔍 All user-related keys: {user_related_keys}")
+        
+        # Filter out email keys (user:email:*) but keep user:uuid keys
+        user_id_keys = [key for key in user_keys if not key.startswith("user:email:")]
+        print(f"🔍 Filtered to {len(user_id_keys)} user ID keys: {user_id_keys}")
+        
+        # If we don't find enough users, let's also check for session keys that might have user info
+        if len(user_id_keys) <= 1:
+            session_keys = await session_manager.redis.keys("session:*")
+            print(f"🔍 Found {len(session_keys)} session keys")
+            for session_key in session_keys[:5]:  # Check first 5 sessions
+                session_data = await session_manager.redis.get(session_key)
+                if session_data:
+                    session = json.loads(session_data)
+                    if 'user_id' in session:
+                        print(f"🔍 Session {session_key} has user_id: {session['user_id']}")
+                        # Try to get user data for this user_id
+                        user_data = await session_manager.redis.get(f"user:{session['user_id']}")
+                        if user_data:
+                            user = json.loads(user_data)
+                            print(f"🔍 Found user from session: {user.get('name', 'Unknown')}")
+        
+        users = []
+        seen_user_ids = set()
+        
+        # First, process the direct user keys
+        for key in user_id_keys:
+            user_data_str = await session_manager.redis.get(key)
+            if user_data_str:
+                user = json.loads(user_data_str)
+                user_id = user.get("id")
+                if user_id and user_id not in seen_user_ids:
+                    seen_user_ids.add(user_id)
+                    print(f"🔍 Found user: {user.get('name', 'Unknown')} ({user.get('email', 'No email')})")
+                    # Don't include password hash in response
+                    user_response = UserResponse(
+                        id=user["id"],
+                        name=user["name"],
+                        email=user["email"],
+                        created_at=user["created_at"],
+                        last_login=user.get("last_login")
+                    )
+                    users.append(user_response)
+            else:
+                print(f"⚠️ No data found for key: {key}")
+        
+        # Also check all email keys to find additional users
+        email_keys = [key for key in user_keys if key.startswith("user:email:")]
+        print(f"🔍 Checking {len(email_keys)} email keys for additional users")
+        
+        for email_key in email_keys:
+            user_id = await session_manager.redis.get(email_key)
+            if user_id and user_id not in seen_user_ids:
+                user_data_str = await session_manager.redis.get(f"user:{user_id}")
+                if user_data_str:
+                    user = json.loads(user_data_str)
+                    seen_user_ids.add(user_id)
+                    print(f"🔍 Found user via email key: {user.get('name', 'Unknown')} ({user.get('email', 'No email')})")
+                    user_response = UserResponse(
+                        id=user["id"],
+                        name=user["name"],
+                        email=user["email"],
+                        created_at=user["created_at"],
+                        last_login=user.get("last_login")
+                    )
+                    users.append(user_response)
+        
+        print(f"🔍 Returning {len(users)} users")
+        
+        return users
+        
+    except Exception as e:
+        print(f"❌ Error getting users: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to get users"}
+        )
+
+# Task Assignment Models
+class TaskAssignment(BaseModel):
+    id: str
+    category: str  # Project, Meeting, Internal, Review, Other
+    type: str  # RFP, RFI, RFQ, Meeting, Document Review, etc.
+    title: str  # Task title/description
+    document: str = ""  # SharePoint path (optional)
+    assigned_to: str  # User name
+    assigned_by: str  # User who assigned it
+    status: str  # Assigned, Review, In Progress, Completed
+    priority: str = "Medium"  # High, Medium, Low
+    due_date: str = ""  # Optional due date
+    decision: str = "Decision Pending"  # Go, No-Go, Decision Pending (for RFP/RFI/RFQ)
+    created_at: str
+    updated_at: str
+
+class TaskAssignmentRequest(BaseModel):
+    category: str
+    type: str
+    title: str
+    document: str = ""
+    assigned_to: str
+    status: str = "Assigned"
+    priority: str = "Medium"
+    due_date: str = ""
+    decision: str = "Decision Pending"
+
+# Task Assignment Endpoints
+@app.get("/api/tasks", response_model=List[TaskAssignment])
+async def get_all_tasks(current_user: UserResponse = Depends(get_current_user)):
+    """Get all task assignments"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get all task keys
+        task_keys = await session_manager.redis.keys("task:*")
+        print(f"🔍 Found {len(task_keys)} task keys")
+        
+        tasks = []
+        for key in task_keys:
+            task_data_str = await session_manager.redis.get(key)
+            if task_data_str:
+                task = json.loads(task_data_str)
+                tasks.append(TaskAssignment(**task))
+        
+        # Sort by created_at (newest first)
+        tasks.sort(key=lambda x: x.created_at, reverse=True)
+        
+        print(f"🔍 Returning {len(tasks)} tasks")
+        return tasks
+        
+    except Exception as e:
+        print(f"❌ Error getting tasks: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to get tasks"}
+        )
+
+@app.post("/api/tasks", response_model=TaskAssignment)
+async def create_task_assignment(
+    task_data: TaskAssignmentRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Create a new task assignment"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Create task ID
+        task_id = str(uuid.uuid4())
+        now = datetime.now().isoformat()
+        
+        # Create task assignment
+        task = TaskAssignment(
+            id=task_id,
+            category=task_data.category,
+            type=task_data.type,
+            title=task_data.title,
+            document=task_data.document,
+            assigned_to=task_data.assigned_to,
+            assigned_by=current_user.name,
+            status=task_data.status,
+            priority=task_data.priority,
+            due_date=task_data.due_date,
+            decision=task_data.decision,
+            created_at=now,
+            updated_at=now
+        )
+        
+        # Store in Redis
+        await session_manager.redis.setex(
+            f"task:{task_id}", 
+            86400 * 365,  # 1 year TTL
+            json.dumps(task.dict())
+        )
+        
+        print(f"✅ Created task assignment: {task_id} for {task_data.assigned_to}")
+        return task
+        
+    except Exception as e:
+        print(f"❌ Error creating task: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to create task assignment"}
+        )
+
+@app.put("/api/tasks/{task_id}/status")
+async def update_task_status(
+    task_id: str,
+    status: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update task status"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get existing task
+        task_data_str = await session_manager.redis.get(f"task:{task_id}")
+        if not task_data_str:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Task not found"}
+            )
+        
+        task = json.loads(task_data_str)
+        task["status"] = status
+        task["updated_at"] = datetime.now().isoformat()
+        
+        # Update in Redis
+        await session_manager.redis.setex(
+            f"task:{task_id}", 
+            86400 * 365,  # 1 year TTL
+            json.dumps(task)
+        )
+        
+        print(f"✅ Updated task {task_id} status to {status}")
+        return {"status": "success", "message": "Task status updated"}
+        
+    except Exception as e:
+        print(f"❌ Error updating task status: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to update task status"}
+        )
+
+@app.put("/api/tasks/{task_id}/decision")
+async def update_task_decision(
+    task_id: str,
+    decision: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update task decision (Go/No-Go/Decision Pending)"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Get existing task
+        task_data_str = await session_manager.redis.get(f"task:{task_id}")
+        if not task_data_str:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Task not found"}
+            )
+        
+        task = json.loads(task_data_str)
+        task["decision"] = decision
+        task["updated_at"] = datetime.now().isoformat()
+        
+        # Update in Redis
+        await session_manager.redis.setex(
+            f"task:{task_id}", 
+            86400 * 365,  # 1 year TTL
+            json.dumps(task)
+        )
+        
+        print(f"✅ Updated task {task_id} decision to {decision}")
+        return {"status": "success", "message": "Task decision updated"}
+        
+    except Exception as e:
+        print(f"❌ Error updating task decision: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to update task decision"}
+        )
+
+@app.delete("/api/tasks/cleanup")
+async def cleanup_old_completed_tasks(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete completed tasks older than 7 days"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        from datetime import datetime, timedelta
+        
+        # Calculate cutoff date (7 days ago)
+        cutoff_date = datetime.now() - timedelta(days=7)
+        cutoff_iso = cutoff_date.isoformat()
+        
+        # Get all task keys
+        task_keys = await session_manager.redis.keys("task:*")
+        deleted_count = 0
+        
+        for task_key in task_keys:
+            task_data = await session_manager.redis.get(task_key)
+            if task_data:
+                task = json.loads(task_data)
+                
+                # Check if task is completed and older than 7 days
+                if (task.get('status') == 'Completed' and 
+                    task.get('updated_at', '') < cutoff_iso):
+                    
+                    # Delete the task
+                    await session_manager.redis.delete(task_key)
+                    deleted_count += 1
+                    print(f"🗑️ Deleted old completed task: {task.get('title', 'Unknown')}")
+        
+        print(f"✅ Cleanup completed. Deleted {deleted_count} old completed tasks.")
+        return {
+            "status": "success",
+            "message": f"Cleanup completed. Deleted {deleted_count} old completed tasks.",
+            "deleted_count": deleted_count,
+            "cutoff_date": cutoff_iso
+        }
+        
+    except Exception as e:
+        print(f"❌ Error cleaning up old tasks: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to cleanup old tasks"}
+        )
+
 @app.get("/api/auth/me", response_model=UserResponse)
 async def get_current_user(request: Request):
     """Get current user information"""

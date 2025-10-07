@@ -100,6 +100,72 @@ export const apiClient = {
     }
   },
 
+  // Get all users
+  async getUsers() {
+    try {
+      const response = await api.get('/api/auth/users')
+      return response.data
+    } catch (error) {
+      console.error('Failed to get users:', error)
+      throw error
+    }
+  },
+
+  // Task Assignment APIs
+  async getTasks() {
+    try {
+      const response = await api.get('/api/tasks')
+      return response.data
+    } catch (error) {
+      console.error('Failed to get tasks:', error)
+      throw error
+    }
+  },
+
+  async createTask(taskData: any) {
+    try {
+      const response = await api.post('/api/tasks', taskData)
+      return response.data
+    } catch (error) {
+      console.error('Failed to create task:', error)
+      throw error
+    }
+  },
+
+  async updateTaskStatus(taskId: string, status: string) {
+    try {
+      const response = await api.put(`/api/tasks/${taskId}/status`, null, {
+        params: { status }
+      })
+      return response.data
+    } catch (error) {
+      console.error('Failed to update task status:', error)
+      throw error
+    }
+  },
+
+  async updateTaskDecision(taskId: string, decision: string) {
+    try {
+      const response = await api.put(`/api/tasks/${taskId}/decision`, null, {
+        params: { decision }
+      })
+      return response.data
+    } catch (error) {
+      console.error('Failed to update task decision:', error)
+      throw error
+    }
+  },
+
+  async cleanupOldTasks() {
+    try {
+      const response = await api.delete('/api/tasks/cleanup')
+      return response.data
+    } catch (error) {
+      console.error('Failed to cleanup old tasks:', error)
+      throw error
+    }
+  },
+
   // File upload endpoints
   async uploadFile(file: File, sessionId: string = 'default'): Promise<FileInfo> {
     const formData = new FormData()

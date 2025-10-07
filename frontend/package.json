@@ -5,7 +5,8 @@
   "type": "module",
   "description": "React frontend for BroadAxis RFP/RFQ Management Platform",
   "scripts": {
-    "dev": "vite",
+    "dev": "rm -rf node_modules/.vite && rm -rf dist && vite",
+    "dev:force": "rm -rf node_modules/.vite && rm -rf dist && npm install && vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"

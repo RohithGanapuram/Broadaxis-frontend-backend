@@ -91,14 +91,6 @@ const StatsCards: React.FC = () => {
       color: '#f59e0b',
       icon: '📋'
     },
-    {
-      title: 'Go Recommendations',
-      count: 8,
-      subtitle: 'Preview Mode',
-      color: '#10b981',
-      icon: '✅',
-      isPreview: true
-    },
     // {
     //   title: 'No-Go Recommendations',
     //   count: 4,
@@ -125,7 +117,7 @@ const StatsCards: React.FC = () => {
         </button>
 
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((stat, index) => (
           <div
             key={index}
