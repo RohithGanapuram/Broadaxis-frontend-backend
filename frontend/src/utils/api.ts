@@ -166,6 +166,16 @@ export const apiClient = {
     }
   },
 
+  async deleteTask(taskId: string) {
+    try {
+      const response = await api.delete(`/api/tasks/${taskId}`)
+      return response.data
+    } catch (error) {
+      console.error('Failed to delete task:', error)
+      throw error
+    }
+  },
+
   // File upload endpoints
   async uploadFile(file: File, sessionId: string = 'default'): Promise<FileInfo> {
     const formData = new FormData()

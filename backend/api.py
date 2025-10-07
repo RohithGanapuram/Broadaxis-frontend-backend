@@ -2781,6 +2781,56 @@ async def cleanup_old_completed_tasks(
             content={"error": "Failed to cleanup old tasks"}
         )
 
+@app.delete("/api/tasks/{task_id}")
+async def delete_task(
+    task_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete a specific task"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Check if task exists
+        task_key = f"task:{task_id}"
+        task_data = await session_manager.redis.get(task_key)
+        
+        if not task_data:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Task not found"}
+            )
+        
+        task = json.loads(task_data)
+        
+        # Optional: Check if user has permission to delete (e.g., assigned by them or admin)
+        # For now, allow any authenticated user to delete any task
+        # You can add permission checks here if needed
+        
+        # Delete the task
+        await session_manager.redis.delete(task_key)
+        
+        print(f"🗑️ Deleted task: {task.get('title', 'Unknown')} (ID: {task_id})")
+        return {
+            "status": "success",
+            "message": "Task deleted successfully",
+            "deleted_task": task.get('title', 'Unknown')
+        }
+        
+    except Exception as e:
+        print(f"❌ Error deleting task: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to delete task"}
+        )
+
 @app.get("/api/auth/me", response_model=UserResponse)
 async def get_current_user(request: Request):
     """Get current user information"""

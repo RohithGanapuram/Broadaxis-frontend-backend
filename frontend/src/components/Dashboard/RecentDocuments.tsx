@@ -46,6 +46,8 @@ const RecentDocuments: React.FC = () => {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
 
   // Load SharePoint folders, users, and tasks when component mounts
   useEffect(() => {
@@ -124,6 +126,35 @@ const RecentDocuments: React.FC = () => {
     } catch (error) {
       console.error('❌ Failed to cleanup old tasks:', error);
     }
+  };
+
+  const handleDeleteTask = (task: Task) => {
+    setTaskToDelete(task);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    
+    try {
+      console.log('🗑️ Deleting task:', taskToDelete.title);
+      await apiClient.deleteTask(taskToDelete.id);
+      
+      // Reload tasks after deletion
+      await loadTasks();
+      
+      console.log(`✅ Successfully deleted task: ${taskToDelete.title}`);
+    } catch (error) {
+      console.error('❌ Failed to delete task:', error);
+    } finally {
+      setShowDeleteModal(false);
+      setTaskToDelete(null);
+    }
+  };
+
+  const cancelDeleteTask = () => {
+    setShowDeleteModal(false);
+    setTaskToDelete(null);
   };
 
   // Load folders when currentPath changes (for navigation)
@@ -956,6 +987,7 @@ const RecentDocuments: React.FC = () => {
                   <th className="text-left py-4 px-6 font-semibold text-gray-800">Assigned To</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-800">Assigned By</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-800">Due Date</th>
+                  <th className="text-left py-4 px-6 font-semibold text-gray-800">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1056,6 +1088,18 @@ const RecentDocuments: React.FC = () => {
                     {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
                   </span>
                 </td>
+                <td className="py-5 px-6">
+                  <button
+                    onClick={() => handleDeleteTask(task)}
+                    className="group px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300 text-red-600 hover:text-red-700 rounded-lg text-xs font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                    title="Delete this task"
+                  >
+                    <span className="flex items-center space-x-1">
+                      <span className="group-hover:scale-110 transition-transform duration-200">🗑️</span>
+                      <span>Delete</span>
+                    </span>
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1153,6 +1197,46 @@ const RecentDocuments: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && taskToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="p-3 bg-red-100 rounded-xl">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Delete Task</h3>
+                <p className="text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <div className="mb-6 p-4 bg-gray-50 rounded-xl">
+              <p className="text-gray-800 font-medium mb-2">Task Details:</p>
+              <p className="text-gray-700"><strong>Title:</strong> {taskToDelete.title}</p>
+              <p className="text-gray-700"><strong>Category:</strong> {taskToDelete.category}</p>
+              <p className="text-gray-700"><strong>Assigned To:</strong> {taskToDelete.assignedTo}</p>
+              <p className="text-gray-700"><strong>Status:</strong> {taskToDelete.status}</p>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={confirmDeleteTask}
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                Yes, Delete Task
+              </button>
+              <button
+                onClick={cancelDeleteTask}
+                className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-semibold transition-all duration-200"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
