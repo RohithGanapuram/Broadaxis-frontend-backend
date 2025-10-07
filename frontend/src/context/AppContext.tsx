@@ -3,9 +3,10 @@ import { Tool, Prompt, ChatMessage, ChatSession } from '../types'
 
 interface SharedFile {
   filename: string
-  type: 'file' | 'folder'
-  size?: number
-  modified_at?: string
+  file_size: number
+  modified_at: string
+  type: string
+  web_url?: string
   download_url?: string
   path: string
   id?: string
@@ -212,7 +213,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           isLoading: false
         }))
         
-        console.log(`📂 Backend messages for ${sessionId}:`, backendMessages.map(m => ({ id: m.id, type: m.type, content: m.content.substring(0, 50) + '...' })))
+        console.log(`📂 Backend messages for ${sessionId}:`, backendMessages.map((m: any) => ({ id: m.id, type: m.type, content: m.content.substring(0, 50) + '...' })))
         setMessages(backendMessages)
         console.log(`📂 Loaded ${backendMessages.length} messages from Redis for session ${sessionId}`)
       } else {

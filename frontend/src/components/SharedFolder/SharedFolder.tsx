@@ -26,11 +26,14 @@ const SharedFolder: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState<'RFP' | 'RFI' | 'RFQ' | ''>('')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [fileToDelete, setFileToDelete] = useState<SharedFile | null>(null)
+  const [localCache, setLocalCache] = useState<Record<string, { files: SharedFile[], timestamp: number }>>({})
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { currentUser } = useAuth()
   const { sharePointCache, setSharePointCache } = useAppContext()
   
-  const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+  const CACHE_DURATION = 30 * 60 * 1000 // 30 minutes - much longer cache
+  const LOCAL_CACHE_DURATION = 10 * 60 * 1000 // 10 minutes for local state cache
 
   useEffect(() => {
     loadFiles(currentPath)
@@ -40,16 +43,45 @@ const SharedFolder: React.FC = () => {
     const cacheKey = folderPath || 'root'
     const now = Date.now()
     
-    // Check if we have global cached data that's still fresh and matches current path
+    console.log('Loading files for path:', folderPath, 'cacheKey:', cacheKey, 'forceRefresh:', forceRefresh)
+    
+    // First check local cache (fastest)
+    if (!forceRefresh && localCache[cacheKey]) {
+      const timeSinceLastFetch = now - localCache[cacheKey].timestamp
+      console.log('Local cache found, time since fetch:', timeSinceLastFetch, 'duration:', LOCAL_CACHE_DURATION)
+      if (timeSinceLastFetch < LOCAL_CACHE_DURATION) {
+        console.log('Using local cache')
+        setFiles(localCache[cacheKey].files)
+        setIsLoading(false)
+        return
+      }
+    }
+    
+    // Then check global cache
     if (!forceRefresh && sharePointCache && sharePointCache.currentPath === cacheKey) {
       const timeSinceLastFetch = now - sharePointCache.lastFetchTime
+      console.log('Global cache found, time since fetch:', timeSinceLastFetch, 'duration:', CACHE_DURATION)
       if (timeSinceLastFetch < CACHE_DURATION) {
+        console.log('Using global cache')
         setFiles(sharePointCache.files)
+        setIsLoading(false)
+        // Update local cache
+        setLocalCache(prev => ({
+          ...prev,
+          [cacheKey]: { files: sharePointCache.files, timestamp: now }
+        }))
         return
       }
     }
     
     setIsLoading(true)
+    
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false)
+      console.warn('SharePoint API timeout - falling back to empty state')
+    }, 10000) // 10 second timeout
+    
     try {
       const data = await apiClient.listSharePointFiles(folderPath)
 
@@ -101,6 +133,12 @@ const SharedFolder: React.FC = () => {
           currentPath: cacheKey
         })
 
+        // Update local cache for faster subsequent access
+        setLocalCache(prev => ({
+          ...prev,
+          [cacheKey]: { files: sorted, timestamp: now }
+        }))
+
 
       } else {
         console.error('Error loading files:', data.message)
@@ -110,6 +148,7 @@ const SharedFolder: React.FC = () => {
       console.error('Error loading files:', error)
       setFiles([])
     } finally {
+      clearTimeout(timeoutId)
       setIsLoading(false)
     }
   }
@@ -117,8 +156,13 @@ const SharedFolder: React.FC = () => {
   const handleFolderClick = (folder: SharedFile) => {
     if (folder.type === 'folder') {
       const newPath = currentPath ? `${currentPath}/${folder.filename}` : folder.filename
+      
+      // Optimistic update - immediately show loading state
+      setIsLoading(true)
       setCurrentPath(newPath)
       setPathHistory([...pathHistory, newPath])
+      
+      // Load files will be triggered by useEffect
     }
   }
 
@@ -126,16 +170,26 @@ const SharedFolder: React.FC = () => {
     if (pathHistory.length > 1) {
       const newHistory = pathHistory.slice(0, -1)
       const previousPath = newHistory[newHistory.length - 1]
+      
+      // Optimistic update - immediately show loading state
+      setIsLoading(true)
       setPathHistory(newHistory)
       setCurrentPath(previousPath)
+      
+      // Load files will be triggered by useEffect
     }
   }
 
   const handleBreadcrumbClick = (index: number) => {
     const newHistory = pathHistory.slice(0, index + 1)
     const targetPath = newHistory[newHistory.length - 1]
+    
+    // Optimistic update - immediately show loading state
+    setIsLoading(true)
     setPathHistory(newHistory)
     setCurrentPath(targetPath)
+    
+    // Load files will be triggered by useEffect
   }
 
   const formatFileSize = (bytes: number): string => {
@@ -241,7 +295,11 @@ const SharedFolder: React.FC = () => {
       toast.success(`Successfully deleted ${fileToDelete.type === 'folder' ? 'folder' : 'file'}: ${fileToDelete.filename}`)
       
       // Clear cache to force refresh
-      setSharePointCache({})
+      setSharePointCache({
+        files: [],
+        lastFetchTime: 0,
+        currentPath: ''
+      })
       loadFiles(currentPath, true)
       
       setShowDeleteModal(false)
@@ -255,6 +313,206 @@ const SharedFolder: React.FC = () => {
   const handleDeleteCancel = () => {
     setShowDeleteModal(false)
     setFileToDelete(null)
+  }
+
+
+  const renderFileItem = (file: SharedFile, index: number) => {
+    const baseClasses = `border border-gray-200 rounded-lg p-4 transition-all duration-200 hover:border-blue-300 ${
+      file.type === 'folder'
+        ? 'hover:shadow-md cursor-pointer hover:bg-blue-50'
+        : 'hover:shadow-sm'
+    }`
+
+    if (viewMode === 'list') {
+      return (
+        <div key={index} className={`${baseClasses} flex items-center space-x-4`}>
+          <div className="flex-shrink-0">
+            <div className="text-2xl">
+              {file.type === 'folder' ? '📁' : '📄'}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-gray-900 truncate">
+                {file.filename}
+              </h3>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-gray-500">
+                  {file.type === 'folder' ? 'Folder' : formatFileSize(file.file_size)}
+                </span>
+                {file.type !== 'folder' && (
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                    {file.type.toUpperCase()}
+                  </span>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {new Date(file.modified_at).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="flex-shrink-0">
+            <div className="flex gap-2">
+              {file.type !== 'folder' && (
+                <>
+                  {file.web_url && (
+                    <a
+                      href={file.web_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:text-green-800 text-sm"
+                      title="Open in SharePoint"
+                    >
+                      🌐
+                    </a>
+                  )}
+                  {file.download_url && (
+                    <a
+                      href={file.download_url}
+                      download
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                      title="Download file"
+                    >
+                      ⬇️
+                    </a>
+                  )}
+                </>
+              )}
+              <button
+                onClick={() => handleDeleteClick(file)}
+                className="text-red-600 hover:text-red-800 text-sm"
+                title={file.type === 'folder' ? 'Delete folder' : 'Delete file'}
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    if (viewMode === 'compact') {
+      return (
+        <div key={index} className={`${baseClasses} p-2`}>
+          <div className="flex items-center space-x-2">
+            <div className="text-lg">
+              {file.type === 'folder' ? '📁' : '📄'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-medium text-gray-900 truncate">
+                {file.filename}
+              </h3>
+            </div>
+            <div className="flex items-center space-x-1">
+              {file.type !== 'folder' && (
+                <>
+                  {file.web_url && (
+                    <a
+                      href={file.web_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:text-green-800 text-xs"
+                      title="Open in SharePoint"
+                    >
+                      🌐
+                    </a>
+                  )}
+                  {file.download_url && (
+                    <a
+                      href={file.download_url}
+                      download
+                      className="text-blue-600 hover:text-blue-800 text-xs"
+                      title="Download file"
+                    >
+                      ⬇️
+                    </a>
+                  )}
+                </>
+              )}
+              <button
+                onClick={() => handleDeleteClick(file)}
+                className="text-red-600 hover:text-red-800 text-xs"
+                title={file.type === 'folder' ? 'Delete folder' : 'Delete file'}
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Default grid view
+    return (
+      <div key={index} className={baseClasses}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-2xl">
+            {file.type === 'folder' ? '📁' : '📄'}
+          </div>
+          <div className="text-xs text-gray-500">
+            {new Date(file.modified_at).toLocaleDateString()}
+          </div>
+        </div>
+        
+        <div className="mb-3">
+          <div className="text-sm font-medium text-gray-900 truncate" title={file.filename}>
+            {file.filename}
+          </div>
+        </div>
+
+        <div className="text-xs text-gray-500 space-y-1">
+          <div className="flex items-center justify-between">
+            <span>{file.type === 'folder' ? 'Folder' : formatFileSize(file.file_size)}</span>
+            {file.type !== 'folder' && (
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                {file.type.toUpperCase()}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2 border-t border-gray-100">
+          {file.type !== 'folder' && (
+            <>
+              {file.web_url && (
+                <a
+                  href={file.web_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-center bg-green-50 text-green-600 hover:bg-green-100 px-3 py-2 rounded text-xs font-medium transition-colors"
+                  title="Open in SharePoint"
+                >
+                  🌐 SharePoint
+                </a>
+              )}
+              {file.download_url && (
+                <a
+                  href={file.download_url}
+                  download
+                  className="flex-1 text-center bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded text-xs font-medium transition-colors"
+                  title="Download file"
+                >
+                  ⬇️ Download
+                </a>
+              )}
+            </>
+          )}
+          <button
+            onClick={() => handleDeleteClick(file)}
+            className="flex-1 text-center bg-red-50 text-red-600 hover:bg-red-100 px-3 py-2 rounded text-xs font-medium transition-colors"
+            title={file.type === 'folder' ? 'Delete folder' : 'Delete file'}
+          >
+            🗑️ Delete {file.type === 'folder' ? 'Folder' : 'File'}
+          </button>
+        </div>
+
+        {file.type === 'folder' && (
+          <div className="text-xs text-blue-600 text-center pt-2 border-t border-blue-100">
+            📂 Click to open folder
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -317,7 +575,7 @@ const SharedFolder: React.FC = () => {
         ref={fileInputRef}
         type="file"
         multiple
-        webkitdirectory=""
+        {...({ webkitdirectory: "" } as any)}
         onChange={handleFolderUpload}
         style={{ display: 'none' }}
         accept=".pdf,.txt,.md,.docx,.doc,.xlsx,.xls,.pptx,.ppt"
@@ -374,6 +632,44 @@ const SharedFolder: React.FC = () => {
                   <span>📁 {files.filter(f => f.type === 'folder').length} folders</span>
                 </div>
               </div>
+              
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'grid' 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                  title="Grid view"
+                >
+                  ⊞ Grid
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'list' 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                  title="List view"
+                >
+                  ☰ List
+                </button>
+                <button
+                  onClick={() => setViewMode('compact')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'compact' 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                  title="Compact view"
+                >
+                  ≡ Compact
+                </button>
+              </div>
+              
               <button
                 onClick={() => loadFiles(currentPath, true)}
                 disabled={isLoading}
@@ -385,107 +681,30 @@ const SharedFolder: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {files.map((file, index) => (
-              <div
-                key={index}
-                className={`border border-gray-200 rounded-lg p-4 transition-all duration-200 hover:border-blue-300 ${
-                  file.type === 'folder'
-                    ? 'hover:shadow-md cursor-pointer hover:bg-blue-50'
-                    : 'hover:shadow-md'
-                }`}
-                onClick={() => file.type === 'folder' && handleFolderClick(file)}
-              >
-                <div className="flex flex-col space-y-3">
-                  {/* Icon and Type */}
-                  <div className="flex items-center justify-between">
-                    <div className="text-3xl">{getFileIcon(file)}</div>
-                    {file.type === 'folder' && (
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                        Folder
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Filename */}
-                  <div className="min-w-0">
-                    <div
-                      className="font-medium text-gray-900 text-sm leading-tight break-words"
-                      title={file.filename}
-                      style={{
-                        wordBreak: 'break-word',
-                        overflowWrap: 'break-word',
-                        hyphens: 'auto'
-                      }}
-                    >
-                      {file.filename}
-                    </div>
-                  </div>
-
-                  {/* File Info */}
-                  <div className="text-xs text-gray-500 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span>{file.type === 'folder' ? 'Folder' : formatFileSize(file.file_size)}</span>
-                      {file.type !== 'folder' && (
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                          {file.type.toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      {new Date(file.modified_at).toLocaleDateString()}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2 border-t border-gray-100">
-                    {file.type !== 'folder' && (
-                      <>
-                        {file.web_url && (
-                          <a
-                            href={file.web_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 text-center bg-green-50 text-green-600 hover:bg-green-100 px-3 py-2 rounded text-xs font-medium transition-colors"
-                            title="Open in SharePoint"
-                          >
-                            🌐 SharePoint
-                          </a>
-                        )}
-                        {file.download_url && (
-                          <a
-                            href={file.download_url}
-                            download
-                            className="flex-1 text-center bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded text-xs font-medium transition-colors"
-                            title="Download file"
-                          >
-                            ⬇️ Download
-                          </a>
-                        )}
-                      </>
-                    )}
-                    <button
-                      onClick={() => handleDeleteClick(file)}
-                      className={`flex-1 text-center px-3 py-2 rounded text-xs font-medium transition-colors ${
-                        file.type === 'folder' 
-                          ? 'bg-red-50 text-red-600 hover:bg-red-100' 
-                          : 'bg-red-50 text-red-600 hover:bg-red-100'
-                      }`}
-                      title={file.type === 'folder' ? 'Delete folder' : 'Delete file'}
-                    >
-                      🗑️ Delete {file.type === 'folder' ? 'Folder' : 'File'}
-                    </button>
-                  </div>
-
-                  {/* Folder Click Hint - Only show if no delete button is present */}
-                  {file.type === 'folder' && (
-                    <div className="text-xs text-blue-600 text-center pt-2 border-t border-blue-100">
-                      📂 Click to open folder
-                    </div>
-                  )}
+          <div className={
+            viewMode === 'list' 
+              ? 'space-y-2' 
+              : viewMode === 'compact'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-2'
+              : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
+          }>
+            {isLoading ? (
+              <div className="col-span-full flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading folder contents...</p>
                 </div>
               </div>
-            ))}
+            ) : (
+              files.map((file, index) => (
+                <div
+                  key={index}
+                  onClick={() => file.type === 'folder' && handleFolderClick(file)}
+                >
+                  {renderFileItem(file, index)}
+                </div>
+              ))
+            )}
           </div>
         </div>
       ) : (
