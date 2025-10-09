@@ -2016,6 +2016,49 @@ Use `Broadaxis_knowledge_search` to research:
 
 ---
 
+## 📄 **Documents to Create**
+
+Based on the RFP requirements identified above, list ALL documents that need to be created for submission.
+
+### **Instructions:**
+1. **Extract Required Documents**: Review the document analysis above and identify every submission document mentioned in the RFP, including:
+   - Technical proposals, executive summaries, company profiles
+   - Past performance references, project examples, case studies
+   - Staff resumes, organizational charts, team structures
+   - Pricing sheets, cost breakdowns, budget justifications
+   - Compliance certifications, insurance certificates, licenses
+   - Project plans, timelines, work breakdown structures, methodologies
+   - Quality assurance plans, security plans, risk management plans
+   - Any other required attachments, forms, or exhibits
+
+2. **Assess BroadAxis Information Availability**: For EACH document, use `Broadaxis_knowledge_search` to determine if BroadAxis has the necessary information/data to create it:
+   - Search for relevant company capabilities, past projects, certifications
+   - Check for existing templates, previous proposals, company documentation
+   - Verify availability of required data (financials, staff info, technical specs)
+
+3. **Classify Each Document**:
+   - **✅ Complete Information**: BroadAxis has all necessary data to create this document
+   - **🟡 Partial Information**: BroadAxis has some data but missing key details
+   - **❌ No Information**: BroadAxis lacks the necessary data to create this document
+
+### **Output Format:**
+
+| # | Document Name | Information Status | What We Have / What's Missing |
+|---|--------------|-------------------|-------------------------------|
+| 1 | [Exact document name from RFP] | ✅ Complete / 🟡 Partial / ❌ No Info | [Brief explanation of available data or gaps] |
+| 2 | [Document name] | [Status] | [Details] |
+
+**CRITICAL REQUIREMENTS:**
+- List ALL required submission documents - do not miss any
+- Base document names on actual RFP requirements, not assumptions
+- Use `Broadaxis_knowledge_search` to verify what information exists in the knowledge base
+- Be specific about what's available and what's missing
+- If a document type is mentioned but details are unclear, still list it and mark as "Partial"
+
+**🔧 Tools to Use:** Broadaxis_knowledge_search
+
+---
+
 ## ⚠️ **Important Guidelines:**
 - Use only verified internal information (via Broadaxis_knowledge_search) and the uploaded documents
 - **CRITICAL:** Base your analysis ONLY on the document analysis results provided above
