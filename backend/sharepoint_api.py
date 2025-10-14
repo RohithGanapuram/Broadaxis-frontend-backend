@@ -15,8 +15,8 @@ from datetime import datetime, timezone
 from error_handler import error_handler
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from parent directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # Create router for SharePoint endpoints
 sharepoint_router = APIRouter(prefix="/api", tags=["sharepoint"])
