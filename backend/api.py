@@ -1676,13 +1676,76 @@ async def process_rfp_folder_intelligent(request: RFPProcessingRequest, current_
         return cleaned
     
     def clean_markup(text: str) -> str:
-        """Clean simple HTML-like tags the LLM may emit"""
+        """Clean simple HTML-like tags and error messages the LLM may emit"""
         if not isinstance(text, str):
             return text
+        
+        # Remove HTML-like tags
         cleaned = text.replace('<result>', '').replace('</result>', '')
-        # remove empty anchor tags like <a id="..."></a>
         cleaned = re.sub(r"<a[^>]*></a>\s*", "", cleaned)
-        return cleaned
+        
+        # Remove ALL error/apology/process messages that shouldn't be shown to users
+        # These are comprehensive patterns to catch all variations
+        error_phrases = [
+            # Apologies and errors
+            "Oops, my apologies",
+            "Oops my apologies", 
+            "my apologies",
+            "I apologize",
+            "Sorry",
+            
+            # File type confusion
+            "The file type is DOCX, not PDF",
+            "The file type is",
+            "not PDF",
+            "still an issue with the file type",
+            
+            # Process messages
+            "Let me try extracting",
+            "Let me try a different approach",
+            "Let me extract the text",
+            "Let me analyze",
+            "Great, the file is available",
+            "Hmm, still an issue",
+            "Ah, got it",
+            "Okay, got the file details",
+            
+            # Tool-calling commentary
+            "instead:",
+            "Let me try",
+            "from the DOCX file",
+            "from that:",
+        ]
+        
+        # Remove each phrase (case-insensitive)
+        for phrase in error_phrases:
+            # Remove the phrase and everything up to the next period or colon
+            cleaned = re.sub(rf"{re.escape(phrase)}[^📄]*?(?=\n\n|###|####|📄)", "", cleaned, flags=re.IGNORECASE)
+        
+        # Remove sentences that start with these patterns
+        sentence_patterns = [
+            r"Oops[^\.!?]*[\.!?]\s*",
+            r"Let me[^\.!?]*[\.!?]\s*",
+            r"Great,[^\.!?]*[\.!?]\s*",
+            r"Hmm,[^\.!?]*[\.!?]\s*",
+            r"Ah,[^\.!?]*[\.!?]\s*",
+            r"Okay,[^\.!?]*[\.!?]\s*",
+            r"The file type is[^\.!?]*[\.!?]\s*",
+        ]
+        
+        for pattern in sentence_patterns:
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+        
+        # Clean up multiple consecutive newlines (more than 2)
+        cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+        
+        # Remove any standalone colons at the start of lines
+        cleaned = re.sub(r'^\s*:\s*$', '', cleaned, flags=re.MULTILINE)
+        
+        # Remove empty sections (just a heading with no content)
+        cleaned = re.sub(r'(####[^\n]+)\n+(?=####|###)', r'\1\n\n', cleaned)
+        
+        return cleaned.strip()
     
     folder_path = request.folder_path
     session_id = request.session_id
@@ -1817,56 +1880,124 @@ async def process_rfp_folder_intelligent(request: RFPProcessingRequest, current_
 
 ## 📊 **Required Analysis Format:**
 
-### 📄 **Document: {doc.filename}**
+### **Document: {doc.filename}**
 
 #### **What is This About?**
+
 > A 3–5 sentence **plain-English overview** of the opportunity. Include:
-- Who issued it (organization)
-- What they need / are requesting
-- Why (the business problem or goal)
-- Type of response expected (proposal, quote, info)
+> - Who issued it (organization)
+> - What they need / are requesting  
+> - Why (the business problem or goal)
+> - Type of response expected (proposal, quote, info)
 
 ---
 
 #### 🧩 **Key Opportunity Details**
-List all of the following **if available** in the document:
-- **Submission Deadline:** [Date + Time - be specific]
-- **Project Start/End Dates:** [Exact dates, contract terms, renewal options]
-- **Estimated Value / Budget:** [If stated, include any budget ranges]
-- **Response Format:** (e.g., PDF proposal, online portal, pricing form, etc.)
-- **Delivery Location(s):** [City, Region, Remote, on-site requirements]
-- **Eligibility Requirements:** (Certifications, licenses, location limits, insurance requirements, background checks)
-- **Scope Summary:** (Detailed bullet points covering ALL services, technologies, and deliverables mentioned)
-- **Specific Technologies:** (List all software, hardware, systems mentioned by name)
-- **Insurance Requirements:** (Any specific coverage amounts or types required)
-- **Staff Requirements:** (Background checks, certifications, experience levels)
+
+**CRITICAL FORMATTING INSTRUCTIONS - YOU MUST FOLLOW EXACTLY:**
+
+For EACH field below, you MUST format like this example:
+```
+- **Submission Deadline:**  
+  October 24, 2025 at 2:00 PM CST
+```
+
+**RULES:**
+1. Field name must be BOLD: `**Field Name:**`
+2. Add TWO SPACES after the colon, then line break
+3. Value goes on THE NEXT LINE (indented with 2 spaces)
+4. Leave a BLANK line between each field
+
+**Now list all of the following if available in the document:**
+
+- **Submission Deadline:**  
+  [Date + Time - be VERY specific: Month Day, Year at Time Timezone]
+
+- **Project Start/End Dates:**  
+  [Exact start/end dates, contract duration, renewal options]
+
+- **Estimated Value / Budget:**  
+  [If stated, include exact amount or budget range; if not stated, write "Not specified"]
+
+- **Response Format:**  
+  [PDF proposal, online portal, hard copy, email, etc.]
+
+- **Delivery Location(s):**  
+  [Full address, city, state, zip code, remote/on-site requirements]
+
+- **Eligibility Requirements:**  
+  [List each requirement on separate line with bullet points]
+
+- **Scope Summary:**  
+  [Comprehensive bullet points - use actual bullets for each service/deliverable]
+
+- **Specific Technologies:**  
+  [List each technology on its own line with bullets]
+
+- **Insurance Requirements:**  
+  [Each type on its own line with exact amounts - e.g., General Liability: $2M/$1M]
+
+- **Staff Requirements:**  
+  [Each requirement on its own line with bullets]
 
 ---
 
 #### 📊 **Evaluation Criteria**
-How will responses be scored or selected? Include weighting if provided (e.g., 40% price, 30% experience).
+
+**How will responses be scored or selected?**
+
+List evaluation criteria with weighting if provided. Format like this:
+- Experience and Qualifications: 40%
+- Technical Approach: 30%
+- Price: 20%
+- Local Preference: 10%
 
 ---
 
 #### ⚠️ **Notable Risks or Challenges**
-Mention anything that could pose a red flag or require clarification (tight timeline, vague scope, legal constraints, strict eligibility, insurance requirements, background checks, geographic requirements, pricing constraints).
+
+**List any red flags or items requiring clarification:**
+
+Use bullet points for each risk/challenge:
+- [Risk 1 - e.g., Tight timeline with only 30 days to respond]
+- [Risk 2 - e.g., Vague scope without detailed requirements]
+- [Risk 3 - e.g., Strict insurance requirements]
 
 ---
 
 #### 💡 **Potential Opportunities or Differentiators**
-Highlight anything that could give a competitive edge or present upsell/cross-sell opportunities (e.g., optional services, innovation clauses, incumbent fatigue, contract extensions, additional work potential, technology upgrades).
+
+**What gives us a competitive edge?**
+
+Use bullet points for each opportunity:
+- [Opportunity 1 - e.g., Optional services for additional revenue]
+- [Opportunity 2 - e.g., Contract renewal options]
+- [Opportunity 3 - e.g., Innovation clauses for differentiation]
 
 ---
 
 #### 📞 **Contact & Submission Info**
-- **Primary Contact:** Name, title, email, phone (if listed)
-- **Submission Instructions:** Portal, email, physical, etc.
 
-⚠️ **Only summarize what is clearly and explicitly stated. Never guess or infer.**
+- **Primary Contact:**  
+  [Full name, title]  
+  [Email address]  
+  [Phone number]
 
-**CRITICAL:** You must extract ALL specific details from the document including:
+- **Submission Instructions:**  
+  [Detailed submission method - portal URL, email, physical address, etc.]
+
+---
+
+⚠️ **CRITICAL INSTRUCTIONS:**
+
+1. **NO ERROR MESSAGES:** Do NOT include any messages like "Oops", "Let me try", "Hmm", "Ah, got it" in your output
+2. **DIRECT ANALYSIS ONLY:** Start directly with the analysis content - skip any tool-calling commentary
+3. **CONSISTENT FORMATTING:** Use the exact format above with proper line breaks after each field
+4. **ONLY FACTS:** Only summarize what is clearly and explicitly stated - never guess or infer
+
+**You must extract ALL specific details including:**
 - Exact dates, times, and deadlines
-- Specific technology names and versions
+- Specific technology names and versions  
 - Insurance coverage amounts and types
 - Background check and certification requirements
 - Geographic and on-site requirements
@@ -1878,10 +2009,18 @@ Provide your analysis in the exact format above. Be thorough, specific, and comp
 **🔧 Tools Used:** extract_pdf_text"""
                     
                     # Process with token management and multi-model strategy
+                    # Let token manager choose best model, but prefer Sonnet for comprehensive analysis
+                    recommended_model = token_manager.get_recommended_model(analysis_prompt, 1000)
+                    
+                    # Override to Sonnet if token manager selected Haiku (Haiku's 4096 limit is too small)
+                    if "haiku" in recommended_model.lower():
+                        recommended_model = "claude-3-5-sonnet-20241022"
+                        logger.info("Overriding Haiku → Sonnet for RFP document analysis (needs >4096 output tokens)")
+                    
                     result = await run_mcp_query(
                         analysis_prompt,
                         enabled_tools=['sharepoint_list_files', 'extract_pdf_text'],
-                        model=token_manager.get_recommended_model(analysis_prompt, 1000),
+                        model=recommended_model,
                         session_id=session_id
                     )
                     
@@ -1944,14 +2083,19 @@ Provide your analysis in the exact format above. Be thorough, specific, and comp
 ## 🧠 **Go/No-Go Analysis**
 
 ### 🔍 **Step 1: RFP Requirements Review**
+
 > **CRITICAL:** Base your analysis ONLY on the document analysis results provided above. Do not hallucinate or make assumptions.
 
 **Key Requirements Identified:**
+
 - Highlight the most critical needs and evaluation criteria from the document analysis above
 - Extract key deliverables, timeline, and scope requirements from the actual documents
 - Identify any special compliance or certification requirements mentioned in the documents
 
+---
+
 ### 🔎 **Step 2: Internal Knowledge Research**
+
 Use `Broadaxis_knowledge_search` to research:
 - Relevant past projects and similar work experience
 - Proof of experience in the specific domain/industry
@@ -1960,57 +2104,73 @@ Use `Broadaxis_knowledge_search` to research:
 - Geographic presence and local capabilities
 
 **🎯 BroadAxis Strengths Identified:**
+
 [Based on knowledge search results, list key capabilities and experience]
 
+---
+
 ### ⚖️ **Step 3: Capability Alignment Assessment**
-- Estimate percentage match (e.g., "BroadAxis meets ~85% of the requirements")
-- Note any missing capabilities or unclear requirements
-- Identify areas where BroadAxis has strong competitive advantages
-- Highlight any capability gaps that need to be addressed
+
+- **Capability Match:** BroadAxis meets ~[X]% of the requirements
+- **Strong Areas:** [Specific competitive advantages]
+- **Capability Gaps:** [Missing capabilities or unclear requirements]
+- **Required Partnerships:** [Any subcontractor needs if applicable]
+
+---
 
 ### 👥 **Step 4: Resource Requirements Analysis**
-- Are there any specialized skills, timelines, or staffing needs?
-- Does BroadAxis have the necessary team or partners?
-- Analyze proposal deadline and project timeline constraints
-- Assess current team and capability readiness
+
+- **Specialized Skills Needed:** [List specific expertise required]
+- **Timeline Feasibility:** [Can we meet proposal deadline and project timeline?]
+- **Team Readiness:** [Current capacity and resource availability]
+- **Partnership Needs:** [Required external support if any]
+
+---
 
 ### 🏆 **Step 5: Competitive Positioning Evaluation**
-- Based on known experience and domain, would BroadAxis be competitive?
-- Identify competitive advantages (local presence, certifications, experience, technology)
-- Note potential competitive challenges or weaknesses
+
+- **Competitive Advantages:** [Local presence, certifications, experience, technology]
+- **Competitive Challenges:** [Potential weaknesses vs competitors]
+- **Win Probability:** [Realistic assessment based on known factors]
+
+---
 
 ### 🚦 **FINAL RECOMMENDATION**
 
-> **🎯 DECISION: [GO / NO-GO]**
+> **🎯 DECISION: [GO / NO-GO / CONDITIONAL-GO]**
 > 
-> **📝 RATIONALE:** [Clear, data-driven reasoning]
+> **📝 RATIONALE:**  
+> [2-3 sentences with clear, data-driven reasoning based on the analysis above]
 > 
-> **🎯 CONFIDENCE LEVEL:** [High/Medium/Low]
+> **🎯 CONFIDENCE LEVEL:** [High / Medium / Low]
 > 
 > **📊 SUCCESS PROBABILITY:** [X]% with proper preparation
 
 ---
 
-> **⚠️ IMPORTANT: This is the key decision point. Make it clear and prominent.**
+## 📋 **Action Plan** *(if GO/CONDITIONAL-GO)*
+
+### **⚡ Immediate Actions (Next 7 Days):**
+
+1. [Specific capability assessment or information gathering task]
+2. [Key stakeholder meetings or decisions required]
+3. [Critical preparation activities]
 
 ---
 
-## 📋 **Action Plan** *(if GO/CONDITIONAL GO)*
-
-### **⚡ Immediate Actions (Next 7 Days):**
-1. [Specific capability assessment needed]
-2. [Key stakeholder meetings required]
-3. [Critical information gathering tasks]
-
 ### **📝 RFP Response Preparation (Week 2):**
-1. [Proposal development tasks]
-2. [Technical solution design]
+
+1. [Proposal development and writing tasks]
+2. [Technical solution design and validation]
 3. [Cost estimation and pricing strategy]
 
+---
+
 ### **⚠️ Risk Mitigation Strategies:**
-1. [Address capability gaps]
-2. [Manage timeline constraints]
-3. [Handle competitive challenges]
+
+1. [How to address capability gaps]
+2. [How to manage timeline constraints]
+3. [How to strengthen competitive position]
 
 **Success Probability:** [X]% with proper preparation, versus [Y]% without focused effort.
 
@@ -2020,62 +2180,89 @@ Use `Broadaxis_knowledge_search` to research:
 
 Based on the RFP requirements identified above, list ALL documents that need to be created for submission.
 
-### **Instructions:**
-1. **Extract Required Documents**: Review the document analysis above and identify every submission document mentioned in the RFP, including:
-   - Technical proposals, executive summaries, company profiles
-   - Past performance references, project examples, case studies
-   - Staff resumes, organizational charts, team structures
-   - Pricing sheets, cost breakdowns, budget justifications
-   - Compliance certifications, insurance certificates, licenses
-   - Project plans, timelines, work breakdown structures, methodologies
-   - Quality assurance plans, security plans, risk management plans
-   - Any other required attachments, forms, or exhibits
+---
 
-2. **Assess BroadAxis Information Availability**: For EACH document, use `Broadaxis_knowledge_search` to determine if BroadAxis has the necessary information/data to create it:
-   - Search for relevant company capabilities, past projects, certifications
-   - Check for existing templates, previous proposals, company documentation
-   - Verify availability of required data (financials, staff info, technical specs)
+### **Step 1 - Extract Required Documents:**
 
-3. **Classify Each Document**:
-   - **✅ Complete Information**: BroadAxis has all necessary data to create this document
-   - **🟡 Partial Information**: BroadAxis has some data but missing key details
-   - **❌ No Information**: BroadAxis lacks the necessary data to create this document
+Review the document analysis above and identify every submission document mentioned in the RFP, including:
+- Technical proposals, executive summaries, company profiles
+- Past performance references, project examples, case studies
+- Staff resumes, organizational charts, team structures
+- Pricing sheets, cost breakdowns, budget justifications
+- Compliance certifications, insurance certificates, licenses
+- Project plans, timelines, work breakdown structures, methodologies
+- Quality assurance plans, security plans, risk management plans
+- Any other required attachments, forms, or exhibits
 
-### **Output Format:**
+---
+
+### **Step 2 - Assess BroadAxis Information Availability:**
+
+For EACH document identified above, you MUST use `Broadaxis_knowledge_search` to determine if BroadAxis has the necessary information/data to create it:
+- Search for relevant company capabilities, past projects, certifications
+- Check for existing templates, previous proposals, company documentation
+- Verify availability of required data (financials, staff info, technical specs)
+
+---
+
+### **Step 3 - Classify Each Document:**
+
+- **✅ Complete Information:** BroadAxis has all necessary data to create this document
+- **🟡 Partial Information:** BroadAxis has some data but missing key details
+- **❌ No Information:** BroadAxis lacks the necessary data to create this document
+
+---
+
+### **📋 Output Format:**
 
 | # | Document Name | Information Status | What We Have / What's Missing |
 |---|--------------|-------------------|-------------------------------|
 | 1 | [Exact document name from RFP] | ✅ Complete / 🟡 Partial / ❌ No Info | [Brief explanation of available data or gaps] |
 | 2 | [Document name] | [Status] | [Details] |
 
-**CRITICAL REQUIREMENTS:**
-- List ALL required submission documents - do not miss any
-- Base document names on actual RFP requirements, not assumptions
-- Use `Broadaxis_knowledge_search` to verify what information exists in the knowledge base
-- Be specific about what's available and what's missing
-- If a document type is mentioned but details are unclear, still list it and mark as "Partial"
+---
 
-**🔧 Tools to Use:** Broadaxis_knowledge_search
+**CRITICAL REQUIREMENTS:**
+- ✅ List ALL required submission documents - do not miss any
+- ✅ Base document names on actual RFP requirements, not assumptions
+- ✅ Use `Broadaxis_knowledge_search` to verify what information exists in the knowledge base
+- ✅ Be specific about what's available and what's missing
+- ✅ If a document type is mentioned but details are unclear, still list it and mark as "Partial"
 
 ---
 
 ## ⚠️ **Important Guidelines:**
-- Use only verified internal information (via Broadaxis_knowledge_search) and the uploaded documents
-- **CRITICAL:** Base your analysis ONLY on the document analysis results provided above
-- Do not guess, hallucinate, or make assumptions about RFP requirements
-- If information is missing, clearly state what else is needed for a confident decision
-- If your recommendation is a GO, list down the specific tasks the user needs to complete for RFP submission
 
-**ANTI-HALLUCINATION RULE:** Only reference requirements, technologies, and details that are explicitly mentioned in the document analysis results above. Do not mention BI, data warehousing, or other technologies unless they appear in the actual documents.
+1. **NO ERROR MESSAGES:** Do NOT include any "Oops", "Let me try", "Hmm" messages
+2. **NO CONTINUATION MESSAGES:** Do NOT include "Continued in next part" or "[Continued...]" - provide COMPLETE analysis
+3. **VERIFIED INFO ONLY:** Use only verified internal information via `Broadaxis_knowledge_search`
+4. **NO HALLUCINATIONS:** Only reference requirements, technologies, and details explicitly mentioned in the document analysis
+5. **BE SPECIFIC:** Clearly state what information exists and what's missing
+6. **ACTIONABLE:** If recommendation is GO, list specific tasks for RFP submission
+7. **COMPLETE OUTPUT:** Provide the FULL analysis in one response - do not truncate or continue later
 
-Provide your analysis in the exact format above. Be thorough, data-driven, and actionable.
+**ANTI-HALLUCINATION RULE:** Do not mention BI, data warehousing, or other technologies unless they appear in the actual RFP documents.
 
-**🔧 Tools Used:** Broadaxis_knowledge_search"""
+---
+
+**🔧 Tools to Use:** Broadaxis_knowledge_search
+
+**CRITICAL:** You have 8,192 output tokens available. This is sufficient for a COMPLETE analysis. Do not truncate or add continuation messages like "[Continued...]". Provide the full, comprehensive analysis in this single response.
+
+Provide your analysis in the exact format above with proper line breaks and clear section separators. Be thorough, data-driven, and actionable."""
         
+            # Use Sonnet for Go/No-Go analysis (needs more output tokens for complete document list)
+            recommended_model = token_manager.get_recommended_model(go_no_go_prompt, 2000)
+            
+            # Override to Sonnet if token manager selected Haiku (need complete document list with action plan)
+            if "haiku" in recommended_model.lower():
+                recommended_model = "claude-3-5-sonnet-20241022"
+                logger.info("Overriding Haiku → Sonnet for Go/No-Go analysis (needs >4096 output tokens)")
+            
             summary_result = await run_mcp_query(
                 go_no_go_prompt,
                 enabled_tools=['Broadaxis_knowledge_search'],
-                model=token_manager.get_recommended_model(go_no_go_prompt, 2000),
+                model=recommended_model,
                 session_id=session_id
             )
             
@@ -2557,7 +2744,7 @@ async def get_all_users(current_user: UserResponse = Depends(get_current_user)):
 # Task Assignment Models
 class TaskAssignment(BaseModel):
     id: str
-    category: str  # Project, Meeting, Internal, Review, Other
+    category: str  # Project, Meeting, Internal, Review, Other, Document Creation
     type: str  # RFP, RFI, RFQ, Meeting, Document Review, etc.
     title: str  # Task title/description
     document: str = ""  # SharePoint path (optional)
@@ -2569,6 +2756,11 @@ class TaskAssignment(BaseModel):
     decision: str = "Decision Pending"  # Go, No-Go, Decision Pending (for RFP/RFI/RFQ)
     created_at: str
     updated_at: str
+    parent_task_id: Optional[str] = None  # For document tasks linked to parent RFP
+    parent_rfp_path: Optional[str] = None  # e.g., "RFP/Dallas City"
+    document_details: Optional[str] = None  # Details about the document requirement
+    original_status: Optional[str] = None  # ✅/🟡/❌ status from AI
+    document_count: Optional[int] = None  # For parent tasks - how many documents needed
 
 class TaskAssignmentRequest(BaseModel):
     category: str
@@ -2872,6 +3064,114 @@ async def delete_task(
         return JSONResponse(
             status_code=500,
             content={"error": "Failed to delete task"}
+        )
+
+# Import RFP Documents as Tasks
+class RFPDocumentImportRequest(BaseModel):
+    parent_task_id: str  # ID of the parent RFP task
+    parent_rfp_path: str  # e.g., "RFP/Dallas City"
+    documents: List[dict]  # List of documents with name, status, details
+
+@app.post("/api/tasks/import-rfp-documents")
+async def import_rfp_documents(
+    request: RFPDocumentImportRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Import RFP required documents as sub-tasks"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Session management not available"}
+            )
+        
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+        
+        # Verify parent task exists
+        parent_task_data = await session_manager.redis.get(f"task:{request.parent_task_id}")
+        if not parent_task_data:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Parent task not found"}
+            )
+        
+        parent_task = json.loads(parent_task_data)
+        now = datetime.now().isoformat()
+        
+        created_tasks = []
+        
+        for doc in request.documents:
+            # Map status emoji to task status and priority
+            doc_status = doc.get('status', '')
+            if '✅' in doc_status or 'Complete' in doc_status:
+                task_status = "Assigned"
+                task_priority = "Low"  # We have the info
+            elif '🟡' in doc_status or 'Partial' in doc_status:
+                task_status = "Assigned"
+                task_priority = "Medium"  # Need to gather some info
+            else:  # ❌ or No Info
+                task_status = "Assigned"
+                task_priority = "High"  # Need to gather all info
+            
+            # Create task ID
+            task_id = str(uuid.uuid4())
+            
+            # Create document task
+            task = TaskAssignment(
+                id=task_id,
+                category="Document Creation",
+                type=doc.get('name', 'Unknown Document'),
+                title=f"{doc.get('name', 'Unknown Document')} - {request.parent_rfp_path}",
+                document=request.parent_rfp_path,
+                assigned_to=parent_task.get('assigned_to', current_user.name),
+                assigned_by=current_user.name,
+                status=task_status,
+                priority=task_priority,
+                due_date=parent_task.get('due_date', ''),
+                decision='N/A',  # Document tasks don't need Go/No-Go
+                created_at=now,
+                updated_at=now
+            )
+            
+            # Store in Redis with parent task reference
+            task_dict = task.dict()
+            task_dict['parent_task_id'] = request.parent_task_id
+            task_dict['parent_rfp_path'] = request.parent_rfp_path
+            task_dict['document_details'] = doc.get('details', '')
+            task_dict['original_status'] = doc.get('status', '')
+            
+            await session_manager.redis.setex(
+                f"task:{task_id}",
+                86400 * 365,  # 1 year TTL
+                json.dumps(task_dict)
+            )
+            
+            created_tasks.append(task)
+            print(f"✅ Created document task: {doc.get('name')} for {request.parent_rfp_path}")
+        
+        # Update parent task with document count
+        parent_task['document_count'] = len(created_tasks)
+        parent_task['updated_at'] = now
+        await session_manager.redis.setex(
+            f"task:{request.parent_task_id}",
+            86400 * 365,
+            json.dumps(parent_task)
+        )
+        
+        return {
+            "status": "success",
+            "message": f"Imported {len(created_tasks)} document tasks",
+            "created_tasks": created_tasks,
+            "parent_task_id": request.parent_task_id
+        }
+        
+    except Exception as e:
+        print(f"❌ Error importing RFP documents: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to import RFP documents"}
         )
 
 @app.get("/api/auth/me", response_model=UserResponse)

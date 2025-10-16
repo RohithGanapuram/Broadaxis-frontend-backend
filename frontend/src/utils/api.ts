@@ -176,6 +176,20 @@ export const apiClient = {
     }
   },
 
+  async importRFPDocuments(parentTaskId: string, parentRfpPath: string, documents: any[]) {
+    try {
+      const response = await api.post('/api/tasks/import-rfp-documents', {
+        parent_task_id: parentTaskId,
+        parent_rfp_path: parentRfpPath,
+        documents: documents
+      })
+      return response.data
+    } catch (error) {
+      console.error('Failed to import RFP documents:', error)
+      throw error
+    }
+  },
+
   // File upload endpoints
   async uploadFile(file: File, sessionId: string = 'default'): Promise<FileInfo> {
     const formData = new FormData()

@@ -260,9 +260,21 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
             messages = [{"role": "user", "content": query}]
             
             # Simple API call without retry logic
+            # Set max_tokens based on model capabilities:
+            # - Claude 3.5 Sonnet: 8192 tokens max
+            # - Claude 3.7 Sonnet: 8192 tokens max  
+            # - Claude Opus 4: 16384 tokens max
+            # - Claude Haiku: 4096 tokens max
+            if "opus" in selected_model.lower() and "4" in selected_model:
+                max_output_tokens = 16384  # Opus 4 supports 16K
+            elif "sonnet" in selected_model.lower():
+                max_output_tokens = 8192   # Sonnet 3.5/3.7 supports 8K
+            else:
+                max_output_tokens = 4096   # Haiku and others support 4K
+            
             try:
                 response = await self.anthropic.messages.create(
-                    max_tokens=4096,
+                    max_tokens=max_output_tokens,
                     model=selected_model,
                     system=system_prompt,
                     tools=available_tools,
@@ -432,8 +444,16 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
                             error_handler.log_error(ws_error, {'operation': 'websocket_generation_update'})
 
                     try:
+                        # Use the same max_tokens logic as the initial call
+                        if "opus" in selected_model.lower() and "4" in selected_model:
+                            max_output_tokens = 16384  # Opus 4 supports 16K
+                        elif "sonnet" in selected_model.lower():
+                            max_output_tokens = 8192   # Sonnet 3.5/3.7 supports 8K
+                        else:
+                            max_output_tokens = 4096   # Haiku and others support 4K
+                        
                         response = await self.anthropic.messages.create(
-                            max_tokens=2048,
+                            max_tokens=max_output_tokens,
                             model=selected_model,
                             system=system_prompt,
                             tools=available_tools,

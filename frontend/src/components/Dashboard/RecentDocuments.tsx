@@ -16,6 +16,11 @@ interface Task {
   decision: string;
   createdAt: string;
   updatedAt: string;
+  parentTaskId?: string;  // For document tasks linked to parent RFP
+  parentRfpPath?: string;  // e.g., "RFP/Dallas City"
+  documentDetails?: string;  // Details about document requirement
+  originalStatus?: string;  // ✅/🟡/❌ from AI
+  documentCount?: number;  // For parent tasks - how many documents needed
 }
  
 const RecentDocuments: React.FC = () => {
@@ -998,21 +1003,42 @@ const RecentDocuments: React.FC = () => {
                     <span>{task.category === 'Project' ? '📄' : 
                            task.category === 'Meeting' ? '📅' :
                            task.category === 'Internal' ? '🔧' :
-                           task.category === 'Review' ? '👀' : '📋'}</span>
+                           task.category === 'Review' ? '👀' :
+                           task.category === 'Document Creation' ? '📝' : '📋'}</span>
                     <span className="font-medium text-gray-900">{task.category}</span>
                   </span>
                 </td>
                 <td className="py-4 px-4 text-gray-700">
                   <div className="max-w-xs">
+                    {/* Show parent/child indicator */}
+                    {task.parentTaskId && (
+                      <div className="text-xs text-blue-600 mb-1 flex items-center space-x-1">
+                        <span>↳</span>
+                        <span>Sub-task</span>
+                        {task.originalStatus && <span>{task.originalStatus}</span>}
+                      </div>
+                    )}
                     <div className="font-medium text-gray-900 truncate" title={task.title}>
                       {task.title}
                     </div>
                     <div className="text-xs text-gray-500 truncate" title={task.document}>
                       {task.document && `📁 ${task.document}`}
                     </div>
-                    <div className="text-xs text-gray-400">
-                      {task.type}
+                    <div className="text-xs text-gray-400 flex items-center space-x-2">
+                      <span>{task.type}</span>
+                      {/* Show document count for parent RFP tasks */}
+                      {task.category === 'Project' && task.documentCount && task.documentCount > 0 && (
+                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                          📋 {task.documentCount} docs
+                        </span>
+                      )}
                     </div>
+                    {/* Show document details if available */}
+                    {task.documentDetails && (
+                      <div className="text-xs text-gray-500 mt-1 italic">
+                        {task.documentDetails}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="py-5 px-6">

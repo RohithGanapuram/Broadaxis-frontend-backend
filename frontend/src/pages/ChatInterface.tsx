@@ -11,6 +11,7 @@ import ProgressTracker from '../components/ProgressTracker'
 import StatusIndicator from '../components/StatusIndicator'
 import TokenDisplay from '../components/TokenDisplay'
 import TokenDashboard from '../components/TokenDashboard'
+import { parseRFPDocuments, hasRFPDocumentsTable, RFPAnalysisMetadata } from '../utils/parseRFPDocuments'
 
 
 // Generate unique message IDs to prevent React key conflicts
@@ -1610,24 +1611,128 @@ useEffect(() => {
                             h1: ({children}) => <h1 className="text-3xl font-bold text-gray-900 mb-6 mt-8 first:mt-0 border-b-2 border-blue-200 pb-3">{children}</h1>,
                             h2: ({children}) => <h2 className="text-2xl font-bold text-blue-800 mb-4 mt-6 first:mt-0 flex items-center gap-2"><span className="text-blue-600">📋</span>{children}</h2>,
                             h3: ({children}) => <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-5 first:mt-0 flex items-center gap-2"><span className="text-gray-600">📄</span>{children}</h3>,
-                            h4: ({children}) => <h4 className="text-lg font-semibold text-gray-700 mb-2 mt-4 first:mt-0">{children}</h4>,
+                            h4: ({children}) => <h4 className="text-lg font-bold text-blue-700 mb-3 mt-4 first:mt-0 bg-blue-50/50 px-3 py-2 rounded-lg border-l-4 border-blue-500">{children}</h4>,
                             p: ({children}) => <p className="text-gray-700 leading-relaxed mb-4 text-base">{children}</p>,
-                            ul: ({children}) => <ul className="list-disc list-inside space-y-2 mb-4 text-gray-700">{children}</ul>,
-                            ol: ({children}) => <ol className="list-decimal list-inside space-y-2 mb-4 text-gray-700">{children}</ol>,
-                            li: ({children}) => <li className="leading-relaxed">{children}</li>,
-                            strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                            ul: ({children}) => <ul className="list-disc list-inside space-y-2 mb-4 text-gray-700 ml-2">{children}</ul>,
+                            ol: ({children}) => <ol className="list-decimal list-inside space-y-2 mb-4 text-gray-700 ml-2">{children}</ol>,
+                            li: ({children}) => <li className="leading-relaxed ml-2">{children}</li>,
+                            strong: ({children}) => <strong className="font-extrabold text-blue-900">{children}</strong>,
                             em: ({children}) => <em className="italic text-gray-600">{children}</em>,
-                            blockquote: ({children}) => <blockquote className="border-l-4 border-blue-300 pl-4 py-2 bg-blue-50 rounded-r-lg mb-4 italic text-gray-700">{children}</blockquote>,
+                            blockquote: ({children}) => <blockquote className="border-l-4 border-blue-400 pl-4 py-3 bg-blue-50 rounded-r-lg mb-4 italic text-gray-700 font-medium">{children}</blockquote>,
                             code: ({children}) => <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800">{children}</code>,
                             pre: ({children}) => <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto mb-4">{children}</pre>,
-                            table: ({children}) => <div className="overflow-x-auto mb-4"><table className="min-w-full border-collapse border border-gray-300">{children}</table></div>,
-                            th: ({children}) => <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-semibold text-gray-800">{children}</th>,
-                            td: ({children}) => <td className="border border-gray-300 px-4 py-2 text-gray-700">{children}</td>,
-                            hr: () => <hr className="my-6 border-gray-300" />
+                            table: ({children}) => <div className="overflow-x-auto mb-6 shadow-lg rounded-lg"><table className="min-w-full border-collapse border border-gray-300 bg-white">{children}</table></div>,
+                            th: ({children}) => <th className="border border-gray-300 bg-blue-700 px-4 py-3 text-left font-bold text-white">{children}</th>,
+                            td: ({children}) => <td className="border border-gray-300 px-4 py-3 text-gray-700 bg-white">{children}</td>,
+                            hr: () => <hr className="my-8 border-t-2 border-blue-300" />
                           }}
                         >
                           {message.content}
                         </ReactMarkdown>
+                        
+                        {/* Import to Dashboard button for RFP analysis */}
+                        {message.type === 'assistant' && hasRFPDocumentsTable(message.content) && (() => {
+                          // Get the previous user message to extract RFP path
+                          const messageIndex = messages.findIndex(m => m.id === message.id)
+                          const previousMessage = messageIndex > 0 ? messages[messageIndex - 1] : null
+                          const combinedContent = (previousMessage?.content || '') + '\n' + message.content
+                          
+                          const rfpData = parseRFPDocuments(combinedContent)
+                          if (rfpData.hasDocumentsTable && rfpData.documents.length > 0) {
+                            return (
+                              <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h4 className="font-bold text-blue-900 text-lg mb-1">📋 Found {rfpData.documents.length} Required Documents</h4>
+                                    <p className="text-sm text-blue-700">
+                                      Import these as tasks to track document creation progress
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={async () => {
+                                      toast.loading('Searching for RFP task...', { id: 'import-docs' })
+                                      try {
+                                        // Extract RFP path from AI response
+                                        const rfpPath = rfpData.rfpPath || ''
+                                        console.log('Extracted RFP path:', rfpPath)
+                                        
+                                        if (!rfpPath) {
+                                          toast.error('Could not detect RFP path from analysis', { id: 'import-docs' })
+                                          return
+                                        }
+                                        
+                                        // Find existing task with this RFP path
+                                        toast.loading('Looking for existing RFP task...', { id: 'import-docs' })
+                                        const allTasks = await apiClient.getTasks()
+                                        
+                                        // Smart matching - try different path variations
+                                        const parentTask = allTasks.find((t: any) => {
+                                          if (t.category !== 'Project') return false
+                                          if (!['RFP', 'RFI', 'RFQ'].includes(t.type)) return false
+                                          
+                                          // Exact match
+                                          if (t.document === rfpPath) return true
+                                          
+                                          // Case-insensitive match
+                                          if (t.document?.toLowerCase() === rfpPath.toLowerCase()) return true
+                                          
+                                          // Match if title contains the path
+                                          if (t.title?.includes(rfpPath)) return true
+                                          
+                                          return false
+                                        })
+                                        
+                                        if (!parentTask) {
+                                          // No existing task found - ask user to create it first
+                                          toast.error('No RFP task found in dashboard', { id: 'import-docs' })
+                                          
+                                          const shouldCreate = confirm(
+                                            `No task found for "${rfpPath}".\n\n` +
+                                            `Please create an RFP task in the dashboard first, then try importing again.\n\n` +
+                                            `Would you like to go to the dashboard now?`
+                                          )
+                                          
+                                          if (shouldCreate) {
+                                            window.location.href = '/dashboard'
+                                          }
+                                          return
+                                        }
+                                        
+                                        // Found existing task - import documents
+                                        console.log('Found existing task:', parentTask)
+                                        toast.loading(`Importing ${rfpData.documents.length} documents...`, { id: 'import-docs' })
+                                        
+                                        const result = await apiClient.importRFPDocuments(
+                                          parentTask.id,
+                                          rfpPath,
+                                          rfpData.documents
+                                        )
+                                        
+                                        toast.success(
+                                          `✅ Imported ${result.created_tasks.length} document tasks under "${parentTask.title}"!`,
+                                          { id: 'import-docs', duration: 5000 }
+                                        )
+                                        
+                                        // Optional: Navigate to dashboard
+                                        if (confirm(`Documents imported successfully!\n\nGo to dashboard to view and track progress?`)) {
+                                          window.location.href = '/dashboard'
+                                        }
+                                      } catch (error: any) {
+                                        console.error('Import error:', error)
+                                        toast.error(`Failed to import: ${error.message}`, { id: 'import-docs' })
+                                      }
+                                    }}
+                                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold flex items-center space-x-2"
+                                  >
+                                    <span>📋</span>
+                                    <span>Import to Dashboard</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          }
+                          return null
+                        })()}
                       </div>
                       {/* Token usage display */}
                       {message.tokenUsage && (
