@@ -296,7 +296,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 class ChatRequest(BaseModel):
     query: str
     enabled_tools: List[str] = []
-    model: str = "claude-3-7-sonnet-20250219"
+    model: str = "claude-sonnet-4-5-20250929"
 
 
 
@@ -728,7 +728,7 @@ async def chat_with_context(request: ChatRequest, session_id: str = None, curren
 # ---------------- TRADING PLANNER (restricted) ----------------
 class TradingChatRequest(BaseModel):
     query: str
-    model: str = "claude-3-7-sonnet-20250219"
+    model: str = "claude-sonnet-4-5-20250929"
     session_id: Optional[str] = None
 
 TRADING_SYSTEM_PROMPT = """
@@ -868,7 +868,7 @@ async def trading_chat(request: TradingChatRequest, current_user: UserResponse =
         result = await run_mcp_query(
             query=request.query,
             enabled_tools=["batch_earnings_analysis", "web_search_tool"],  # Smart selection based on query type
-            model="claude-3-7-sonnet-20250219",  # Use Sonnet 3.7 for cost efficiency
+            model="claude-sonnet-4-5-20250929",  # Use Sonnet 3.7 for cost efficiency
             session_id=session_id,
             system_prompt=TRADING_SYSTEM_PROMPT
         )
@@ -2014,7 +2014,7 @@ Provide your analysis in the exact format above. Be thorough, specific, and comp
                     
                     # Override to Sonnet if token manager selected Haiku (Haiku's 4096 limit is too small)
                     if "haiku" in recommended_model.lower():
-                        recommended_model = "claude-3-5-sonnet-20241022"
+                        recommended_model = "claude-haiku-4-5-20251001"
                         logger.info("Overriding Haiku → Sonnet for RFP document analysis (needs >4096 output tokens)")
                     
                     result = await run_mcp_query(
@@ -2256,7 +2256,7 @@ Provide your analysis in the exact format above with proper line breaks and clea
             
             # Override to Sonnet if token manager selected Haiku (need complete document list with action plan)
             if "haiku" in recommended_model.lower():
-                recommended_model = "claude-3-5-sonnet-20241022"
+                recommended_model = "claude-haiku-4-5-20251001"
                 logger.info("Overriding Haiku → Sonnet for Go/No-Go analysis (needs >4096 output tokens)")
             
             summary_result = await run_mcp_query(
@@ -2374,7 +2374,7 @@ Provide your analysis in the exact format above with proper line breaks and clea
                 "total_tokens": total_tokens_used,
                 "input_tokens": int(total_tokens_used * 0.7),  # Estimate
                 "output_tokens": int(total_tokens_used * 0.3),  # Estimate
-                "model_used": "claude-3-5-sonnet-20241022",  # Default for RFP processing
+                "model_used": "claude-haiku-4-5-20251001",  # Default for RFP processing
                 "queries_processed": len(processed_documents) + 1  # Documents + Go/No-Go analysis
             },
             "session_id": session_id,

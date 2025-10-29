@@ -16,10 +16,9 @@ from collections import defaultdict, deque
 logger = logging.getLogger(__name__)
 
 class ModelType(Enum):
-    HAIKU = "claude-3-haiku-20240307"
-    SONNET = "claude-3-5-sonnet-20241022"
-    SONNET_7 = "claude-3-7-sonnet-20250219"
-    OPUS = "claude-3-opus-20240229"
+    HAIKU = "claude-haiku-4-5-20251001"
+    SONNET_7 = "claude-sonnet-4-5-20250929"
+    OPUS = "claude-opus-4-20250514"
 
 class TaskComplexity(Enum):
     SIMPLE = "simple"      # Document prioritization, basic classification
@@ -71,11 +70,7 @@ class TokenManager:
                 daily_limit=500000,    # 500k tokens/day
                 max_concurrent_requests=5
             ),
-            ModelType.SONNET.value: TokenBudget(
-                hourly_limit=25000,    # 25k tokens/hour
-                daily_limit=250000,    # 250k tokens/day
-                max_concurrent_requests=3
-            ),
+
             ModelType.SONNET_7.value: TokenBudget(
                 hourly_limit=25000,    # 25k tokens/hour
                 daily_limit=250000,    # 250k tokens/day
@@ -96,12 +91,7 @@ class TokenManager:
                 current_requests=deque(),
                 last_cleanup=datetime.now()
             ),
-            ModelType.SONNET.value: RateLimitInfo(
-                requests_per_minute=40,  # Increased from 20
-                requests_per_hour=1000,  # Increased from 500
-                current_requests=deque(),
-                last_cleanup=datetime.now()
-            ),
+
             ModelType.SONNET_7.value: RateLimitInfo(
                 requests_per_minute=40,  # Same as SONNET
                 requests_per_hour=1000,  # Same as SONNET
@@ -126,7 +116,7 @@ class TokenManager:
         # Model selection strategy
         self.model_strategy = {
             TaskComplexity.SIMPLE: ModelType.HAIKU,
-            TaskComplexity.MEDIUM: ModelType.SONNET,
+            TaskComplexity.MEDIUM: ModelType.SONNET_7,
             TaskComplexity.COMPLEX: ModelType.OPUS
         }
         
@@ -156,8 +146,8 @@ class TokenManager:
         
         # For medium tasks, use Sonnet if budget allows
         if task_complexity == TaskComplexity.MEDIUM:
-            if self._can_afford_request(ModelType.SONNET.value, estimated_tokens):
-                return ModelType.SONNET.value
+            if self._can_afford_request(ModelType.SONNET_7.value, estimated_tokens):
+                return ModelType.SONNET_7.value
             else:
                 return ModelType.HAIKU.value
         
@@ -165,8 +155,8 @@ class TokenManager:
         if task_complexity == TaskComplexity.COMPLEX:
             if self._can_afford_request(ModelType.OPUS.value, estimated_tokens):
                 return ModelType.OPUS.value
-            elif self._can_afford_request(ModelType.SONNET.value, estimated_tokens):
-                return ModelType.SONNET.value
+            elif self._can_afford_request(ModelType.SONNET_7.value, estimated_tokens):
+                return ModelType.SONNET_7.value
             else:
                 return ModelType.HAIKU.value
         

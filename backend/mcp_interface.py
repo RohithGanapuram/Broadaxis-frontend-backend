@@ -504,7 +504,7 @@ mcp_interface = MCPInterface()
 async def run_mcp_query(
     query: str,
     enabled_tools: List[str] = None,
-    model: str = "claude-3-5-haiku-20241022",  # Default to Haiku for cost efficiency
+    model: str = "claude-haiku-4-5-20251001",  # Default to Haiku for cost efficiency
     session_id: str = "default",
     system_prompt: str = None,
     websocket = None,

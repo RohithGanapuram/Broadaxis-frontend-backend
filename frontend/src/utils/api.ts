@@ -522,7 +522,7 @@ export const apiClient = {
     const response = await api.delete(`/api/trading/session/${sessionId}`)
     return response.data
   },
-  async tradingChat(query: string, sessionId?: string, model: string = 'claude-3-7-sonnet-20250219'): Promise<any> {
+  async tradingChat(query: string, sessionId?: string, model: string = 'claude-sonnet-4-5-20250929'): Promise<any> {
     const response = await api.post('/api/trading/chat', { query, session_id: sessionId, model })
     return response.data
   },

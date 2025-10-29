@@ -159,7 +159,7 @@ async def websocket_chat(websocket: WebSocket):
                 # Handle chat messages (default behavior)
                 query = message_data.get("query", "").strip()
                 enabled_tools = message_data.get("enabled_tools", [])
-                model = message_data.get("model", "claude-3-7-sonnet-20250219")
+                model = message_data.get("model", "claude-sonnet-4-5-20250929")
                 
                 # Extract or create session_id
                 session_id = message_data.get("session_id")
@@ -270,8 +270,8 @@ async def websocket_chat(websocket: WebSocket):
                     
                     # Check if this is a trading query and use Claude Sonnet 3.7
                     if is_trading_query(query, enabled_tools):
-                        print(f"🚀 Detected trading query - using Claude Sonnet 3.7 (cost-optimized)")
-                        selected_model = "claude-3-7-sonnet-20250219"
+                        print(f"🚀 Detected trading query - using Claude Sonnet 4.5 (cost-optimized)")
+                        selected_model = "claude-sonnet-4-5-20250929"
                     else:
                         print(f"📝 Regular query - using standard model")
                         selected_model = model

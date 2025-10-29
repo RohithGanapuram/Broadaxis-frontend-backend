@@ -38,7 +38,7 @@ const ChatInterface: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<FileInfo[]>([])
   const { tools: availableTools, prompts: availablePrompts, isConnected, messages, setMessages, addMessage, chatSessions, currentSessionId, createNewSession, switchToSession, deleteSession, updateSessionId } = useAppContext()
   const [settings, setSettings] = useState<AppSettings>({
-    model: 'claude-3-7-sonnet-20250219',
+    model: 'claude-sonnet-4-5-20250929',
     enabledTools: [],
     autoAnalyze: false,
     theme: 'light'
@@ -1473,8 +1473,8 @@ useEffect(() => {
                 onChange={(e) => setSettings(prev => ({ ...prev, model: e.target.value }))}
                 className="px-3 py-2 border border-blue-300/50 rounded-xl text-sm bg-white/80 text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
-                <option value="claude-3-7-sonnet-20250219">🚀 Claude 3.7 Sonnet</option>
-                <option value="claude-3-haiku-20240307">⚡ Claude 3 Haiku (Fast)</option>
+                <option value="claude-sonnet-4-5-20250929">🚀 Claude 4.5 Sonnet</option>
+                <option value="claude-haiku-4-5-20251001">⚡ Claude 3 Haiku (Fast)</option>
                 <option value="claude-opus-4-20250514">⭐ Claude Opus 4</option>
                 <option value="claude-sonnet-4-20250514">💎 Claude 4 Sonnet</option>
               </select>

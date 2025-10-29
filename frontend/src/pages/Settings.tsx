@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 const Settings: React.FC = () => {
   const { currentUser } = useAuth()
   const [settings, setSettings] = useState<AppSettings>({
-    model: 'claude-3-7-sonnet-20250219',
+    model: 'claude-sonnet-4-5-20250929',
     enabledTools: [],
     autoAnalyze: false,
     theme: 'light'
