@@ -1344,6 +1344,38 @@ useEffect(() => {
     }, 100);
   };
 
+  // Ensure a parent RFP task exists, return its id
+  async function ensureParentRfpTask(rfpPath: string, folderName: string) {
+    // 1) Try to find an existing parent RFP/RFI/RFQ task by document path or title
+    const allTasks = await apiClient.getTasks();
+    const existing = allTasks.find((t: any) => {
+      if (t.category !== 'Project') return false;
+      if (!['RFP', 'RFI', 'RFQ'].includes(t.type)) return false;
+
+      // Match by exact document path (case-insensitive) OR by title containing folder name
+      const docMatch =
+        (t.document && t.document.toLowerCase() === rfpPath.toLowerCase());
+      const titleMatch =
+        (t.title && (t.title === folderName || t.title.includes(folderName)));
+
+      return docMatch || titleMatch;
+    });
+
+    if (existing) return existing.id;
+
+    // 2) If none, create a new parent RFP task
+    const created = await apiClient.createTask({
+      category: 'Project',
+      type: 'RFP',
+      title: folderName,
+      document: rfpPath,
+      status: 'Assigned',
+      priority: 'Medium',
+      // assigned_to and due_date can be filled later on the Dashboard;
+      // children can inherit when you import (once parent has them)
+    });
+    return created.id;
+  }
 
 
 
@@ -1650,78 +1682,43 @@ useEffect(() => {
                                   </div>
                                   <button
                                     onClick={async () => {
-                                      toast.loading('Searching for RFP task...', { id: 'import-docs' })
+                                      toast.loading('Preparing import...', { id: 'import-docs' });
                                       try {
-                                        // Extract RFP path from AI response
-                                        const rfpPath = rfpData.rfpPath || ''
-                                        console.log('Extracted RFP path:', rfpPath)
-                                        
+                                        // 1) Extract path + folder name from the parsed RFP block
+                                        const rfpPath = rfpData.rfpPath || '';
                                         if (!rfpPath) {
-                                          toast.error('Could not detect RFP path from analysis', { id: 'import-docs' })
-                                          return
+                                          toast.error('Could not detect RFP path from analysis', { id: 'import-docs' });
+                                          return;
                                         }
-                                        
-                                        // Find existing task with this RFP path
-                                        toast.loading('Looking for existing RFP task...', { id: 'import-docs' })
-                                        const allTasks = await apiClient.getTasks()
-                                        
-                                        // Smart matching - try different path variations
-                                        const parentTask = allTasks.find((t: any) => {
-                                          if (t.category !== 'Project') return false
-                                          if (!['RFP', 'RFI', 'RFQ'].includes(t.type)) return false
-                                          
-                                          // Exact match
-                                          if (t.document === rfpPath) return true
-                                          
-                                          // Case-insensitive match
-                                          if (t.document?.toLowerCase() === rfpPath.toLowerCase()) return true
-                                          
-                                          // Match if title contains the path
-                                          if (t.title?.includes(rfpPath)) return true
-                                          
-                                          return false
-                                        })
-                                        
-                                        if (!parentTask) {
-                                          // No existing task found - ask user to create it first
-                                          toast.error('No RFP task found in dashboard', { id: 'import-docs' })
-                                          
-                                          const shouldCreate = confirm(
-                                            `No task found for "${rfpPath}".\n\n` +
-                                            `Please create an RFP task in the dashboard first, then try importing again.\n\n` +
-                                            `Would you like to go to the dashboard now?`
-                                          )
-                                          
-                                          if (shouldCreate) {
-                                            window.location.href = '/dashboard'
-                                          }
-                                          return
-                                        }
-                                        
-                                        // Found existing task - import documents
-                                        console.log('Found existing task:', parentTask)
-                                        toast.loading(`Importing ${rfpData.documents.length} documents...`, { id: 'import-docs' })
-                                        
+                                        const folderName = (rfpPath.split('/').pop() || rfpPath).trim();
+
+
+                                        // 2) Ensure parent exists (find OR create) and get its id
+                                        const parentTaskId = await ensureParentRfpTask(rfpPath, folderName);
+
+                                        // 3) Import the document rows under that parent
+                                        toast.loading(`Importing ${rfpData.documents.length} documents...`, { id: 'import-docs' });
                                         const result = await apiClient.importRFPDocuments(
-                                          parentTask.id,
+                                          parentTaskId,
                                           rfpPath,
                                           rfpData.documents
-                                        )
-                                        
+                                        );
+
                                         toast.success(
-                                          `✅ Imported ${result.created_tasks.length} document tasks under "${parentTask.title}"!`,
+                                          `✅ Imported ${result.created_tasks?.length ?? rfpData.documents.length} document tasks under “${folderName}”`,
                                           { id: 'import-docs', duration: 5000 }
-                                        )
-                                        
-                                        // Optional: Navigate to dashboard
-                                        if (confirm(`Documents imported successfully!\n\nGo to dashboard to view and track progress?`)) {
-                                          window.location.href = '/dashboard'
+                                        );
+
+                                        // Optional: jump to dashboard
+                                        if (confirm('Documents imported! Open dashboard now?')) {
+                                          window.location.href = '/dashboard';
                                         }
-                                      } catch (error: any) {
-                                        console.error('Import error:', error)
-                                        toast.error(`Failed to import: ${error.message}`, { id: 'import-docs' })
+                                      } catch (err: any) {
+                                        console.error('Import failed:', err);
+                                        toast.error(`Failed to import: ${err?.message || err}`, { id: 'import-docs' });
                                       }
                                     }}
+
                                     className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold flex items-center space-x-2"
                                   >
                                     <span>📋</span>
