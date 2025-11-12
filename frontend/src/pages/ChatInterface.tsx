@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import remarkGfm from 'remark-gfm'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
@@ -84,6 +84,33 @@ const ChatInterface: React.FC = () => {
   sessionId: string; 
 } | null>(null);
   
+  const [spRootPath, setSpRootPath] = useState<string>('');
+  const toPath = (name: string) => (spRootPath ? `${spRootPath}/${name}` : name);
+  const isReviewPackagePrompt = (p: any) => {
+  const name = (p?.name || '').toLowerCase();
+  const desc = (p?.description || '').toLowerCase();
+  return name.includes('review package') || desc.includes('review package');
+};
+  // Local synthetic "Review Package" template if MCP doesn't provide one
+  const allPromptTemplates: any[] = useMemo(() => {
+    const base: any[] = Array.isArray(availablePrompts) ? [...availablePrompts] : [];
+
+    const alreadyExists = base.some(p => isReviewPackagePrompt(p));
+    if (!alreadyExists) {
+      base.push({
+        id: 'review_package_local',
+        name: 'Review Package',
+        description:
+          'Analyze a completed RFP review package (folder under /Review Package in SharePoint) and rate win probability & eligibility.',
+        // content is not really used here because we route to the pipeline,
+        // but we keep something reasonable for consistency
+        content:
+          'Use the Review Package pipeline to analyze the selected SharePoint review package folder and generate a rating, eligibility status, and key findings.'
+      });
+    }
+
+    return base;
+  }, [availablePrompts]);
 
 
   // Document type input for Step 4
@@ -92,6 +119,9 @@ const ChatInterface: React.FC = () => {
   const [pendingPrompt, setPendingPrompt] = useState<any>(null)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // If the selected prompt is for Review Package, default the root to "/Review Package"
+  const rootOverride: string | undefined = isReviewPackagePrompt(selectedPrompt) ? '/Review Package' : undefined;
+
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
@@ -170,6 +200,48 @@ useEffect(() => {
   const handleWebSocketMessage = (data: any) => {
     console.log(`🔍 Received WebSocket message:`, data)
     
+    // --- NEW: handle Review Package final result
+    if (data.type === 'answer' && data.task_type === 'review_package') {
+      // Make the markdown report the assistant content
+      const md = data?.result?.artifacts?.markdown_report || 'No report';
+      const pill = data?.result?.summary
+        ? `Rating ${data.result.summary.rating}/100 · ${data.result.summary.label} · Eligibility: ${data.result.summary.eligibility_status}`
+        : undefined;
+
+      setMessages(prev => {
+        const updated = [...prev];
+        // Update the most recent loading assistant message
+        for (let i = updated.length - 1; i >= 0; i--) {
+          if (updated[i].isLoading && updated[i].type === 'assistant') {
+            updated[i] = {
+              ...updated[i],
+              content: md,
+              isLoading: false,
+              // store a tiny meta if you want to show a badge elsewhere
+              tokenUsage: undefined
+            };
+            return updated;
+          }
+        }
+        // fallback: append a new assistant message
+        updated.push({
+          id: generateMessageId(),
+          type: 'assistant',
+          content: md,
+          timestamp: new Date(),
+          isLoading: false
+        });
+        return updated;
+      });
+
+      // Clear tool status since we’re done
+      setCurrentToolStatus('');
+      setToolExecutionDetails(null);
+      setIsLoading(false);
+      return; // stop further default handling
+    }
+
+
     if (data.type === 'response') {
       // Always update session ID if provided in response (for Redis testing)
       if (data.session_id) {
@@ -559,39 +631,38 @@ useEffect(() => {
     })
   }
 
-  const fetchSharePointFolders = async (forceRefresh = false) => {
-    const cacheKey = 'root'
-    const now = Date.now()
-    
+  const fetchSharePointFolders = async (forceRefresh = false, rootPathOverride?: string) => {
+    const root = (typeof rootPathOverride === 'string') ? rootPathOverride : spRootPath;
+    const cacheKey = `root:${root || ''}`;
+    const now = Date.now();
+      
     // Check cache first (unless force refresh)
     if (!forceRefresh && sharePointCache[cacheKey] && (now - sharePointCache[cacheKey].timestamp) < CACHE_DURATION) {
-      setAvailableFolders(sharePointCache[cacheKey].folders)
-      return
-    }
-    
-    setIsLoadingFolders(true)
-    try {
-      const response = await apiClient.listSharePointFiles('')
-      if (response.status === 'success' && response.files) {
-        // Filter for folders only - backend uses 'type' field
-        const folders = response.files
-          .filter((item: any) => item.type === 'folder')
-          .map((item: any) => item.filename)
-        
-        // Update cache
-        setSharePointCache(prev => ({
-          ...prev,
-          [cacheKey]: { folders, timestamp: now }
-        }))
-        setAvailableFolders(folders)
-      }
-    } catch (error) {
-      console.error('Error fetching SharePoint folders:', error)
-      toast.error('Failed to fetch SharePoint folders')
-    } finally {
-      setIsLoadingFolders(false)
-    }
+    setAvailableFolders(sharePointCache[cacheKey].folders);
+    return;
   }
+    
+    setIsLoadingFolders(true);
+  try {
+    const response = await apiClient.listSharePointFiles(root || '');
+    if (response.status === 'success' && response.files) {
+      const folders = response.files
+        .filter((item: any) => item.type === 'folder')
+        .map((item: any) => item.filename);
+
+      setSharePointCache(prev => ({
+        ...prev,
+        [cacheKey]: { folders, timestamp: now }
+      }));
+      setAvailableFolders(folders);
+    }
+  } catch (error) {
+    console.error('Error fetching SharePoint folders:', error);
+    toast.error('Failed to fetch SharePoint folders');
+  } finally {
+    setIsLoadingFolders(false);
+  }
+};
 
   // Add this helper somewhere near your cache state:
   const invalidateSharePointCache = (prefix = '') => {
@@ -616,7 +687,8 @@ useEffect(() => {
 
     setIsLoadingFolders(true)
     try {
-      const response = await apiClient.listSharePointFiles(parentFolder)
+      const response = await apiClient.listSharePointFiles(toPath(parentFolder));  // uses root
+
       if (response.status === 'success' && response.files) {
         const folders = response.files
           .filter((item: any) => item.type === 'folder')
@@ -654,7 +726,7 @@ useEffect(() => {
     
     setIsLoadingFiles(true)
     try {
-      const response = await apiClient.listSharePointFiles(folderPath)
+      const response = await apiClient.listSharePointFiles(toPath(folderPath));    // uses root
       if (response.status === 'success' && response.files) {
         // Filter for files only (not folders) and map backend fields to frontend expectations
         const files = response.files
@@ -927,43 +999,71 @@ useEffect(() => {
 
   const handlePromptClick = async (prompt: any) => {
     console.log('Prompt clicked:', prompt)
-    
-    // Check if this is the intelligent RFP processing prompt
-    const isIntelligentRFP = prompt.name === 'Intelligent_RFP_Processing' || 
-                            prompt.description.includes('intelligent RFP processing')
-    
-    // Check if this is the Step2 prompt template (needs folder selection)
-    const isStep2 = prompt.name === 'Summarize_Document' || 
-                   prompt.name === 'Step2_summarize_documents' || 
-                   prompt.description.includes('Generate a clear, high-value summary')
-    
-    const isStep4 = prompt.name === 'Dynamic_Content_Generator' || 
-                   prompt.name === 'Dynamic Content Generator' || 
-                   prompt.name === 'Step4_generate_capability_statement' ||
-                   prompt.description.includes('Dynamic Document Generator') ||
-                   prompt.description.includes('Generate high-quality capability statements')
+
+    // 🔹 Detect prompt types
+    const isIntelligentRFP =
+      prompt.name === 'Intelligent_RFP_Processing' ||
+      prompt.description.includes('intelligent RFP processing')
+
+    const isStep2 =
+      prompt.name === 'Summarize_Document' ||
+      prompt.name === 'Step2_summarize_documents' ||
+      prompt.description.includes('Generate a clear, high-value summary')
+
+    const isStep4 =
+      prompt.name === 'Dynamic_Content_Generator' ||
+      prompt.name === 'Dynamic Content Generator' ||
+      prompt.name === 'Step4_generate_capability_statement' ||
+      prompt.description.includes('Dynamic Document Generator') ||
+      prompt.description.includes('Generate high-quality capability statements')
+
+    // 🔹 NEW: detect Review Package prompt
+    const isReviewPackage = isReviewPackagePrompt(prompt)
+
+    // 🔹 SPECIAL CASE: Review Package prompt → use "/Review Package" root
+    if (isReviewPackage) {
+      console.log('Review Package prompt detected - using /Review Package root')
+      
+      // point SharePoint browsing to /Review Package
+      setSpRootPath('/Review Package')
+
+      // (optional but recommended) clear any old cache for other roots
+      invalidateSharePointCache()
+
+      setSelectedPrompt(prompt)
+      await fetchSharePointFolders(true, '/Review Package') // force refresh at that root
+      setShowFolderSelection(true)
+      setShowPromptsPanel(false)
+      return
+    }
+
+    // 🔹 For ALL OTHER prompts, reset root back to default
+    setSpRootPath('')        // this makes fetchSharePointFolders() use the normal root
+    invalidateSharePointCache()
+
+    // ==== EXISTING LOGIC BELOW (unchanged) ====
+
     // If we have an uploaded file, offer to run the selected prompt on it
     if (uploadedDoc) {
       const runOnUploaded = window.confirm(
         `Run "${prompt.name}" on uploaded file "${uploadedDoc.filename}"?\n\n` +
         `OK = Uploaded file, Cancel = pick a SharePoint folder`
-      );
+      )
+
       if (runOnUploaded) {
-   // single send via retrieval-aware helper
-        await runPromptWithUploadedDoc(prompt);
-        setSelectedPrompt(null);
-        return;
- }
-        setSelectedPrompt(prompt);
-        await fetchSharePointFolders();   // or fetchSharePointFolders(true) if you want a fresh list
-        setShowFolderSelection(true);
-        setShowPromptsPanel(false);
-        return;
+        await runPromptWithUploadedDoc(prompt)
+        setSelectedPrompt(null)
+        return
+      }
+
+      setSelectedPrompt(prompt)
+      await fetchSharePointFolders()   // now this will use root = '' again
+      setShowFolderSelection(true)
+      setShowPromptsPanel(false)
+      return
     }
-// ...existing flow continues here (open SharePoint folder picker, etc.)
 
-
-     else if (isIntelligentRFP) {
+    if (isIntelligentRFP) {
       console.log('Intelligent RFP processing prompt detected - showing folder selection')
       setSelectedPrompt(prompt)
       await fetchSharePointFolders()
@@ -982,13 +1082,16 @@ useEffect(() => {
       setShowDocumentTypeInput(true)
       setShowPromptsPanel(false)
     } else {
-      // For other prompts (including Step 3), use the description as the query
       console.log('Other prompt detected - executing directly')
-      
-      // Use the prompt content from the MCP server (full template)
-      const promptMessage = prompt.content || prompt.description || prompt.name || 'Please execute this prompt template.'
-      
+
+      const promptMessage =
+        prompt.content ||
+        prompt.description ||
+        prompt.name ||
+        'Please execute this prompt template.'
+
       setInputMessage(promptMessage)
+
       setTimeout(() => {
         if (globalWebSocket.getConnectionStatus()) {
           const userMessage: ChatMessage = {
@@ -1004,16 +1107,17 @@ useEffect(() => {
             timestamp: new Date(),
             isLoading: true
           }
+
           addMessage(userMessage)
           addMessage(assistantMessage)
-          setIsLoading(true)
-          
+
           globalWebSocket.sendMessage({
             query: promptMessage,
             enabled_tools: getToolsForPrompt(prompt),
             model: settings.model,
             session_id: currentSessionId
           })
+
           setInputMessage('')
           setShowPromptsPanel(false)
         } else {
@@ -1023,6 +1127,7 @@ useEffect(() => {
       }, 100)
     }
   }
+
 
   const handleFolderSelection = async (folderName: string) => {
     if (selectedPrompt) {
@@ -1035,6 +1140,54 @@ useEffect(() => {
                      selectedPrompt.name === 'Step2_summarize_documents' || 
                      selectedPrompt.description.includes('Generate a clear, high-value summary')
       
+      
+      // --- NEW: Review Package flow (single folder pick → WS job)
+      if (selectedPrompt && isReviewPackagePrompt(selectedPrompt)) {
+        try {
+          const path = toPath(folderName); // "/Review Package/<Folder>"
+          setIsLoading(true);
+
+          // show a user+assistant loading pair like your other flows
+          const userMessage: ChatMessage = {
+            id: generateMessageId(),
+            type: 'user',
+            content: `Run Review Package analysis for: ${path}`,
+            timestamp: new Date()
+          };
+          const assistantMessage: ChatMessage = {
+            id: generateMessageId(),
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isLoading: true
+          };
+          addMessage(userMessage);
+          addMessage(assistantMessage);
+
+          // IMPORTANT: send a generic WS payload (not a "query" message)
+          // If your wrapper lacks `send`, add it in utils/websocket.ts (see note below).
+          globalWebSocket.sendMessage({
+            type: 'start_job',
+            task_type: 'review_package',
+            path,
+            options: { include_subfolders: true, max_files: 200 },
+            session_id: currentSessionId || null
+          });
+
+
+          setShowFolderSelection(false);
+          setSelectedPrompt(null);
+          toast.success('Started Review Package analysis…');
+        } catch (e: any) {
+          console.error(e);
+          toast.error(`Failed to start Review Package: ${e.message || e}`);
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+
       if (isIntelligentRFP) {
         // For intelligent RFP processing, first check if this folder has subfolders
         const hasSubFolders = await fetchSubFolders(folderName)
@@ -1806,7 +1959,7 @@ useEffect(() => {
                         </div>
                         <div>
                           <h3 className="text-lg font-bold text-blue-900">Prompt Templates</h3>
-                          <p className="text-xs text-blue-600">{availablePrompts.length} templates available</p>
+                          <p className="text-xs text-blue-600">{allPromptTemplates.length} templates available</p>
                         </div>
                       </div>
                       <button
@@ -1819,8 +1972,8 @@ useEffect(() => {
                     
                     {/* Templates List */}
                     <div className="space-y-3 max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-100">
-                      {availablePrompts.length > 0 ? (
-                        availablePrompts.map((prompt, index) => (
+                      {allPromptTemplates.length > 0 ? (
+                        allPromptTemplates.map((prompt, index) => (
                           <div key={index} className="block">
                             <button
                               onClick={() => handlePromptClick(prompt)}

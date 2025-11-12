@@ -1,6 +1,6 @@
 
-from __future__ import annotations
-
+from fastapi import FastAPI, File, UploadFile, WebSocket, Request, Depends, HTTPException, status, Form, Query
+from typing import Annotated
 import asyncio
 import json
 import os
@@ -13,11 +13,11 @@ import jwt
 from typing import Dict, List, Optional
 import re
 from datetime import datetime, timedelta
-from typing import Annotated
+
 # Set up logging
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, File, UploadFile, WebSocket, Request, Depends, HTTPException, status, Form, Query
+from fastapi import FastAPI, File, UploadFile, WebSocket, Request, Depends, HTTPException, status, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -31,9 +31,6 @@ import os
 import uuid
 import re
 from typing import Dict, List, Tuple
-from pydantic import BaseModel
-from fastapi import Depends, Query
-
 try:
     import PyPDF2  # we use PyPDF2 because it's already in requirements
 except Exception:
@@ -265,6 +262,18 @@ def _score_chunks(query: str, chunks: List[Dict]) -> List[Tuple[float, Dict]]:
     scored.sort(key=lambda x: (-x[0], x[1]["page_start"]))
     return scored
  
+from fastapi import APIRouter, Query
+from sharepoint_api import list_review_packages, list_package_contents
+
+router = APIRouter()
+
+@router.get("/api/review-packages")
+def get_review_packages():
+    return list_review_packages()
+
+@router.get("/api/review-packages/contents")
+def get_review_package_contents(path: str = Query(..., description="/Review Package/<PackageName>")):
+    return list_package_contents(path)
 
 
 # Global exception handlers
@@ -2301,6 +2310,7 @@ Provide your analysis in the exact format above with proper line breaks and clea
             summary_result = await run_mcp_query(
                 go_no_go_prompt,
                 enabled_tools=['Broadaxis_knowledge_search'],
+                
                 model=recommended_model,
                 session_id=session_id
             )

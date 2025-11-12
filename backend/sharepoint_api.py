@@ -57,6 +57,34 @@ def _try_dt_prefix(s: str):
         return datetime.fromisoformat(m.group(1))
     except Exception:
         return None
+    
+from typing import Dict, Any, List
+
+REVIEW_PACKAGE_ROOT = "/Review Package"
+
+def list_review_packages(root: str = REVIEW_PACKAGE_ROOT) -> Dict[str, Any]:
+        """
+        Return top-level folders under the Review Package root.
+        Implement with your existing Graph listChildren call; include only folders.
+        """
+        # TODO: implement using your current Graph client
+        return {"root": root, "packages": []}
+def list_package_contents(path: str) -> Dict[str, Any]:
+        """
+        Return (flattened) direct children under a specific package path.
+        """
+        # TODO: implement using your current Graph client
+        return {"package": path.split("/")[-1], "path": path, "items": []}
+
+def download_package(path: str, include_subfolders: bool = True, max_files: int = 200) -> Dict[str, Any]:
+        """
+        Download and extract text from files under the package path.
+        Must return: {"path": path, "files": [{id,name,size,mime,last_modified,text}, ...]}
+        Hook this into your real PDF/DOCX/XLSX/PPTX extractors.
+        """
+        files: List[Dict[str, Any]] = []
+        # TODO: populate from Graph + your existing text extraction pipeline
+        return {"path": path, "files": files}
 # ----------------------------------------------------------------------
 
 
@@ -593,6 +621,10 @@ class SharePointManager:
             name, ext = filename.rsplit('.', 1) if '.' in filename else (filename, '')
             filename = f"{name[:95]}.{ext}" if ext else name[:100]
         return filename
+    
+        # backend/backend/sharepoint_api.py (additions / wrappers)
+    
+
 
 # SharePoint API Endpoints
 @sharepoint_router.get("/test-sharepoint")
