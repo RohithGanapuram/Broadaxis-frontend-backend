@@ -325,7 +325,12 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
                         error_handler.log_error(ws_error, {'operation': 'websocket_processing_update'})
                 
             except Exception as api_error:
-                return {"response": f"❌ **API Error: {str(api_error)}**", "tokens_used": 0}
+                # Ensure error message is always a string
+                error_msg = str(api_error)
+                # If error contains TextBlock objects, convert them
+                if "TextBlock" in error_msg:
+                    error_msg = f"API Error occurred: {error_msg}"
+                return {"response": f"❌ **API Error: {error_msg}**", "tokens_used": 0}
             
             full_response = ""
             tools_used = []
@@ -526,7 +531,12 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
             
         except Exception as e:
             self._connection_status = "offline"
-            return {"response": f"Error: {str(e)}", "tokens_used": 0}
+            # Ensure error message is always a string
+            error_msg = str(e)
+            # If error contains TextBlock objects, convert them
+            if "TextBlock" in error_msg:
+                error_msg = f"Processing error occurred: {error_msg}"
+            return {"response": f"Error: {error_msg}", "tokens_used": 0}
 
 
 # Global instance

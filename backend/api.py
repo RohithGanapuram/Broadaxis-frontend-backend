@@ -108,6 +108,28 @@ def safe_extract_text_content(content, index=0):
     else:
         return str(item)
 
+def ensure_string_response(response):
+    """Ensure response is a string, converting TextBlock objects if present"""
+    if isinstance(response, str):
+        return response
+    elif hasattr(response, 'text'):
+        # TextBlock object
+        return str(response.text) if hasattr(response, 'text') else str(response)
+    elif isinstance(response, dict):
+        # If response is a dict, extract the 'response' field if it exists
+        if 'response' in response:
+            return ensure_string_response(response['response'])
+        else:
+            # Try to convert dict to string representation
+            return str(response)
+    elif isinstance(response, list):
+        # If response is a list, try to extract text from first element
+        if len(response) > 0:
+            return ensure_string_response(response[0])
+        return ""
+    else:
+        return str(response)
+
 app = FastAPI(title="BroadAxis API", version="1.0.0")
 
 # CORS Configuration - Environment-based with security
@@ -895,15 +917,18 @@ async def trading_chat(request: TradingChatRequest, current_user: UserResponse =
             session_id=session_id,
             system_prompt=TRADING_SYSTEM_PROMPT
         )
+        # Ensure response is always a string, converting TextBlock objects if present
+        response_text = ensure_string_response(result.get("response", ""))
+        
         # Store assistant message
         await session_manager.add_message(session_id, {
             "role": "assistant",
-            "content": result.get("response", ""),
+            "content": response_text,
             "timestamp": datetime.now().isoformat()
         })
         return {
             "status": "success",
-            "response": result.get("response", ""),
+            "response": response_text,
             "session_id": session_id
         }
     except Exception as e:
@@ -2059,11 +2084,14 @@ Provide your analysis in the exact format above. Be thorough, specific, and comp
                         session_id=session_id
                     )
                     
+                    # Ensure response is always a string, converting TextBlock objects if present
+                    response_text = ensure_string_response(result.get("response", ""))
+                    
                     analysis_result = {
                         "filename": doc.filename,
                         "priority": doc.priority.value,
                         "confidence": doc.confidence_score,
-                        "analysis": result.get("response", ""),
+                        "analysis": response_text,
                         "tokens_used": result.get("tokens_used", 0),
                         "model_used": result.get("model_used", "unknown"),
                         "cached": False
@@ -2303,10 +2331,15 @@ Provide your analysis in the exact format above with proper line breaks and clea
             
             # Cache the Go/No-Go analysis for consistency
             if SESSION_MANAGER_AVAILABLE and session_manager.redis and summary_result.get("response"):
-                await session_manager.redis.setex(analysis_cache_key, 604800, json.dumps(summary_result["response"]))  # 7 days
+                # Ensure response is always a string before caching
+                summary_response = ensure_string_response(summary_result["response"])
+                await session_manager.redis.setex(analysis_cache_key, 604800, json.dumps(summary_response))  # 7 days
                 print(f"✅ Cached Go/No-Go analysis for consistency")
         
         total_tokens_used += summary_result.get("tokens_used", 0)
+        
+        # Ensure summary response is always a string
+        summary_response_text = ensure_string_response(summary_result.get("response", ""))
         
         # Store the complete RFP analysis for future reference
         rfp_analysis = {
@@ -2315,7 +2348,7 @@ Provide your analysis in the exact format above with proper line breaks and clea
             "processed_documents": len(processed_documents),
             "recommendation": recommendation,
             "processed_docs": processed_documents,
-            "summary": summary_result.get("response", ""),
+            "summary": summary_response_text,
             "total_tokens_used": total_tokens_used,
             "timestamp": datetime.now().isoformat()
         }
@@ -2370,7 +2403,7 @@ Provide your analysis in the exact format above with proper line breaks and clea
 
 ## 🎯 **FINAL RECOMMENDATION**
 
-{clean_markup(summary_result.get("response", ""))}
+{clean_markup(ensure_string_response(summary_result.get("response", "")))}
 
 ---
 
