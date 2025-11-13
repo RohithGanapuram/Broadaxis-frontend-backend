@@ -4,6 +4,7 @@ MCP Interface for BroadAxis RFP/RFQ Management Platform
 
 import asyncio
 import json
+import logging
 import os
 from typing import Dict, List, Optional
 from contextlib import AsyncExitStack
@@ -12,6 +13,31 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from error_handler import BroadAxisError, ExternalAPIError, error_handler
 from token_manager import token_manager, TaskComplexity
+
+logger = logging.getLogger(__name__)
+
+def convert_textblocks_to_string(content):
+    """Convert TextBlock objects to JSON-serializable format for Anthropic API"""
+    if isinstance(content, list):
+        result = []
+        for item in content:
+            if hasattr(item, 'text'):
+                result.append({"type": "text", "text": item.text})
+            elif isinstance(item, dict) and 'text' in item:
+                result.append({"type": "text", "text": item['text']})
+            elif isinstance(item, dict) and 'type' in item:
+                result.append(item)  # Already properly formatted
+            else:
+                result.append({"type": "text", "text": str(item)})
+        return result
+    elif hasattr(content, 'text'):
+        return [{"type": "text", "text": content.text}]
+    elif isinstance(content, dict) and 'text' in content:
+        return [{"type": "text", "text": content['text']}]
+    elif isinstance(content, dict) and 'type' in content:
+        return [content]  # Already properly formatted
+    else:
+        return [{"type": "text", "text": str(content)}]
 
 
 class MCPInterface:
@@ -361,10 +387,19 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
                                 try:
                                     # Use the persistent session instead of creating a new one
                                     result = await self.session.call_tool(tool_content.name, arguments=tool_content.input)
+                                    
+                                    # Debug: Log the result structure
+                                    logger.info(f"Tool {tool_content.name} result type: {type(result)}")
+                                    logger.info(f"Tool {tool_content.name} result content type: {type(result.content) if hasattr(result, 'content') else 'No content attr'}")
+                                    
+                                    # Convert MCP result to proper Anthropic format
+                                    content = convert_textblocks_to_string(result.content)
+                                    logger.info(f"Converted content type: {type(content)}")
+                                    
                                     return {
                                         "type": "tool_result",
                                         "tool_use_id": tool_content.id,
-                                        "content": result.content
+                                        "content": content
                                     }
                                 except Exception as tool_error:
                                     error_handler.log_error(tool_error, {'tool_name': tool_content.name})
@@ -414,16 +449,12 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
                         return_exceptions=True
                     )
                     
-                    # Batch all tool results into a single user message
-                    batched_tool_results = []
+                    # Add tool results as individual messages
                     for result in tool_results:
                         if isinstance(result, dict):
-                            batched_tool_results.append(result)
+                            messages.append({"role": "user", "content": [result]})
                         else:
                             error_handler.log_error(result, {'operation': 'parallel_tool_execution'})
-                    
-                    if batched_tool_results:
-                        messages.append({"role": "user", "content": batched_tool_results})
                     
                     # --- Simple follow-up call without retry logic ---
                     # Send progress update for response generation

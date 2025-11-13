@@ -95,6 +95,19 @@ except ImportError as e:
     SESSION_MANAGER_AVAILABLE = False
     session_manager = None
 
+def safe_extract_text_content(content, index=0):
+    """Safely extract text content from MCP tool result content, handling TextBlock objects"""
+    if not content or len(content) <= index:
+        return None
+    
+    item = content[index]
+    if hasattr(item, 'text'):
+        return item.text
+    elif isinstance(item, dict) and 'text' in item:
+        return item['text']
+    else:
+        return str(item)
+
 app = FastAPI(title="BroadAxis API", version="1.0.0")
 
 # CORS Configuration - Environment-based with security
@@ -607,12 +620,22 @@ async def upload_file(file: UploadFile = File(...), session_id: str = "default")
             "upload_time": datetime.now().isoformat()
         })
         
+        # Convert TextBlock objects to strings for JSON serialization
+        message = "Document processed successfully"
+        if result.content:
+            if hasattr(result.content[0], 'text'):
+                message = result.content[0].text
+            elif isinstance(result.content[0], dict) and 'text' in result.content[0]:
+                message = result.content[0]['text']
+            else:
+                message = str(result.content[0])
+        
         return {
             "status": "success",
             "filename": file.filename,
             "size": len(file_content),
             "files_in_session": len(session_files[session_key]),
-            "message": result.content[0].text if result.content else "Document processed successfully"
+            "message": message
         }
         
     except BroadAxisError:
@@ -1504,7 +1527,13 @@ async def debug_document_prioritization(folder_path: str, current_user: UserResp
             }
         
         # Parse the list result
-        files_data = json.loads(list_result.content[0].text)
+        content_text = safe_extract_text_content(list_result.content)
+        if not content_text:
+            return {
+                "status": "error",
+                "message": "Failed to extract content from list result"
+            }
+        files_data = json.loads(content_text)
         if files_data.get("status") != "success":
             return {
                 "status": "error",
@@ -1771,8 +1800,14 @@ async def process_rfp_folder_intelligent(request: RFPProcessingRequest, current_
         
         # Parse the list result
         try:
-            print(f"📄 Raw content text: {list_result.content[0].text}")
-            files_data = json.loads(list_result.content[0].text)
+            content_text = safe_extract_text_content(list_result.content)
+            if not content_text:
+                return {
+                    "status": "error",
+                    "message": "Failed to extract content from list result"
+                }
+            print(f"📄 Raw content text: {content_text}")
+            files_data = json.loads(content_text)
             print(f"📄 Parsed files data: {files_data}")
             
             if files_data.get("status") != "success":
