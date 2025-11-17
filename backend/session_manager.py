@@ -167,16 +167,31 @@ class RedisSessionManager:
             return session.get("rfp_analyses", [])
         return []
     
+    def _clean_textblocks_for_json(self, obj):
+        """Recursively convert TextBlock objects to strings for JSON serialization"""
+        if hasattr(obj, 'text'):
+            # TextBlock object - convert to string
+            return str(obj.text) if hasattr(obj, 'text') else str(obj)
+        elif isinstance(obj, dict):
+            return {key: self._clean_textblocks_for_json(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._clean_textblocks_for_json(item) for item in obj]
+        else:
+            return obj
+    
     async def store_document_summary(self, session_id: str, document_path: str, summary: Dict):
         """Store document summary for reuse - store in both global and session cache"""
         if not self.redis:
             await self.connect()
         
+        # Clean any TextBlock objects from summary before storing
+        cleaned_summary = self._clean_textblocks_for_json(summary)
+        
         # Store in global cache (consistent across all users) with 7-day TTL
         global_cache_key = f"document_summary:{document_path}"
         summary_with_timestamp = {
             "timestamp": datetime.now().isoformat(),
-            "summary": summary
+            "summary": cleaned_summary
         }
         await self.redis.setex(global_cache_key, 604800, json.dumps(summary_with_timestamp))  # 7 days
         print(f"✅ Stored global document summary for {document_path}")

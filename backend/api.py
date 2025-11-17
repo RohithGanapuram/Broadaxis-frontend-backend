@@ -96,6 +96,41 @@ except ImportError as e:
     SESSION_MANAGER_AVAILABLE = False
     session_manager = None
 
+def safe_extract_text_content(content, index=0):
+    """Safely extract text content from MCP tool result content, handling TextBlock objects"""
+    if not content or len(content) <= index:
+        return None
+    
+    item = content[index]
+    if hasattr(item, 'text'):
+        return item.text
+    elif isinstance(item, dict) and 'text' in item:
+        return item['text']
+    else:
+        return str(item)
+
+def ensure_string_response(response):
+    """Ensure response is a string, converting TextBlock objects if present"""
+    if isinstance(response, str):
+        return response
+    elif hasattr(response, 'text'):
+        # TextBlock object
+        return str(response.text) if hasattr(response, 'text') else str(response)
+    elif isinstance(response, dict):
+        # If response is a dict, extract the 'response' field if it exists
+        if 'response' in response:
+            return ensure_string_response(response['response'])
+        else:
+            # Try to convert dict to string representation
+            return str(response)
+    elif isinstance(response, list):
+        # If response is a list, try to extract text from first element
+        if len(response) > 0:
+            return ensure_string_response(response[0])
+        return ""
+    else:
+        return str(response)
+
 app = FastAPI(title="BroadAxis API", version="1.0.0")
 
 # CORS Configuration - Environment-based with security
@@ -655,12 +690,22 @@ async def upload_file(file: UploadFile = File(...), session_id: str = "default")
             "upload_time": datetime.now().isoformat()
         })
         
+        # Convert TextBlock objects to strings for JSON serialization
+        message = "Document processed successfully"
+        if result.content:
+            if hasattr(result.content[0], 'text'):
+                message = result.content[0].text
+            elif isinstance(result.content[0], dict) and 'text' in result.content[0]:
+                message = result.content[0]['text']
+            else:
+                message = str(result.content[0])
+        
         return {
             "status": "success",
             "filename": file.filename,
             "size": len(file_content),
             "files_in_session": len(session_files[session_key]),
-            "message": result.content[0].text if result.content else "Document processed successfully"
+            "message": message
         }
         
     except BroadAxisError:
@@ -920,15 +965,18 @@ async def trading_chat(request: TradingChatRequest, current_user: UserResponse =
             session_id=session_id,
             system_prompt=TRADING_SYSTEM_PROMPT
         )
+        # Ensure response is always a string, converting TextBlock objects if present
+        response_text = ensure_string_response(result.get("response", ""))
+        
         # Store assistant message
         await session_manager.add_message(session_id, {
             "role": "assistant",
-            "content": result.get("response", ""),
+            "content": response_text,
             "timestamp": datetime.now().isoformat()
         })
         return {
             "status": "success",
-            "response": result.get("response", ""),
+            "response": response_text,
             "session_id": session_id
         }
     except Exception as e:
@@ -1552,7 +1600,13 @@ async def debug_document_prioritization(folder_path: str, current_user: UserResp
             }
         
         # Parse the list result
-        files_data = json.loads(list_result.content[0].text)
+        content_text = safe_extract_text_content(list_result.content)
+        if not content_text:
+            return {
+                "status": "error",
+                "message": "Failed to extract content from list result"
+            }
+        files_data = json.loads(content_text)
         if files_data.get("status") != "success":
             return {
                 "status": "error",
@@ -1819,8 +1873,14 @@ async def process_rfp_folder_intelligent(request: RFPProcessingRequest, current_
         
         # Parse the list result
         try:
-            print(f"📄 Raw content text: {list_result.content[0].text}")
-            files_data = json.loads(list_result.content[0].text)
+            content_text = safe_extract_text_content(list_result.content)
+            if not content_text:
+                return {
+                    "status": "error",
+                    "message": "Failed to extract content from list result"
+                }
+            print(f"📄 Raw content text: {content_text}")
+            files_data = json.loads(content_text)
             print(f"📄 Parsed files data: {files_data}")
             
             if files_data.get("status") != "success":
@@ -2072,11 +2132,14 @@ Provide your analysis in the exact format above. Be thorough, specific, and comp
                         session_id=session_id
                     )
                     
+                    # Ensure response is always a string, converting TextBlock objects if present
+                    response_text = ensure_string_response(result.get("response", ""))
+                    
                     analysis_result = {
                         "filename": doc.filename,
                         "priority": doc.priority.value,
                         "confidence": doc.confidence_score,
-                        "analysis": result.get("response", ""),
+                        "analysis": response_text,
                         "tokens_used": result.get("tokens_used", 0),
                         "model_used": result.get("model_used", "unknown"),
                         "cached": False
@@ -2317,10 +2380,15 @@ Provide your analysis in the exact format above with proper line breaks and clea
             
             # Cache the Go/No-Go analysis for consistency
             if SESSION_MANAGER_AVAILABLE and session_manager.redis and summary_result.get("response"):
-                await session_manager.redis.setex(analysis_cache_key, 604800, json.dumps(summary_result["response"]))  # 7 days
+                # Ensure response is always a string before caching
+                summary_response = ensure_string_response(summary_result["response"])
+                await session_manager.redis.setex(analysis_cache_key, 604800, json.dumps(summary_response))  # 7 days
                 print(f"✅ Cached Go/No-Go analysis for consistency")
         
         total_tokens_used += summary_result.get("tokens_used", 0)
+        
+        # Ensure summary response is always a string
+        summary_response_text = ensure_string_response(summary_result.get("response", ""))
         
         # Store the complete RFP analysis for future reference
         rfp_analysis = {
@@ -2329,7 +2397,7 @@ Provide your analysis in the exact format above with proper line breaks and clea
             "processed_documents": len(processed_documents),
             "recommendation": recommendation,
             "processed_docs": processed_documents,
-            "summary": summary_result.get("response", ""),
+            "summary": summary_response_text,
             "total_tokens_used": total_tokens_used,
             "timestamp": datetime.now().isoformat()
         }
@@ -2384,7 +2452,7 @@ Provide your analysis in the exact format above with proper line breaks and clea
 
 ## 🎯 **FINAL RECOMMENDATION**
 
-{clean_markup(summary_result.get("response", ""))}
+{clean_markup(ensure_string_response(summary_result.get("response", "")))}
 
 ---
 
