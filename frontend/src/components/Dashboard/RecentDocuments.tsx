@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { apiClient } from '../../utils/api';
- 
+import { apiClient } from '../../utils/api';type UserLite = { id?: string; name: string; email?: string };
+
 interface Task {
   id: string;
   category: string;
@@ -37,6 +37,11 @@ const RecentDocuments: React.FC = () => {
     dueDate: '',
     decision: 'Decision Pending'
   });
+  type UserLite = { id?: string; name: string; email?: string };
+
+  // Fallback names if the API returns nothing or errors
+  const FIXED_ASSIGNEES = ["Sakshi", "Rohith", "Masood", "Uzi", "Abhir", "Divya"];
+
 
   // Real users from API
   const [availableUsers, setAvailableUsers] = useState<string[]>([]);
@@ -53,6 +58,11 @@ const RecentDocuments: React.FC = () => {
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+
+  // 👇 Dropdown users list
+
+// Load user names once when component mounts
+
 
   // Load SharePoint folders, users, and tasks when component mounts
   useEffect(() => {
@@ -73,16 +83,30 @@ const RecentDocuments: React.FC = () => {
       
       // Extract user names from the API response
       const userNames = users.map((user: any) => user.name);
+      setAvailableUsers(userNames.length ? userNames : FIXED_ASSIGNEES);
       console.log('🔍 User names:', userNames);
       setAvailableUsers(userNames);
     } catch (error) {
       console.error('❌ Failed to load users:', error);
       // Fallback to current user only
       setAvailableUsers([currentUser?.name || 'Current User']);
+
     } finally {
       setLoadingUsers(false);
     }
   };
+
+  const onAssigneeChange = async (taskId: string, newName: string) => {
+    try {
+      await apiClient.updateTaskAssignee(taskId, newName)
+      // Optimistic update:
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assignedTo: newName } : t))
+      // (Optional) await loadTasks() to re-sync from server
+    } catch (e) {
+      console.error('❌ Failed to update assignee:', e)
+    }
+};
+
 
   const loadTasks = async () => {
     try {
@@ -1096,20 +1120,31 @@ const RecentDocuments: React.FC = () => {
                     </div>
                   )}
                 </td>
-                <td className="py-4 px-4 text-gray-700">
-                  <span className="flex items-center space-x-2">
-                    <span>{task.assignedTo}</span>
+                <td className="py-4 px-4">
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="border rounded-lg px-2 py-1 text-sm"
+                      value={task.assignedTo || ''}
+                      onChange={(e) => onAssigneeChange(task.id, e.target.value)}
+                    >
+                      <option value="" disabled>Select user…</option>
+                      {(availableUsers.length ? availableUsers : FIXED_ASSIGNEES).map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+
                     {task.assignedTo === currentUser?.name && (
                       <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
                         You
                       </span>
                     )}
-                    </span>
+                  </div>
                 </td>
-                <td className="py-4 px-4 text-gray-700">
-                  <span className="text-sm">{task.assignedBy}</span>
+
+                <td className="py-4 px-4 text-gray-700 min-w-[140px]">
+                  <span className="text-sm">{task.assignedBy || '—'}</span>
                 </td>
-                <td className="py-4 px-4 text-gray-700">
+                <td className="py-4 px-4 text-gray-700 min-w-[140px]">
                   <span className="text-xs text-gray-500">
                     {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
                   </span>
@@ -1204,16 +1239,27 @@ const RecentDocuments: React.FC = () => {
                           </div>
                         )}
                       </td>
-                      <td className="py-4 px-4 text-gray-700">
-                        <span className="flex items-center space-x-2">
-                          <span>{task.assignedTo}</span>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="border rounded-lg px-2 py-1 text-sm"
+                            value={task.assignedTo || ''}
+                            onChange={(e) => onAssigneeChange(task.id, e.target.value)}
+                          >
+                            <option value="" disabled>Select user…</option>
+                            {(availableUsers.length ? availableUsers : FIXED_ASSIGNEES).map((name) => (
+                              <option key={name} value={name}>{name}</option>
+                            ))}
+                          </select>
+
                           {task.assignedTo === currentUser?.name && (
                             <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
                               You
                             </span>
                           )}
-                        </span>
+                        </div>
                       </td>
+
                       <td className="py-4 px-4 text-gray-700">
                         <span className="text-xs text-gray-500">
                           {new Date(task.updatedAt).toLocaleDateString()}

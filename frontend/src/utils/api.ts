@@ -658,6 +658,19 @@ export const apiClient = {
   },
 
 
+  async updateTaskAssignee(taskId: string, assignedTo: string) {
+    try {
+      const response = await api.put(`/api/tasks/${taskId}/assignee`, null, {
+        params: { assigned_to: assignedTo },
+      })
+      return response.data
+    } catch (error) {
+      console.error('Failed to update task assignee:', error)
+      throw error
+    }
+  },
+
+
 
 };
 

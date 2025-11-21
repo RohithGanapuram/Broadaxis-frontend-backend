@@ -1,5 +1,6 @@
 
-
+from fastapi import FastAPI, File, UploadFile, WebSocket, Request, Depends, HTTPException, status, Form, Query
+from typing import Annotated
 import asyncio
 import json
 import os
@@ -296,7 +297,19 @@ def _score_chunks(query: str, chunks: List[Dict]) -> List[Tuple[float, Dict]]:
     scored.sort(key=lambda x: (-x[0], x[1]["page_start"]))
     return scored
  
- 
+from fastapi import APIRouter, Query
+from sharepoint_api import list_review_packages, list_package_contents
+
+router = APIRouter()
+
+@router.get("/api/review-packages")
+def get_review_packages():
+    return list_review_packages()
+
+@router.get("/api/review-packages/contents")
+def get_review_package_contents(path: str = Query(..., description="/Review Package/<PackageName>")):
+    return list_package_contents(path)
+
 
 # Global exception handlers
 @app.exception_handler(BroadAxisError)
@@ -536,6 +549,41 @@ async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = 
         return None
 
 # run_mcp_query is now imported from mcp_interface.py
+
+@app.put("/api/tasks/{task_id}/assignee")
+async def update_task_assignee(
+    task_id: str,
+    assigned_to: Annotated[str, Query(..., alias="assigned_to")],
+    _current_user: UserResponse = Depends(get_current_user),
+):
+    """Update task assignee"""
+    try:
+        if not SESSION_MANAGER_AVAILABLE:
+            return JSONResponse(status_code=503, content={"error": "Session management not available"})
+
+        # Ensure Redis connection
+        if not session_manager.redis:
+            await session_manager.connect()
+
+        # Fetch existing task
+        task_key = f"task:{task_id}"
+        task_data_str = await session_manager.redis.get(task_key)
+        if not task_data_str:
+            return JSONResponse(status_code=404, content={"error": "Task not found"})
+
+        task = json.loads(task_data_str)
+        task["assigned_to"] = assigned_to
+        task["updated_at"] = datetime.now().isoformat()
+
+        # Persist
+        await session_manager.redis.setex(task_key, 86400 * 365, json.dumps(task))
+
+        return {"status": "success", "task": task}
+    except Exception as e:
+        print(f"❌ Error updating task assignee: {e}")
+        return JSONResponse(status_code=500, content={"error": "Failed to update task assignee"})
+
+
 
 # API Routes
 @app.get("/")
@@ -3254,7 +3302,7 @@ async def import_rfp_documents(
         )
 
 @app.get("/api/auth/me", response_model=UserResponse)
-async def get_current_user(request: Request):
+async def get_current_user_me(request: Request):
     """Get current user information"""
     try:
         if not SESSION_MANAGER_AVAILABLE:

@@ -13,6 +13,8 @@ from error_handler import BroadAxisError, ExternalAPIError, error_handler
 # Import the MCP interface and manager from mcp_interface.py
 from mcp_interface import mcp_interface, run_mcp_query
 
+from rfp_review_pipeline import run_review_package
+
 # Global cancellation tokens for ongoing operations
 cancellation_tokens = {}
 active_tasks = {}  # Store active tasks for cancellation
@@ -45,7 +47,8 @@ class ConnectionManager:
             error_handler.log_error(e, {'operation': 'websocket_send_message'})
             self.disconnect(websocket)
             raise
-
+    
+  
 # Create manager instance
 manager = ConnectionManager()
 
@@ -155,7 +158,138 @@ async def websocket_chat(websocket: WebSocket):
                         websocket
                     )
                     continue
-                
+                # --- NEW: start_job → review_package (must run before checking 'query') ---
+                if message_type == "start_job" and message_data.get("task_type") == "review_package":
+                    # Ensure/resolve session_id exactly like your chat flow does
+                    session_id = message_data.get("session_id")
+                    print(f"🔍 [review_package] Received session_id from frontend: {session_id}")
+
+                    if not session_id or (session_id and session_id.startswith('temp_')):
+                        if SESSION_MANAGER_AVAILABLE:
+                            session_id = await session_manager.create_session()
+                            print(f"🆕 [review_package] Created new Redis session: {session_id}")
+                        else:
+                            session_id = f"ws_{id(websocket)}_{int(time.time())}"
+                            print(f"🆕 [review_package] Created fallback session: {session_id}")
+                    else:
+                        if SESSION_MANAGER_AVAILABLE:
+                            existing_session = await session_manager.get_session(session_id)
+                            if not existing_session:
+                                print(f"⚠️ [review_package] Provided session_id {session_id} not found, creating new one")
+                                session_id = await session_manager.create_session()
+                                print(f"🆕 [review_package] Replacement Redis session: {session_id}")
+                        else:
+                            print(f"✅ [review_package] Using provided session_id: {session_id}")
+
+                    # Acknowledge start
+                    # Acknowledge start (kept as you wrote it)
+                    await manager.send_personal_message(
+                        json.dumps({
+                            "type": "status",
+                            "message": "Starting Review Package analysis…",
+                            "status": "info",
+                            "timestamp": datetime.now().isoformat()
+                        }),
+                        websocket
+                    )
+
+                    # Capture loop for thread-safe WS posts
+                    loop = asyncio.get_running_loop()
+
+                    def progress_cb(message: str, pct: float, extra: dict):
+                        try:
+                            asyncio.run_coroutine_threadsafe(
+                                manager.send_personal_message(
+                                    json.dumps({
+                                        "type": "progress",
+                                        "message": message,
+                                        "progress": pct,
+                                        **({"extra": extra} if extra else {})
+                                    }),
+                                    websocket
+                                ),
+                                loop
+                            )
+                        except Exception as e:
+                            error_handler.log_error(e, {'session_id': session_id, 'operation': 'review_package_progress_send'})
+                            
+                            
+                    options = message_data.get("options", {"include_subfolders": True, "max_files": 200})
+        
+                    selected_path = message_data.get("path")
+                    if not selected_path:
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "error",
+                                "message": "Missing 'path' for review_package job",
+                                "status": "error"
+                            }),
+                            websocket
+                        )
+                        continue
+                    else:
+                        path_to_use = selected_path
+                    # Run the pipeline off the main event loop
+                    try:
+                        
+                        result = await loop.run_in_executor(
+                            None,
+                            lambda: run_review_package(path_to_use, options, progress_cb, session_id)
+                        )
+
+                        if SESSION_MANAGER_AVAILABLE and isinstance(result, dict):
+                            await session_manager.add_message(session_id, {
+                                "role": "assistant",
+                                "content": result.get("artifacts", {}).get("markdown_report", ""),
+                                "timestamp": datetime.now().isoformat()
+                            })
+
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "answer",
+                                "task_type": "review_package",
+                                "session_id": session_id,
+                                "result": result
+                            }),
+                            websocket
+                        )
+
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "status",
+                                "message": "Review Package complete.",
+                                "status": "success",
+                                "timestamp": datetime.now().isoformat()
+                            }),
+                            websocket
+                        )
+
+                    except asyncio.CancelledError:
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "cancelled",
+                                "message": "Review Package analysis cancelled",
+                                "status": "cancelled",
+                                "timestamp": datetime.now().isoformat()
+                            }),
+                            websocket
+                        )
+                    except Exception as e:
+                        error_handler.log_error(e, {'session_id': session_id, 'operation': 'review_package_run'})
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "error",
+                                "message": f"Review Package error: {str(e)}",
+                                "status": "error"
+                            }),
+                            websocket
+                        )
+
+
+                    # Important: skip the normal chat path (which expects a 'query')
+                    continue
+                # --- end NEW block ---
+
                 # Handle chat messages (default behavior)
                 query = message_data.get("query", "").strip()
                 enabled_tools = message_data.get("enabled_tools", [])
