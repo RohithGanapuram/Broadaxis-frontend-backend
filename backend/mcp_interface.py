@@ -379,7 +379,9 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
                             error_handler.log_error(ws_error, {'operation': 'websocket_tool_execution_update'})
                     
                     # Simple tool execution without token management
-                    tool_sem = asyncio.Semaphore(2)  # Allow 2 concurrent tools
+                    # Increased to 5 concurrent tools to speed up parallel execution
+                    # Each tool has a 30-second timeout, so this is safe
+                    tool_sem = asyncio.Semaphore(5)  # Allow 5 concurrent tools
                     _inflight: Dict[tuple, asyncio.Task] = {}
 
                     async def execute_tool(tool_content):
@@ -390,8 +392,12 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
                         async def _run():
                             async with tool_sem:
                                 try:
-                                    # Use the persistent session instead of creating a new one
-                                    result = await self.session.call_tool(tool_content.name, arguments=tool_content.input)
+                                    # Add timeout to tool calls (30 seconds per tool)
+                                    # This prevents hanging on slow tools like knowledge search
+                                    result = await asyncio.wait_for(
+                                        self.session.call_tool(tool_content.name, arguments=tool_content.input),
+                                        timeout=30.0
+                                    )
                                     
                                     # Debug: Log the result structure
                                     logger.info(f"Tool {tool_content.name} result type: {type(result)}")
@@ -405,6 +411,14 @@ ALWAYS use the Broadaxis_knowledge_search tool first when asked about BroadAxis 
                                         "type": "tool_result",
                                         "tool_use_id": tool_content.id,
                                         "content": content
+                                    }
+                                except asyncio.TimeoutError:
+                                    logger.warning(f"Tool {tool_content.name} timed out after 30 seconds")
+                                    error_handler.log_error(Exception(f"Tool timeout: {tool_content.name}"), {'tool_name': tool_content.name})
+                                    return {
+                                        "type": "tool_result",
+                                        "tool_use_id": tool_content.id,
+                                        "content": [{"type": "text", "text": f"Tool {tool_content.name} timed out after 30 seconds. Please try again or use a more specific query."}]
                                     }
                                 except Exception as tool_error:
                                     error_handler.log_error(tool_error, {'tool_name': tool_content.name})

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import remarkGfm from 'remark-gfm'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
@@ -84,6 +84,33 @@ const ChatInterface: React.FC = () => {
   sessionId: string; 
 } | null>(null);
   
+  const [spRootPath, setSpRootPath] = useState<string>('');
+  const toPath = (name: string) => (spRootPath ? `${spRootPath}/${name}` : name);
+  const isReviewPackagePrompt = (p: any) => {
+  const name = (p?.name || '').toLowerCase();
+  const desc = (p?.description || '').toLowerCase();
+  return name.includes('review package') || desc.includes('review package');
+};
+  // Local synthetic "Review Package" template if MCP doesn't provide one
+  const allPromptTemplates: any[] = useMemo(() => {
+    const base: any[] = Array.isArray(availablePrompts) ? [...availablePrompts] : [];
+
+    const alreadyExists = base.some(p => isReviewPackagePrompt(p));
+    if (!alreadyExists) {
+      base.push({
+        id: 'review_package_local',
+        name: 'Review Package',
+        description:
+          'Analyze a completed RFP review package (folder under /Review Package in SharePoint) and rate win probability & eligibility.',
+        // content is not really used here because we route to the pipeline,
+        // but we keep something reasonable for consistency
+        content:
+          'Use the Review Package pipeline to analyze the selected SharePoint review package folder and generate a rating, eligibility status, and key findings.'
+      });
+    }
+
+    return base;
+  }, [availablePrompts]);
 
 
   // Document type input for Step 4
@@ -92,6 +119,9 @@ const ChatInterface: React.FC = () => {
   const [pendingPrompt, setPendingPrompt] = useState<any>(null)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // If the selected prompt is for Review Package, default the root to "/Review Package"
+  const rootOverride: string | undefined = isReviewPackagePrompt(selectedPrompt) ? '/Review Package' : undefined;
+
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
@@ -170,6 +200,48 @@ useEffect(() => {
   const handleWebSocketMessage = (data: any) => {
     console.log(`🔍 Received WebSocket message:`, data)
     
+    // --- NEW: handle Review Package final result
+    if (data.type === 'answer' && data.task_type === 'review_package') {
+      // Make the markdown report the assistant content
+      const md = data?.result?.artifacts?.markdown_report || 'No report';
+      const pill = data?.result?.summary
+        ? `Rating ${data.result.summary.rating}/100 · ${data.result.summary.label} · Eligibility: ${data.result.summary.eligibility_status}`
+        : undefined;
+
+      setMessages(prev => {
+        const updated = [...prev];
+        // Update the most recent loading assistant message
+        for (let i = updated.length - 1; i >= 0; i--) {
+          if (updated[i].isLoading && updated[i].type === 'assistant') {
+            updated[i] = {
+              ...updated[i],
+              content: md,
+              isLoading: false,
+              // store a tiny meta if you want to show a badge elsewhere
+              tokenUsage: undefined
+            };
+            return updated;
+          }
+        }
+        // fallback: append a new assistant message
+        updated.push({
+          id: generateMessageId(),
+          type: 'assistant',
+          content: md,
+          timestamp: new Date(),
+          isLoading: false
+        });
+        return updated;
+      });
+
+      // Clear tool status since we’re done
+      setCurrentToolStatus('');
+      setToolExecutionDetails(null);
+      setIsLoading(false);
+      return; // stop further default handling
+    }
+
+
     if (data.type === 'response') {
       // Always update session ID if provided in response (for Redis testing)
       if (data.session_id) {
@@ -559,39 +631,38 @@ useEffect(() => {
     })
   }
 
-  const fetchSharePointFolders = async (forceRefresh = false) => {
-    const cacheKey = 'root'
-    const now = Date.now()
-    
+  const fetchSharePointFolders = async (forceRefresh = false, rootPathOverride?: string) => {
+    const root = (typeof rootPathOverride === 'string') ? rootPathOverride : spRootPath;
+    const cacheKey = `root:${root || ''}`;
+    const now = Date.now();
+      
     // Check cache first (unless force refresh)
     if (!forceRefresh && sharePointCache[cacheKey] && (now - sharePointCache[cacheKey].timestamp) < CACHE_DURATION) {
-      setAvailableFolders(sharePointCache[cacheKey].folders)
-      return
-    }
-    
-    setIsLoadingFolders(true)
-    try {
-      const response = await apiClient.listSharePointFiles('')
-      if (response.status === 'success' && response.files) {
-        // Filter for folders only - backend uses 'type' field
-        const folders = response.files
-          .filter((item: any) => item.type === 'folder')
-          .map((item: any) => item.filename)
-        
-        // Update cache
-        setSharePointCache(prev => ({
-          ...prev,
-          [cacheKey]: { folders, timestamp: now }
-        }))
-        setAvailableFolders(folders)
-      }
-    } catch (error) {
-      console.error('Error fetching SharePoint folders:', error)
-      toast.error('Failed to fetch SharePoint folders')
-    } finally {
-      setIsLoadingFolders(false)
-    }
+    setAvailableFolders(sharePointCache[cacheKey].folders);
+    return;
   }
+    
+    setIsLoadingFolders(true);
+  try {
+    const response = await apiClient.listSharePointFiles(root || '');
+    if (response.status === 'success' && response.files) {
+      const folders = response.files
+        .filter((item: any) => item.type === 'folder')
+        .map((item: any) => item.filename);
+
+      setSharePointCache(prev => ({
+        ...prev,
+        [cacheKey]: { folders, timestamp: now }
+      }));
+      setAvailableFolders(folders);
+    }
+  } catch (error) {
+    console.error('Error fetching SharePoint folders:', error);
+    toast.error('Failed to fetch SharePoint folders');
+  } finally {
+    setIsLoadingFolders(false);
+  }
+};
 
   // Add this helper somewhere near your cache state:
   const invalidateSharePointCache = (prefix = '') => {
@@ -616,7 +687,8 @@ useEffect(() => {
 
     setIsLoadingFolders(true)
     try {
-      const response = await apiClient.listSharePointFiles(parentFolder)
+      const response = await apiClient.listSharePointFiles(toPath(parentFolder));  // uses root
+
       if (response.status === 'success' && response.files) {
         const folders = response.files
           .filter((item: any) => item.type === 'folder')
@@ -654,7 +726,7 @@ useEffect(() => {
     
     setIsLoadingFiles(true)
     try {
-      const response = await apiClient.listSharePointFiles(folderPath)
+      const response = await apiClient.listSharePointFiles(toPath(folderPath));    // uses root
       if (response.status === 'success' && response.files) {
         // Filter for files only (not folders) and map backend fields to frontend expectations
         const files = response.files
@@ -927,43 +999,71 @@ useEffect(() => {
 
   const handlePromptClick = async (prompt: any) => {
     console.log('Prompt clicked:', prompt)
-    
-    // Check if this is the intelligent RFP processing prompt
-    const isIntelligentRFP = prompt.name === 'Intelligent_RFP_Processing' || 
-                            prompt.description.includes('intelligent RFP processing')
-    
-    // Check if this is the Step2 prompt template (needs folder selection)
-    const isStep2 = prompt.name === 'Summarize_Document' || 
-                   prompt.name === 'Step2_summarize_documents' || 
-                   prompt.description.includes('Generate a clear, high-value summary')
-    
-    const isStep4 = prompt.name === 'Dynamic_Content_Generator' || 
-                   prompt.name === 'Dynamic Content Generator' || 
-                   prompt.name === 'Step4_generate_capability_statement' ||
-                   prompt.description.includes('Dynamic Document Generator') ||
-                   prompt.description.includes('Generate high-quality capability statements')
+
+    // 🔹 Detect prompt types
+    const isIntelligentRFP =
+      prompt.name === 'Intelligent_RFP_Processing' ||
+      prompt.description.includes('intelligent RFP processing')
+
+    const isStep2 =
+      prompt.name === 'Summarize_Document' ||
+      prompt.name === 'Step2_summarize_documents' ||
+      prompt.description.includes('Generate a clear, high-value summary')
+
+    const isStep4 =
+      prompt.name === 'Dynamic_Content_Generator' ||
+      prompt.name === 'Dynamic Content Generator' ||
+      prompt.name === 'Step4_generate_capability_statement' ||
+      prompt.description.includes('Dynamic Document Generator') ||
+      prompt.description.includes('Generate high-quality capability statements')
+
+    // 🔹 NEW: detect Review Package prompt
+    const isReviewPackage = isReviewPackagePrompt(prompt)
+
+    // 🔹 SPECIAL CASE: Review Package prompt → use "/Review Package" root
+    if (isReviewPackage) {
+      console.log('Review Package prompt detected - using /Review Package root')
+      
+      // point SharePoint browsing to /Review Package
+      setSpRootPath('/Review Package')
+
+      // (optional but recommended) clear any old cache for other roots
+      invalidateSharePointCache()
+
+      setSelectedPrompt(prompt)
+      await fetchSharePointFolders(true, '/Review Package') // force refresh at that root
+      setShowFolderSelection(true)
+      setShowPromptsPanel(false)
+      return
+    }
+
+    // 🔹 For ALL OTHER prompts, reset root back to default
+    setSpRootPath('')        // this makes fetchSharePointFolders() use the normal root
+    invalidateSharePointCache()
+
+    // ==== EXISTING LOGIC BELOW (unchanged) ====
+
     // If we have an uploaded file, offer to run the selected prompt on it
     if (uploadedDoc) {
       const runOnUploaded = window.confirm(
         `Run "${prompt.name}" on uploaded file "${uploadedDoc.filename}"?\n\n` +
         `OK = Uploaded file, Cancel = pick a SharePoint folder`
-      );
+      )
+
       if (runOnUploaded) {
-   // single send via retrieval-aware helper
-        await runPromptWithUploadedDoc(prompt);
-        setSelectedPrompt(null);
-        return;
- }
-        setSelectedPrompt(prompt);
-        await fetchSharePointFolders();   // or fetchSharePointFolders(true) if you want a fresh list
-        setShowFolderSelection(true);
-        setShowPromptsPanel(false);
-        return;
+        await runPromptWithUploadedDoc(prompt)
+        setSelectedPrompt(null)
+        return
+      }
+
+      setSelectedPrompt(prompt)
+      await fetchSharePointFolders()   // now this will use root = '' again
+      setShowFolderSelection(true)
+      setShowPromptsPanel(false)
+      return
     }
-// ...existing flow continues here (open SharePoint folder picker, etc.)
 
-
-     else if (isIntelligentRFP) {
+    if (isIntelligentRFP) {
       console.log('Intelligent RFP processing prompt detected - showing folder selection')
       setSelectedPrompt(prompt)
       await fetchSharePointFolders()
@@ -982,13 +1082,16 @@ useEffect(() => {
       setShowDocumentTypeInput(true)
       setShowPromptsPanel(false)
     } else {
-      // For other prompts (including Step 3), use the description as the query
       console.log('Other prompt detected - executing directly')
-      
-      // Use the prompt content from the MCP server (full template)
-      const promptMessage = prompt.content || prompt.description || prompt.name || 'Please execute this prompt template.'
-      
+
+      const promptMessage =
+        prompt.content ||
+        prompt.description ||
+        prompt.name ||
+        'Please execute this prompt template.'
+
       setInputMessage(promptMessage)
+
       setTimeout(() => {
         if (globalWebSocket.getConnectionStatus()) {
           const userMessage: ChatMessage = {
@@ -1004,16 +1107,17 @@ useEffect(() => {
             timestamp: new Date(),
             isLoading: true
           }
+
           addMessage(userMessage)
           addMessage(assistantMessage)
-          setIsLoading(true)
-          
+
           globalWebSocket.sendMessage({
             query: promptMessage,
             enabled_tools: getToolsForPrompt(prompt),
             model: settings.model,
             session_id: currentSessionId
           })
+
           setInputMessage('')
           setShowPromptsPanel(false)
         } else {
@@ -1025,163 +1129,153 @@ useEffect(() => {
   }
 
   const handleFolderSelection = async (folderName: string) => {
-    if (selectedPrompt) {
-      // Check if this is intelligent RFP processing
-      const isIntelligentRFP = selectedPrompt.name === 'Intelligent_RFP_Processing' || 
-                              selectedPrompt.description.includes('intelligent RFP processing')
-      
-      // Check if this is Step 2 (needs file selection)
-      const isStep2 = selectedPrompt.name === 'Summarize_Document' || 
-                     selectedPrompt.name === 'Step2_summarize_documents' || 
-                     selectedPrompt.description.includes('Generate a clear, high-value summary')
-      
-      if (isIntelligentRFP) {
-        // For intelligent RFP processing, first check if this folder has subfolders
-        const hasSubFolders = await fetchSubFolders(folderName)
-        
-        if (hasSubFolders) {
-          // Show subfolder selection first
-          setSelectedParentFolder(folderName)
-          setShowSubFolderSelection(true)
-          setShowFolderSelection(false)
-          return
-        } else {
-          // No subfolders, proceed with intelligent RFP processing
-          try {
-            setIsLoading(true)
-            toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' })
-            
-            const userMessage: ChatMessage = {
-              id: generateMessageId(),
-              type: 'user',
-              content: `Process RFP folder intelligently: ${folderName}`,
-              timestamp: new Date()
-            }
-            
-            const assistantMessage: ChatMessage = {
-              id: generateMessageId(),
-              type: 'assistant',
-              content: '',
-              timestamp: new Date(),
-              isLoading: true
-            }
-            
-            addMessage(userMessage)
-            addMessage(assistantMessage)
-            
-            // Use regular API call for intelligent RFP processing
-            const response = await apiClient.processRFPFolderIntelligent(
-              folderName,
-              currentSessionId || 'default'
-            )
-            
-            console.log('Intelligent RFP Response:', response)
-            
-            // Update the assistant message with the response and token usage
-            setMessages(prev => prev.map(msg => 
-              msg.id === assistantMessage.id 
-                ? { 
-                    ...msg, 
-                    content: response.summary || response.response || 'No response received', 
-                    isLoading: false,
-                    tokenUsage: response.token_breakdown ? {
-                      total_tokens: response.token_breakdown.total_tokens,
-                      input_tokens: response.token_breakdown.input_tokens,
-                      output_tokens: response.token_breakdown.output_tokens,
-                      model_used: response.token_breakdown.model_used,
-                      request_id: `rfp-${Date.now()}`
-                    } : undefined
-                  }
-                : msg
-            ))
-            
-            toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' })
-            setIsLoading(false)
-            setShowFolderSelection(false)
-            setSelectedPrompt(null)
-            
-          } catch (error: any) {
-            console.error('Intelligent RFP processing error:', error)
-            
-            // Update the assistant message with error
-            setMessages(prev => prev.map(msg => 
-              msg.isLoading 
-                ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
-                : msg
-            ))
-            
-            toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' })
-            setIsLoading(false)
-            setShowFolderSelection(false)
-            setSelectedPrompt(null)
-          }
-        }
-        return
-      } else if (isStep2) {
-        // For Step 2, first check if this folder has subfolders
-        const hasSubFolders = await fetchSubFolders(folderName)
-        
-        if (hasSubFolders) {
-          // Show subfolder selection first
-          setSelectedParentFolder(folderName)
-          setShowSubFolderSelection(true)
-          setShowFolderSelection(false)
-          return
-        } else {
-          // No subfolders, show file selection directly
-          setSelectedFolder(folderName)
-          await fetchSharePointFiles(folderName)
-          setShowFileSelection(true)
-          setShowFolderSelection(false)
-          return
-        }
-      }
-      
-      // For other prompts, check if this folder has subfolders
-      const hasSubFolders = await fetchSubFolders(folderName)
-      
-      if (hasSubFolders) {
-        // Show subfolder selection
-        setSelectedParentFolder(folderName)
-        setShowSubFolderSelection(true)
-        setShowFolderSelection(false)
-      } else {
-        // No subfolders, proceed with the selected folder
-        const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${folderName}`
-        setInputMessage(promptMessage)
-        setTimeout(() => {
-          if (globalWebSocket.getConnectionStatus()) {
-            const userMessage: ChatMessage = {
-              id: generateMessageId(),
-              type: 'user',
-              content: promptMessage,
-              timestamp: new Date()
-            }
-            const assistantMessage: ChatMessage = {
-              id: generateMessageId(),
-              type: 'assistant',
-              content: '',
-              timestamp: new Date(),
-              isLoading: true
-            }
-            addMessage(userMessage)
-            addMessage(assistantMessage)
-            setIsLoading(true)
-            
-            globalWebSocket.sendMessage({
-              query: promptMessage,
-              enabled_tools: getToolsForPrompt(selectedPrompt),
-              model: settings.model
-            })
-            setInputMessage('')
-            setShowFolderSelection(false)
-            setSelectedPrompt(null)
-          }
-        }, 100)
-      }
-    }
-  }
+    if (!selectedPrompt) return;
 
+    // Safe/normalized description
+    const desc = (selectedPrompt.description || '').toLowerCase();
+
+    // Prompt kind checks
+    const isIntelligentRFP =
+      selectedPrompt.name === 'Intelligent_RFP_Processing' ||
+      desc.includes('intelligent rfp processing');
+
+    const isStep2 =
+      selectedPrompt.name === 'Summarize_Document' ||
+      selectedPrompt.name === 'Step2_summarize_documents' ||
+      desc.includes('generate a clear, high-value summary');
+
+    if (isIntelligentRFP) {
+      // Check for subfolders
+      const hasSubFolders = await fetchSubFolders(folderName);
+
+      if (hasSubFolders) {
+        setSelectedParentFolder(folderName);
+        setShowSubFolderSelection(true);
+        setShowFolderSelection(false);
+        return;
+      }
+
+      // No subfolders → run intelligent RFP processing on the folder
+      try {
+        setIsLoading(true);
+        toast.loading('Starting intelligent RFP processing...', { id: 'intelligent-rfp' });
+
+        const userMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'user',
+          content: `Process RFP folder intelligently: ${folderName}`,
+          timestamp: new Date(),
+        };
+
+        const assistantMessage: ChatMessage = {
+          id: generateMessageId(),
+          type: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          isLoading: true,
+        };
+
+        addMessage(userMessage);
+        addMessage(assistantMessage);
+
+        const response = await apiClient.processRFPFolderIntelligent(
+          folderName,
+          currentSessionId || 'default'
+        );
+
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === assistantMessage.id
+              ? {
+                  ...msg,
+                  content: response.summary || response.response || 'No response received',
+                  isLoading: false,
+                  tokenUsage: response.token_breakdown
+                    ? {
+                        total_tokens: response.token_breakdown.total_tokens,
+                        input_tokens: response.token_breakdown.input_tokens,
+                        output_tokens: response.token_breakdown.output_tokens,
+                        model_used: response.token_breakdown.model_used,
+                        request_id: `rfp-${Date.now()}`,
+                      }
+                    : undefined,
+                }
+              : msg
+          )
+        );
+
+        toast.success('Intelligent RFP processing completed!', { id: 'intelligent-rfp' });
+      } catch (error: any) {
+        console.error('Intelligent RFP processing error:', error);
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.isLoading
+              ? { ...msg, content: `❌ **Error processing RFP folder:** ${error.message || error}`, isLoading: false }
+              : msg
+          )
+        );
+        toast.error(`Intelligent RFP processing error: ${error.message}`, { id: 'intelligent-rfp' });
+      } finally {
+        setIsLoading(false);
+        setShowFolderSelection(false);
+        setSelectedPrompt(null);
+      }
+      return;
+    } else if (isStep2) {
+      // Step 2 (Summarize): use the Subfolder modal and show BOTH subfolders + files for this folder
+      await fetchSubFolders(folderName); // or await fetchSubFolders(folderName, true) for hard refresh
+      setSelectedParentFolder(folderName);
+      setSelectedFolder(folderName);
+      setShowSubFolderSelection(true);
+      setShowFolderSelection(false);
+      await fetchSharePointFiles(folderName, true); // load files into same modal
+      return; // ⬅ important: don't fall through to "other prompts"
+    }
+
+    // --- Other prompts (unchanged behavior) ---
+    const hasSubFolders = await fetchSubFolders(folderName);
+
+    if (hasSubFolders) {
+      setSelectedParentFolder(folderName);
+      setShowSubFolderSelection(true);
+      setShowFolderSelection(false);
+    } else {
+      const promptMessage = `${selectedPrompt.description}\n\nPlease analyze the SharePoint folder: ${folderName}`;
+      setInputMessage(promptMessage);
+
+      setTimeout(() => {
+        if (globalWebSocket.getConnectionStatus()) {
+          const userMessage: ChatMessage = {
+            id: generateMessageId(),
+            type: 'user',
+            content: promptMessage,
+            timestamp: new Date(),
+          };
+          const assistantMessage: ChatMessage = {
+            id: generateMessageId(),
+            type: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isLoading: true,
+          };
+          addMessage(userMessage);
+          addMessage(assistantMessage);
+          setIsLoading(true);
+
+          globalWebSocket.sendMessage({
+            query: promptMessage,
+            enabled_tools: getToolsForPrompt(selectedPrompt),
+            model: settings.model,
+          });
+
+          setInputMessage('');
+          setShowFolderSelection(false);
+          setSelectedPrompt(null);
+        }
+      }, 100);
+    }
+  };
+  
   const handleSubFolderSelection = async (subFolderName: string) => {
     if (!selectedPrompt || !selectedParentFolder) return;
 
@@ -1226,12 +1320,19 @@ useEffect(() => {
       desc.includes('fill missing information');
 
     // --- NEW: drill-down check for ALL prompts ---
-    const hasMore = await fetchSubFolders(fullPath, true); // force-refresh to avoid stale cache
+    const hasMore = await fetchSubFolders(fullPath, true);
     if (hasMore) {
       setSelectedParentFolder(fullPath);
-      setShowSubFolderSelection(true); // keep modal open for deeper level
+      setShowSubFolderSelection(true);
+
+      // ✅ Step 2: also load files for this folder so the modal shows both lists
+      if (isStep2) {
+        setSelectedFolder(fullPath);
+        await fetchSharePointFiles(fullPath, true);
+      }
       return;
     }
+
 
     // --- Leaf folder reached: act per prompt type ---
 
@@ -1297,13 +1398,25 @@ useEffect(() => {
     }
 
     // Step 1 & Step 2 → open file selection modal for this leaf folder
-    if (isStep1 || isStep2) {
+   // Step 1 → open file selection modal (unchanged)
+    if (isStep1) {
       setSelectedFolder(fullPath);
-      await fetchSharePointFiles(fullPath);        // you already have this loader in the component
-      setShowFileSelection(true);                  // shows your file picker UI
+      await fetchSharePointFiles(fullPath);
+      setShowFileSelection(true);
       setShowSubFolderSelection(false);
       return;
     }
+
+    // Step 2 → stay in this modal, but refresh listing and files here
+    if (isStep2) {
+      setSelectedParentFolder(fullPath);       // drill deeper but keep modal open
+      setSelectedFolder(fullPath);
+      await fetchSubFolders(fullPath, true);   // refresh subfolders
+      await fetchSharePointFiles(fullPath, true);  // refresh files
+      setShowSubFolderSelection(true);
+      return;
+    }
+
 
     // Step 3 / Step 4 / Step 5 / Others → send a message targeting this folder
     // (If you later want Step 4 to ask for "document type", hook your existing showDocumentTypeInput here.)
@@ -1344,6 +1457,38 @@ useEffect(() => {
     }, 100);
   };
 
+  // Ensure a parent RFP task exists, return its id
+  async function ensureParentRfpTask(rfpPath: string, folderName: string) {
+    // 1) Try to find an existing parent RFP/RFI/RFQ task by document path or title
+    const allTasks = await apiClient.getTasks();
+    const existing = allTasks.find((t: any) => {
+      if (t.category !== 'Project') return false;
+      if (!['RFP', 'RFI', 'RFQ'].includes(t.type)) return false;
+
+      // Match by exact document path (case-insensitive) OR by title containing folder name
+      const docMatch =
+        (t.document && t.document.toLowerCase() === rfpPath.toLowerCase());
+      const titleMatch =
+        (t.title && (t.title === folderName || t.title.includes(folderName)));
+
+      return docMatch || titleMatch;
+    });
+
+    if (existing) return existing.id;
+
+    // 2) If none, create a new parent RFP task
+    const created = await apiClient.createTask({
+      category: 'Project',
+      type: 'RFP',
+      title: folderName,
+      document: rfpPath,
+      status: 'Assigned',
+      priority: 'Medium',
+      // assigned_to and due_date can be filled later on the Dashboard;
+      // children can inherit when you import (once parent has them)
+    });
+    return created.id;
+  }
 
 
 
@@ -1638,8 +1783,10 @@ useEffect(() => {
                           const combinedContent = (previousMessage?.content || '') + '\n' + message.content
                           
                           const rfpData = parseRFPDocuments(combinedContent)
-                          if (rfpData.hasDocumentsTable && rfpData.documents.length > 0) {
-                            return (
+                          if (rfpData.hasDocumentsTable && rfpData.documents.length > 0 &&
+                                                        rfpData.decision &&
+                                                        (rfpData.decision === 'GO' || rfpData.decision === 'CONDITIONAL-GO')) {
+                             return (
                               <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl">
                                 <div className="flex items-center justify-between">
                                   <div>
@@ -1650,78 +1797,43 @@ useEffect(() => {
                                   </div>
                                   <button
                                     onClick={async () => {
-                                      toast.loading('Searching for RFP task...', { id: 'import-docs' })
+                                      toast.loading('Preparing import...', { id: 'import-docs' });
                                       try {
-                                        // Extract RFP path from AI response
-                                        const rfpPath = rfpData.rfpPath || ''
-                                        console.log('Extracted RFP path:', rfpPath)
-                                        
+                                        // 1) Extract path + folder name from the parsed RFP block
+                                        const rfpPath = rfpData.rfpPath || '';
                                         if (!rfpPath) {
-                                          toast.error('Could not detect RFP path from analysis', { id: 'import-docs' })
-                                          return
+                                          toast.error('Could not detect RFP path from analysis', { id: 'import-docs' });
+                                          return;
                                         }
-                                        
-                                        // Find existing task with this RFP path
-                                        toast.loading('Looking for existing RFP task...', { id: 'import-docs' })
-                                        const allTasks = await apiClient.getTasks()
-                                        
-                                        // Smart matching - try different path variations
-                                        const parentTask = allTasks.find((t: any) => {
-                                          if (t.category !== 'Project') return false
-                                          if (!['RFP', 'RFI', 'RFQ'].includes(t.type)) return false
-                                          
-                                          // Exact match
-                                          if (t.document === rfpPath) return true
-                                          
-                                          // Case-insensitive match
-                                          if (t.document?.toLowerCase() === rfpPath.toLowerCase()) return true
-                                          
-                                          // Match if title contains the path
-                                          if (t.title?.includes(rfpPath)) return true
-                                          
-                                          return false
-                                        })
-                                        
-                                        if (!parentTask) {
-                                          // No existing task found - ask user to create it first
-                                          toast.error('No RFP task found in dashboard', { id: 'import-docs' })
-                                          
-                                          const shouldCreate = confirm(
-                                            `No task found for "${rfpPath}".\n\n` +
-                                            `Please create an RFP task in the dashboard first, then try importing again.\n\n` +
-                                            `Would you like to go to the dashboard now?`
-                                          )
-                                          
-                                          if (shouldCreate) {
-                                            window.location.href = '/dashboard'
-                                          }
-                                          return
-                                        }
-                                        
-                                        // Found existing task - import documents
-                                        console.log('Found existing task:', parentTask)
-                                        toast.loading(`Importing ${rfpData.documents.length} documents...`, { id: 'import-docs' })
-                                        
+                                        const folderName = (rfpPath.split('/').pop() || rfpPath).trim();
+
+
+                                        // 2) Ensure parent exists (find OR create) and get its id
+                                        const parentTaskId = await ensureParentRfpTask(rfpPath, folderName);
+
+                                        // 3) Import the document rows under that parent
+                                        toast.loading(`Importing ${rfpData.documents.length} documents...`, { id: 'import-docs' });
                                         const result = await apiClient.importRFPDocuments(
-                                          parentTask.id,
+                                          parentTaskId,
                                           rfpPath,
                                           rfpData.documents
-                                        )
-                                        
+                                        );
+
                                         toast.success(
-                                          `✅ Imported ${result.created_tasks.length} document tasks under "${parentTask.title}"!`,
+                                          `✅ Imported ${result.created_tasks?.length ?? rfpData.documents.length} document tasks under “${folderName}”`,
                                           { id: 'import-docs', duration: 5000 }
-                                        )
-                                        
-                                        // Optional: Navigate to dashboard
-                                        if (confirm(`Documents imported successfully!\n\nGo to dashboard to view and track progress?`)) {
-                                          window.location.href = '/dashboard'
+                                        );
+
+                                        // Optional: jump to dashboard
+                                        if (confirm('Documents imported! Open dashboard now?')) {
+                                          window.location.href = '/dashboard';
                                         }
-                                      } catch (error: any) {
-                                        console.error('Import error:', error)
-                                        toast.error(`Failed to import: ${error.message}`, { id: 'import-docs' })
+                                      } catch (err: any) {
+                                        console.error('Import failed:', err);
+                                        toast.error(`Failed to import: ${err?.message || err}`, { id: 'import-docs' });
                                       }
                                     }}
+
                                     className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold flex items-center space-x-2"
                                   >
                                     <span>📋</span>
@@ -1809,7 +1921,7 @@ useEffect(() => {
                         </div>
                         <div>
                           <h3 className="text-lg font-bold text-blue-900">Prompt Templates</h3>
-                          <p className="text-xs text-blue-600">{availablePrompts.length} templates available</p>
+                          <p className="text-xs text-blue-600">{allPromptTemplates.length} templates available</p>
                         </div>
                       </div>
                       <button
@@ -1822,8 +1934,8 @@ useEffect(() => {
                     
                     {/* Templates List */}
                     <div className="space-y-3 max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-100">
-                      {availablePrompts.length > 0 ? (
-                        availablePrompts.map((prompt, index) => (
+                      {allPromptTemplates.length > 0 ? (
+                        allPromptTemplates.map((prompt, index) => (
                           <div key={index} className="block">
                             <button
                               onClick={() => handlePromptClick(prompt)}
@@ -1990,13 +2102,23 @@ useEffect(() => {
                      </div>
                      <div className="flex items-center space-x-2">
                        <button
-                         onClick={() => fetchSubFolders(selectedParentFolder, true)}
-                         disabled={isLoadingFolders}
-                         className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
-                         title="Refresh subfolders"
-                       >
-                         🔄
-                       </button>
+                          onClick={async () => {
+                            await fetchSubFolders(selectedParentFolder, true);
+                            const step2 =
+                              (selectedPrompt?.name || '').toLowerCase().includes('summarize') ||
+                              (selectedPrompt?.name || '').toLowerCase().includes('step2') ||
+                              (selectedPrompt?.description || '').toLowerCase().includes('generate a clear, high-value summary');
+                            if (step2 && selectedParentFolder) {
+                              await fetchSharePointFiles(selectedParentFolder, true);
+                            }
+                          }}
+                          disabled={isLoadingFolders}
+                          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                          title="Refresh"
+                        >
+                          🔄
+                        </button>
+
                        <button
                          onClick={() => {
                            setShowSubFolderSelection(false)
@@ -2045,7 +2167,72 @@ useEffect(() => {
                          )}
                        </div>
                      </div>
-                     
+                     {/* ——— Files in this folder (Summarize / Step 2 only) ——— */}
+                      {(() => {
+                        const step2 =
+                          (selectedPrompt?.name || '').toLowerCase().includes('summarize') ||
+                          (selectedPrompt?.name || '').toLowerCase().includes('step2') ||
+                          (selectedPrompt?.description || '').toLowerCase().includes('generate a clear, high-value summary');
+
+                        if (!step2) return null;
+
+                        return (
+                          <div className="px-4 pb-4">
+                            <div className="text-sm font-semibold text-gray-700 mb-2">
+                              Files in “{selectedParentFolder}”
+                            </div>
+
+                            {isLoadingFiles ? (
+                              <div className="text-center py-6 text-gray-500">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                                Loading files…
+                              </div>
+                            ) : availableFiles.length > 0 ? (
+                              <div className="space-y-2 max-h-56 overflow-y-auto">
+                                {availableFiles.map((file, idx) => (
+                                  <button
+                                    key={`${file.path}-${idx}`}
+                                    onClick={async () => {
+                                      await handleFileSelection(file);  // uses your existing handler
+                                      setShowSubFolderSelection(false); // close modal after pick
+                                      setSelectedParentFolder('');
+                                    }}
+                                    className="w-full text-left p-3 bg-blue-50/40 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200/60"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-blue-600">
+                                          {file.extension === 'pdf'
+                                            ? '📄'
+                                            : file.extension === 'docx'
+                                            ? '📝'
+                                            : file.extension === 'xlsx'
+                                            ? '📊'
+                                            : '📄'}
+                                        </span>
+                                        <div>
+                                          <div className="font-medium text-gray-800">{file.name}</div>
+                                          <div className="text-xs text-blue-700 mt-1">
+                                            {file.size_mb ? `${file.size_mb} MB` : 'Unknown size'}
+                                            {file.extension ? ` • ${String(file.extension).toUpperCase()}` : ''}
+                                            {file.modified_date
+                                              ? ` • Modified: ${new Date(file.modified_date).toLocaleDateString()}`
+                                              : ''}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="text-blue-700 text-sm">Summarize →</div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6 text-gray-500">No files in this folder.</div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                      {/* Footer */}
                      <div className="p-4 border-t border-gray-200 bg-gray-50 flex space-x-2">
                        <button
@@ -2073,7 +2260,6 @@ useEffect(() => {
                  </div>
                </div>
              )}
-
              {/* File Selection Modal for Step 1 and Step 2 */}
               {showFileSelection && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

@@ -543,7 +543,7 @@ export const apiClient = {
       const response = await api.post('/api/process-rfp-folder-intelligent', {
         folder_path: folderPath,
         session_id: sessionId
-      }, { timeout: 300000 }); // 5 minute timeout
+      }, { timeout: 600000 }); // 10 minute timeout - RFP processing can take time with multiple documents and knowledge searches
       
       return response.data;
     } catch (error) {
