@@ -4,12 +4,46 @@ from dataclasses import dataclass
 import hashlib
 import time
 import re
+import asyncio
+
 
 from sharepoint_api import download_package
 from mcp_interface import run_mcp_query, REVIEW_PACKAGE_SYSTEM_PROMPT
 
 
 ProgressCB = Callable[[str, float, Dict[str, Any]], None]
+
+FINAL_VERDICT_SYSTEM_PROMPT = """
+You are a senior public-sector RFP capture manager.
+
+You are given:
+- A short summary of an RFP package (agency, scope, requirements).
+- The results of an eligibility check (which mandatory requirements look satisfied or missing).
+- A very high-level view of the proposal documents we submitted.
+
+Your job is to answer ONE question: CAN WE LIKELY WIN THIS RFP OR NOT?
+
+Rules:
+- Think like an evaluator who has seen many RFPs and proposals.
+- Use your general knowledge of how RFPs are scored worldwide.
+- Do NOT invent new documents; only reason from the summary you receive.
+- If critical mandatory items or signature forms are missing, you should lean to NO_GO / UNLIKELY.
+
+You MUST respond with a single JSON object ONLY, in this exact schema:
+
+{
+  "verdict": "LIKELY_WIN" | "COMPETITIVE" | "UNLIKELY" | "NO_GO",
+  "confidence": 0.0–1.0,
+  "reasons": [
+    "short bullet reason 1",
+    "short bullet reason 2",
+    "short bullet reason 3"
+  ]
+}
+
+Do not add any text before or after the JSON.
+"""
+
 
 @dataclass
 class Doc:
@@ -112,21 +146,16 @@ def kb_evidence_check(requirements: Dict[str, Any], progress_cb: ProgressCB, ses
     eligibility_out = []
     for i, r in enumerate(requirements["eligibility"]):
         query = r["requirement"]
-        tool_call = {
-            "tool": "Broadaxis_knowledge_search",
-            "args": {"query": query, "top_k": 5, "min_score": 0.78, "include_scores": True}
-        }
-        # Leverage MCP path; `tool_override` is a pattern seen in your stack to force a tool call.
-        result = run_mcp_query(
+
+        # Call MCP using only the supported arguments
+        result = asyncio.run(run_mcp_query(
             query=f"Find evidence for: {query}",
             enabled_tools=["Broadaxis_knowledge_search"],
             model=None,
             session_id=session_id,
-            progress_cb=None,
-            tool_override=[tool_call],
-            system_prompt=REVIEW_PACKAGE_SYSTEM_PROMPT,   # <— here
+            system_prompt=REVIEW_PACKAGE_SYSTEM_PROMPT,
+        ))
 
-        )
         hits = result.get("tool_results", []) if isinstance(result, dict) else []
         best = hits[0] if hits else {}
         score = float(best.get("score", 0)) if best else 0.0
@@ -143,6 +172,7 @@ def kb_evidence_check(requirements: Dict[str, Any], progress_cb: ProgressCB, ses
         if i % 5 == 0:
             _emit(progress_cb, "Checking BroadAxis evidence…", 0.45 + 0.02 * i)
 
+
     # MVP placeholders for criteria
     criteria_out = []
     for c in requirements["criteria"]:
@@ -153,6 +183,148 @@ def kb_evidence_check(requirements: Dict[str, Any], progress_cb: ProgressCB, ses
             "notes": ["MVP placeholder – inspect narratives and KB for real values"]
         })
     return eligibility_out, criteria_out
+
+
+def _build_verdict_summary(path: str,
+                           docs: List[Doc],
+                           eligibility: List[Dict[str, Any]],
+                           hygiene: List[Dict[str, Any]]) -> str:
+    """Build a short text summary for the final 'can we win?' verdict call."""
+    package_name = path.split("/")[-1]
+
+    # Basic doc inventory (only names + rough roles)
+    doc_lines = []
+    for d in docs[:40]:  # cap to keep it small
+        doc_lines.append(f"- {d.name} [{d.detected_role}]")
+
+    # Eligibility summary
+    elig_lines = []
+    fail_count = 0
+    for e in eligibility:
+        ev = e.get("evidence", {})
+        status = ev.get("status", "UNKNOWN")
+        conf = ev.get("confidence", 0.0)
+        if status == "FAIL":
+            fail_count += 1
+        elig_lines.append(
+            f"- {e['id']}: {status} (conf={conf:.2f}) — {e['requirement'][:180]}"
+        )
+
+    # Hygiene summary
+    hygiene_lines = []
+    for h in hygiene:
+        hygiene_lines.append(
+            f"- {h['item']}: {h.get('status','UNKNOWN')} ({h.get('fix','').strip()})"
+        )
+
+    summary = [
+    f"PACKAGE: {package_name}",
+    f"PATH: {path}",
+    "",
+    "DOCUMENT INVENTORY (name [role]):",
+    ]
+
+    summary.extend(doc_lines if doc_lines else ["- (no docs found)"])
+
+    summary += [
+        "",
+        f"ELIGIBILITY SUMMARY (total={len(eligibility)}, fails={fail_count}):",
+    ]
+
+    summary.extend(elig_lines if elig_lines else ["- (no eligibility requirements extracted)"])
+
+    summary += [
+        "",
+        "HYGIENE FINDINGS:",
+    ]
+
+    summary.extend(hygiene_lines if hygiene_lines else ["- (no hygiene issues detected)"])
+
+    return "\n".join(summary)
+
+
+import json  # at top if not already
+
+def model_win_verdict(path: str,
+                      docs: List[Doc],
+                      eligibility: List[Dict[str, Any]],
+                      hygiene: List[Dict[str, Any]],
+                      session_id: str,
+                      progress_cb: ProgressCB) -> Dict[str, Any]:
+    """
+    Ask the LLM for a final 'can we win?' verdict, based on a summary of this package.
+    Returns: {"verdict": str, "confidence": float, "reasons": [str,...]}
+    """
+    _emit(progress_cb, "Computing overall win verdict…", 0.9)
+
+    # Hard gate: if any FAIL, strongly bias the model toward NO_GO, but still let it see the full picture.
+    has_fail = any(e.get("evidence", {}).get("status") == "FAIL" for e in eligibility)
+
+    summary_text = _build_verdict_summary(path, docs, eligibility, hygiene)
+
+    user_query = f"""
+Here is the analysis of an RFP package and our submission:
+
+<ANALYSIS>
+{summary_text}
+</ANALYSIS>
+
+Based on this analysis, use your experience with RFPs and proposals
+to decide if we are likely to win this RFP or not.
+
+Remember to respond ONLY with the JSON object as specified in the system prompt.
+"""
+
+    # No tools – this is pure reasoning.
+    result = asyncio.run(run_mcp_query(
+        query=user_query,
+        enabled_tools=[],
+        model=None,
+        session_id=session_id,
+        system_prompt=FINAL_VERDICT_SYSTEM_PROMPT,
+    ))
+
+    raw = result.get("response", "") if isinstance(result, dict) else str(result)
+
+    # Extract JSON object from the response
+    json_text = None
+    try:
+        # naive: find first '{' ... last '}'
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            json_text = raw[start:end+1]
+        data = json.loads(json_text)
+    except Exception:
+        # Fallback: very defensive default
+        data = {
+            "verdict": "UNLIKELY" if has_fail else "COMPETITIVE",
+            "confidence": 0.5,
+            "reasons": [
+                "Failed to parse model JSON response; using conservative default."
+            ]
+        }
+
+    # Normalize fields
+    verdict = (data.get("verdict") or "COMPETITIVE").upper()
+    if verdict not in ("LIKELY_WIN", "COMPETITIVE", "UNLIKELY", "NO_GO"):
+        verdict = "COMPETITIVE"
+
+    try:
+        conf = float(data.get("confidence", 0.5))
+    except Exception:
+        conf = 0.5
+    conf = max(0.0, min(1.0, conf))
+
+    reasons = data.get("reasons") or []
+    if isinstance(reasons, str):
+        reasons = [reasons]
+
+    return {
+        "verdict": verdict,
+        "confidence": conf,
+        "reasons": reasons,
+    }
 
 def hygiene_checks(docs: List[Doc], progress_cb: ProgressCB) -> List[Dict[str, Any]]:
     _emit(progress_cb, "Running document hygiene checks…", 0.70)
@@ -182,34 +354,57 @@ def score_and_label(eligibility: List[Dict[str, Any]], criteria: List[Dict[str, 
             return rating, lbl, subs
     return rating, LABELS[-1][1], subs
 
-def format_report(package_name: str, path: str, eligibility_status: str, rating: int, label: str,
-                  eligibility: List[Dict[str, Any]], criteria: List[Dict[str, Any]], hygiene: List[Dict[str, Any]],
-                  subs: Dict[str, float], cache_key: str) -> Dict[str, Any]:
+def format_report(
+    package_name: str,
+    path: str,
+    eligibility_status: str,
+    rating: int,
+    label: str,
+    eligibility: List[Dict[str, Any]],
+    criteria: List[Dict[str, Any]],
+    hygiene: List[Dict[str, Any]],
+    subs: Dict[str, Any],  # <-- changed to Any, because we now store model_verdict dict here
+    cache_key: str,
+) -> Dict[str, Any]:
+    verdict_info = subs.get("model_verdict", {})
+    v = verdict_info.get("verdict", "COMPETITIVE")
+    conf = verdict_info.get("confidence", 0.5)
+    reasons = verdict_info.get("reasons") or []
+
     md = [
         f"# Review Package — {package_name}",
         "",
-        f"**Overall Rating:** **{rating}/100** · **{label}**",
+        f"**Model Verdict:** **{v}** (confidence {conf:.2f} → {rating}/100)",
         f"**Eligibility:** **{eligibility_status}**",
         "",
-        "## Eligibility Gate",
-        "| ID | Requirement | Status | Evidence | Confidence |",
-        "|---|---|---|---|---|",
+        "### Why the model thinks this:",
     ]
-    for e in eligibility:
-        ev = e.get("evidence", {})
-        md.append(f"| {e['id']} | {e['requirement'][:80]} | {ev.get('status','-')} | {ev.get('kb_doc_title','-')} | {ev.get('confidence',0):.2f} |")
+    if reasons:
+        md.extend([f"- {r}" for r in reasons])
+    else:
+        md.append("- (no reasons provided)")
+
+    # If you want to keep the old scorecard, you can uncomment this block
+    # but then you MUST ensure subs has those numeric keys.
+    #
+    # md += [
+    #     "",
+    #     "## Scorecard",
+    #     f"- Criteria coverage: **{subs.get('criteria_coverage', 0.0):.2f}**",
+    #     f"- Capability fit: **{subs.get('capability_fit', 0.0):.2f}**",
+    #     f"- Hygiene: **{subs.get('hygiene', 0.0):.2f}**",
+    # ]
 
     md += [
-        "",
-        "## Scorecard",
-        f"- Criteria coverage: **{subs['criteria_coverage']:.2f}**",
-        f"- Capability fit: **{subs['capability_fit']:.2f}**",
-        f"- Hygiene: **{subs['hygiene']:.2f}**",
         "",
         "## Criteria Findings",
     ]
     for c in criteria:
-        md.append(f"- **{c['criterion']}** — coverage {c['coverage']:.2f}, strength {c['strength']:.2f}. Notes: {', '.join(c['notes'])}")
+        md.append(
+            f"- **{c['criterion']}** — coverage {c.get('coverage', 0.0):.2f}, "
+            f"strength {c.get('strength', 0.0):.2f}. "
+            f"Notes: {', '.join(c.get('notes', []))}"
+        )
 
     md += ["", "## Document Hygiene"]
     if not hygiene:
@@ -225,16 +420,22 @@ def format_report(package_name: str, path: str, eligibility_status: str, rating:
             "label": label,
             "eligibility_status": eligibility_status,
         },
+        # keep scorecard minimal for now; we just pass through subs
         "scorecard": {
-            "weights": RUBRIC_WEIGHTS,
             "subscores": subs,
         },
         "eligibility_table": eligibility,
         "criteria_findings": criteria,
         "hygiene_findings": hygiene,
         "actions": {
-            "must_fix_before_submit": [h["item"] for h in hygiene if h.get("status") == "MISSING"],
-            "high_impact_improvements": ["Refine data migration plan", "Map resumes to key personnel requirements"],
+            "must_fix_before_submit": [
+                h["item"] for h in hygiene if h.get("status") == "MISSING"
+            ],
+            "high_impact_improvements": [
+                # still placeholder suggestions; you can refine later
+                "Refine data migration plan",
+                "Map resumes to key personnel requirements",
+            ],
         },
         "artifacts": {
             "markdown_report": "\n".join(md),
@@ -245,18 +446,42 @@ def format_report(package_name: str, path: str, eligibility_status: str, rating:
 def run_review_package(path: str, options: Dict[str, Any], progress_cb: ProgressCB, session_id: str) -> Dict[str, Any]:
     start = time.time()
     docs, meta = ingest_package(path, options, progress_cb)
-    reqs = extract_requirements(docs, progress_cb)
-    eligibility, criteria = kb_evidence_check(reqs, progress_cb, session_id)
+    requirements = extract_requirements(docs, progress_cb)
+    eligibility, criteria = kb_evidence_check(requirements, progress_cb, session_id)
+    hygiene = hygiene_checks(docs, progress_cb)
 
-    eligibility_status = (
-        "FAIL" if any(e.get("evidence", {}).get("status") == "FAIL" for e in eligibility)
-        else ("UNCLEAR" if any(e.get("evidence", {}).get("status") == "UNCLEAR" for e in eligibility) else "PASS")
+    # NEW: ask the model for the win verdict
+    win_summary = model_win_verdict(
+        path=path,
+        docs=docs,
+        eligibility=eligibility,
+        hygiene=hygiene,
+        session_id=session_id,
+        progress_cb=progress_cb,
     )
 
-    hygiene = hygiene_checks(docs, progress_cb)
-    rating, label, subs = score_and_label(eligibility, criteria, hygiene)
+    # Derive "rating" and "label" from the model verdict so the frontend doesn't break
+    conf = win_summary["confidence"]
+    rating = int(round(conf * 100))
 
-    _emit(progress_cb, "Scoring and generating report…", 0.90)
+    verdict = win_summary["verdict"]
+    if verdict == "LIKELY_WIN":
+        label = "Likely Win"
+    elif verdict == "COMPETITIVE":
+        label = "Competitive"
+    elif verdict == "UNLIKELY":
+        label = "Unlikely"
+    elif verdict == "NO_GO":
+        label = "No-Go"
+    else:
+        label = "Competitive"
+
+    # Eligibility status: keep simple
+    if any(e.get("evidence", {}).get("status") == "FAIL" for e in eligibility):
+        eligibility_status = "Has FAIL items (mandatory requirements at risk)"
+    else:
+        eligibility_status = "All mandatory requirements satisfied or unclear"
+
     result = format_report(
         package_name=path.split("/")[-1],
         path=path,
@@ -266,9 +491,10 @@ def run_review_package(path: str, options: Dict[str, Any], progress_cb: Progress
         eligibility=eligibility,
         criteria=criteria,
         hygiene=hygiene,
-        subs=subs,
+        subs={"model_verdict": win_summary},
         cache_key=f"revpkg:{meta['hash']}",
     )
+
 
     _emit(progress_cb, "Complete", 1.0, {"elapsed_sec": round(time.time() - start, 2)})
     return result

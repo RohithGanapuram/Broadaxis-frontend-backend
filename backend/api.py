@@ -87,6 +87,13 @@ from websocket_api import websocket_chat
 from email_api import email_router
 from sharepoint_api import sharepoint_router, SharePointManager
 
+DOCS_TABLE_LEGEND = """
+**Status legend (include every time you output "Documents to Create"):**
+- **✅ Can do**: BroadAxisAI has all necessary data to create this document
+- **🟡 Partial**: BroadAxisAI has some data but missing key details
+- **❌ No Information**: BroadAxisAI lacks the necessary data to create this document
+"""
+
 # Import session manager (optional for now)
 try:
     from session_manager import session_manager
@@ -2289,6 +2296,9 @@ Use `Broadaxis_knowledge_search` to research:
 
 ## 📄 **Documents to Create**
 
+### When you output the "Documents to Create" section:
+Include this legend immediately before the table, verbatim:
+{DOCS_TABLE_LEGEND}
 Based on the RFP requirements identified above, list ALL documents that need to be created for submission.
 
 ---
@@ -2328,7 +2338,7 @@ For EACH document identified above, you MUST use `Broadaxis_knowledge_search` to
 
 | # | Document Name | Information Status | What We Have / What's Missing |
 |---|--------------|-------------------|-------------------------------|
-| 1 | [Exact document name from RFP] | ✅ Complete / 🟡 Partial / ❌ No Info | [Brief explanation of available data or gaps] |
+| 1 | [Exact document name from RFP] | ✅ Can DO / 🟡 Partial / ❌ No Info | [Brief explanation of available data or gaps] |
 | 2 | [Document name] | [Status] | [Details] |
 
 ---

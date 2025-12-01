@@ -27,18 +27,19 @@ export function parseRFPDocuments(aiResponse: string): RFPAnalysisMetadata {
 
   try {
     // Check if this is an RFP analysis response
-    if (!aiResponse.includes('Documents to Create') && !aiResponse.includes('Required Documents')) {
-      return result
-    }
+    const decisionMatch =
+      aiResponse.match(/DECISION:\s*\*\*\s*(GO|NO[-\s]?GO|CONDITIONAL[-\s]?GO)\s*\*\*/i) ||
+      aiResponse.match(/Decision:\s*(GO|NO[-\s]?GO|CONDITIONAL[-\s]?GO)/i)
 
-    result.hasDocumentsTable = true
-
-    // Extract the decision
-    const decisionMatch = aiResponse.match(/DECISION:\s*\*\*\s*(GO|NO-GO|CONDITIONAL-GO)\s*\*\*/i) ||
-                          aiResponse.match(/🎯\s*DECISION:\s*\[?(GO|NO-GO|CONDITIONAL-GO)\]?/i)
     if (decisionMatch) {
-      result.decision = decisionMatch[1].toUpperCase()
+      // Normalize: "CONDITIONAL GO" / "CONDITIONAL-GO" -> "CONDITIONAL-GO"
+      const raw = decisionMatch[1].toUpperCase().replace('  ', ' ')
+      const normalized = raw
+        .replace(/NO\s+GO/, 'NO-GO')
+        .replace(/CONDITIONAL\s+GO/, 'CONDITIONAL-GO')
+      result.decision = normalized
     }
+
 
     // Extract RFP path from the message - try multiple patterns
     const pathPatterns = [
@@ -46,6 +47,11 @@ export function parseRFPDocuments(aiResponse: string): RFPAnalysisMetadata {
       /folder_path["\s:]+([RFP|RFI|RFQ]\/[^\s\n"']+)/i,  // From API response
       /(RFP|RFI|RFQ)\/[A-Za-z0-9_\-\/]+/,  // Any RFP/RFI/RFQ path
     ]
+    
+
+
+    // Extract the decision
+    
     
     for (const pattern of pathPatterns) {
       const pathMatch = aiResponse.match(pattern)
@@ -66,6 +72,16 @@ export function parseRFPDocuments(aiResponse: string): RFPAnalysisMetadata {
     const plainTableRegex = /#\s+Document Name\s+(?:Status\s+)?(?:Information Status)?[^\n]*\n((?:\d+\s+[^\n]+\n?)+)/i
     const plainTableMatch = aiResponse.match(plainTableRegex)
 
+    // If we can't find any kind of documents table, stop here
+    if (!pipeTableMatch && !plainTableMatch) {
+      console.log('No documents table found in AI response')
+      return result
+    }
+
+    // At this point we know there is some kind of documents table
+    result.hasDocumentsTable = true
+
+    
     if (pipeTableMatch) {
       // Handle pipe-separated table
       const tableRows = pipeTableMatch[1].trim().split('\n')
@@ -136,11 +152,22 @@ export function parseRFPDocuments(aiResponse: string): RFPAnalysisMetadata {
  * Check if message content contains RFP analysis with documents
  */
 export function hasRFPDocumentsTable(content: string): boolean {
-  return content.includes('Documents to Create') || 
-         content.includes('Required Documents') ||
-         content.includes('Required Documents Status') ||
-         content.includes('Document Name') && content.includes('Information Status')
+  const lower = content.toLowerCase()
+
+  // Look for typical section headings
+  const hasHeading =
+    lower.includes('documents to create') ||
+    lower.includes('required documents') ||
+    lower.includes('required documents status')
+
+  // Look for a header row that *looks like* our table
+  const looksLikeTableHeader =
+    (lower.includes('document name') || lower.includes('document / deliverable') || lower.includes('deliverable name')) &&
+    (lower.includes('information status') || lower.includes('status'))
+
+  return hasHeading || looksLikeTableHeader
 }
+
 
 /**
  * Get status indicator from status string

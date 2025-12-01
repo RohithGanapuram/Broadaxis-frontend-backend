@@ -15,6 +15,20 @@ from datetime import datetime, timezone
 from error_handler import error_handler
 from dotenv import load_dotenv
 
+import mimetypes
+from io import BytesIO
+
+try:
+    import PyPDF2  # type: ignore
+except ImportError:  # pragma: no cover
+    PyPDF2 = None
+
+try:
+    import docx  # type: ignore
+except ImportError:  # pragma: no cover
+    docx = None
+
+
 # Load environment variables from parent directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
@@ -62,6 +76,45 @@ from typing import Dict, Any, List
 
 REVIEW_PACKAGE_ROOT = "/Review Package"
 
+def _extract_text_from_bytes(path: str, data: bytes) -> str:
+    """
+    Very lightweight text extractor for PDFs, Word, and text files.
+    This is only for the Review Package pipeline.
+    """
+    if not data:
+        return ""
+
+    ext = os.path.splitext(path.lower())[1]
+
+    # PDF
+    if ext == ".pdf" and PyPDF2 is not None:
+        try:
+            reader = PyPDF2.PdfReader(BytesIO(data))
+            parts = []
+            for page in reader.pages:
+                try:
+                    parts.append(page.extract_text() or "")
+                except Exception:
+                    continue
+            return "\n\n".join(parts)
+        except Exception:
+            return ""
+
+    # DOCX / DOC
+    if ext in {".docx", ".doc"} and docx is not None:
+        try:
+            doc = docx.Document(BytesIO(data))
+            return "\n".join(p.text for p in doc.paragraphs)
+        except Exception:
+            return ""
+
+    # Fallback: treat as UTF-8-ish text
+    try:
+        return data.decode("utf-8", errors="ignore")
+    except Exception:
+        return ""
+
+
 def list_review_packages(root: str = REVIEW_PACKAGE_ROOT) -> Dict[str, Any]:
         """
         Return top-level folders under the Review Package root.
@@ -77,15 +130,100 @@ def list_package_contents(path: str) -> Dict[str, Any]:
         return {"package": path.split("/")[-1], "path": path, "items": []}
 
 def download_package(path: str, include_subfolders: bool = True, max_files: int = 200) -> Dict[str, Any]:
-        """
-        Download and extract text from files under the package path.
-        Must return: {"path": path, "files": [{id,name,size,mime,last_modified,text}, ...]}
-        Hook this into your real PDF/DOCX/XLSX/PPTX extractors.
-        """
-        files: List[Dict[str, Any]] = []
-        # TODO: populate from Graph + your existing text extraction pipeline
-        return {"path": path, "files": files}
-# ----------------------------------------------------------------------
+    """
+    Download and extract text from files under the package path.
+
+    Returns:
+        {
+          "path": path,
+          "files": [
+             {
+               "id": ...,
+               "name": ...,
+               "size": ...,
+               "mime": ...,
+               "last_modified": ...,
+               "path": ...,
+               "text": ...
+             },
+             ...
+          ]
+        }
+    """
+    manager = SharePointManager()
+    files: List[Dict[str, Any]] = []
+
+    # Only treat these as "documents" for now
+    allowed_ext = {".pdf", ".docx", ".doc", ".txt", ".md"}
+
+    def walk_folder(folder_path: str) -> None:
+        """Recursively walk SharePoint folder and collect file records."""
+        nonlocal files
+
+        # Respect max_files cap
+        if len(files) >= max_files:
+            return
+
+        result = manager.get_folder_contents_by_path(folder_path)
+        if result.get("status") != "success":
+            # silently skip on error – pipeline will see fewer docs
+            return
+
+        for item in result.get("files", []):
+            if len(files) >= max_files:
+                break
+
+            item_type = item.get("type")
+            item_path = item.get("path") or ""
+            item_name = item.get("name") or os.path.basename(item_path)
+
+            # Folder → recurse (if allowed)
+            if item_type == "folder":
+                if include_subfolders:
+                    walk_folder(item_path)
+                continue
+
+            # File → only process document-ish extensions
+            ext = os.path.splitext(item_name.lower())[1]
+            if ext not in allowed_ext:
+                continue
+
+            # Download file bytes from SharePoint
+            file_res = manager.get_file_content(item_path, binary=True)
+            if file_res.get("status") != "success":
+                continue
+
+            raw = file_res.get("content") or b""
+            if not isinstance(raw, (bytes, bytearray)):
+                # Just in case; Graph should give us bytes
+                try:
+                    raw = bytes(raw)
+                except Exception:
+                    raw = b""
+
+            text = _extract_text_from_bytes(item_path, raw)
+
+            mime, _ = mimetypes.guess_type(item_name)
+            files.append({
+                "id": item.get("id"),
+                "name": item_name,
+                "size": item.get("size", 0),
+                "mime": mime or "application/octet-stream",
+                "last_modified": item.get("modified"),
+                "path": item_path,
+                "text": text,
+            })
+
+    # Normalize the incoming path a bit (strip leading slash)
+    clean_path = (path or "").lstrip("/")
+
+    walk_folder(clean_path)
+
+    return {
+        "path": clean_path,
+        "files": files,
+    }
+
 
 
 class SharePointManager:
