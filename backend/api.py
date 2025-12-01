@@ -2128,8 +2128,9 @@ Provide your analysis in the exact format above. Be thorough, specific, and comp
                     recommended_model = token_manager.get_recommended_model(analysis_prompt, 1000)
                     
                     # Override to Sonnet if token manager selected Haiku (Haiku's 4096 limit is too small)
+                    # CRITICAL: Haiku only has 4096 output tokens, but we need 8192 for complete analysis
                     if "haiku" in recommended_model.lower():
-                        recommended_model = "claude-haiku-4-5-20251001"
+                        recommended_model = "claude-sonnet-4-5-20250929"
                         logger.info("Overriding Haiku → Sonnet for RFP document analysis (needs >4096 output tokens)")
                     
                     result = await run_mcp_query(
@@ -2266,35 +2267,11 @@ Use `Broadaxis_knowledge_search` to research:
 
 ---
 
-## 📋 **Action Plan** *(if GO/CONDITIONAL-GO)*
+## 📄 **Documents to Create** ⚠️ **ONLY IF GO OR CONDITIONAL-GO**
 
-### **⚡ Immediate Actions (Next 7 Days):**
+**IMPORTANT:** This section is ONLY required if your decision is GO or CONDITIONAL-GO. If your decision is NO-GO, SKIP this entire section and do not generate a documents table.
 
-1. [Specific capability assessment or information gathering task]
-2. [Key stakeholder meetings or decisions required]
-3. [Critical preparation activities]
-
----
-
-### **📝 RFP Response Preparation (Week 2):**
-
-1. [Proposal development and writing tasks]
-2. [Technical solution design and validation]
-3. [Cost estimation and pricing strategy]
-
----
-
-### **⚠️ Risk Mitigation Strategies:**
-
-1. [How to address capability gaps]
-2. [How to manage timeline constraints]
-3. [How to strengthen competitive position]
-
-**Success Probability:** [X]% with proper preparation, versus [Y]% without focused effort.
-
----
-
-## 📄 **Documents to Create**
+**PRIORITY:** If decision is GO/CONDITIONAL-GO, this section is REQUIRED and must be completed. The documents table is essential for tracking submission requirements.
 
 ### When you output the "Documents to Create" section:
 Include this legend immediately before the table, verbatim:
@@ -2319,10 +2296,14 @@ Review the document analysis above and identify every submission document mentio
 
 ### **Step 2 - Assess BroadAxis Information Availability:**
 
-For EACH document identified above, you MUST use `Broadaxis_knowledge_search` to determine if BroadAxis has the necessary information/data to create it:
-- Search for relevant company capabilities, past projects, certifications
-- Check for existing templates, previous proposals, company documentation
-- Verify availability of required data (financials, staff info, technical specs)
+**IMPORTANT - EFFICIENT SEARCH STRATEGY:**
+- Use `Broadaxis_knowledge_search` strategically - you have a MAXIMUM of 10 searches available
+- **DO NOT** search for each document individually - instead, batch similar documents together
+- Group documents by type (e.g., "proposals and case studies", "certifications and licenses", "resumes and organizational charts")
+- Use broad, comprehensive search queries that cover multiple related documents
+- Example: Instead of searching "Technical Proposal" and "Executive Summary" separately, search "proposal documents and executive summaries"
+- If you have many documents (>10), prioritize the most critical ones and use general searches for the rest
+- After 8-10 searches, use your knowledge from previous searches to classify remaining documents
 
 ---
 
@@ -2344,11 +2325,13 @@ For EACH document identified above, you MUST use `Broadaxis_knowledge_search` to
 ---
 
 **CRITICAL REQUIREMENTS:**
-- ✅ List ALL required submission documents - do not miss any
+- ⚠️ **ONLY FOR GO/CONDITIONAL-GO:** If your decision is NO-GO, DO NOT generate the Documents table. Skip this entire section.
+- ✅ If decision is GO/CONDITIONAL-GO: List ALL required submission documents - do not miss any
 - ✅ Base document names on actual RFP requirements, not assumptions
-- ✅ Use `Broadaxis_knowledge_search` to verify what information exists in the knowledge base
+- ✅ Use `Broadaxis_knowledge_search` to verify what information exists in the knowledge base (maximum 10 searches)
 - ✅ Be specific about what's available and what's missing
 - ✅ If a document type is mentioned but details are unclear, still list it and mark as "Partial"
+- ⚠️ **REQUIRED FOR GO/CONDITIONAL-GO ONLY:** The Documents table MUST be completed if decision is GO or CONDITIONAL-GO - it's essential for dashboard import functionality
 
 ---
 
@@ -2359,8 +2342,8 @@ For EACH document identified above, you MUST use `Broadaxis_knowledge_search` to
 3. **VERIFIED INFO ONLY:** Use only verified internal information via `Broadaxis_knowledge_search`
 4. **NO HALLUCINATIONS:** Only reference requirements, technologies, and details explicitly mentioned in the document analysis
 5. **BE SPECIFIC:** Clearly state what information exists and what's missing
-6. **ACTIONABLE:** If recommendation is GO, list specific tasks for RFP submission
-7. **COMPLETE OUTPUT:** Provide the FULL analysis in one response - do not truncate or continue later
+6. **COMPLETE OUTPUT:** Provide the FULL analysis in one response - do not truncate or continue later
+7. **REQUIRED TABLE:** The Documents to Create table MUST be completed - do not skip it
 
 **ANTI-HALLUCINATION RULE:** Do not mention BI, data warehousing, or other technologies unless they appear in the actual RFP documents.
 
@@ -2368,25 +2351,52 @@ For EACH document identified above, you MUST use `Broadaxis_knowledge_search` to
 
 **🔧 Tools to Use:** Broadaxis_knowledge_search
 
-**CRITICAL:** You have 8,192 output tokens available. This is sufficient for a COMPLETE analysis. Do not truncate or add continuation messages like "[Continued...]". Provide the full, comprehensive analysis in this single response.
+**CRITICAL TOKEN MANAGEMENT:**
+- You have 8,192 output tokens available (Sonnet model) - this is MORE than sufficient for the required sections
+- **PRIORITY ORDER:** 
+  1) Decision & Rationale (ALWAYS REQUIRED)
+  2) Documents to Create table (ONLY if GO or CONDITIONAL-GO - SKIP if NO-GO)
+- If decision is NO-GO: End your response after the Decision & Rationale section. Do NOT generate Documents table.
+- If decision is GO/CONDITIONAL-GO: The Documents table is REQUIRED - ensure it's fully completed with all required documents
+- Do not truncate the Documents table if it's required - it's essential for dashboard import functionality
+- Do not add continuation messages like "[Continued...]" - provide the full analysis in this single response
+
+**CRITICAL TIME MANAGEMENT:**
+- If decision is NO-GO: You do NOT need to use `Broadaxis_knowledge_search` for documents - skip the Documents section entirely
+- If decision is GO/CONDITIONAL-GO: You have a maximum of 10 `Broadaxis_knowledge_search` calls - use them efficiently
+- Batch similar documents in single searches to save time and tool calls
+- If you've made 8-10 searches, stop and use the information you've gathered to classify remaining documents
+- Do not make individual searches for each document - this will cause timeouts
 
 Provide your analysis in the exact format above with proper line breaks and clear section separators. Be thorough, data-driven, and actionable."""
         
             # Use Sonnet for Go/No-Go analysis (needs more output tokens for complete document list)
             recommended_model = token_manager.get_recommended_model(go_no_go_prompt, 2000)
             
-            # Override to Sonnet if token manager selected Haiku (need complete document list with action plan)
+            # Override to Sonnet if token manager selected Haiku (need complete document list)
+            # CRITICAL: Haiku only has 4096 output tokens, but we need 8192 for complete analysis with documents table
             if "haiku" in recommended_model.lower():
-                recommended_model = "claude-haiku-4-5-20251001"
+                recommended_model = "claude-sonnet-4-5-20250929"
                 logger.info("Overriding Haiku → Sonnet for Go/No-Go analysis (needs >4096 output tokens)")
             
-            summary_result = await run_mcp_query(
-                go_no_go_prompt,
-                enabled_tools=['Broadaxis_knowledge_search'],
-                
-                model=recommended_model,
-                session_id=session_id
-            )
+            # Add timeout wrapper to prevent hanging (4.5 minutes to allow buffer before 5min API timeout)
+            try:
+                summary_result = await asyncio.wait_for(
+                    run_mcp_query(
+                        go_no_go_prompt,
+                        enabled_tools=['Broadaxis_knowledge_search'],
+                        model=recommended_model,
+                        session_id=session_id
+                    ),
+                    timeout=270.0  # 4.5 minutes
+                )
+            except asyncio.TimeoutError:
+                logger.error("Go/No-Go analysis timed out after 4.5 minutes")
+                return {
+                    "status": "error",
+                    "message": "RFP analysis timed out. The analysis is taking too long, possibly due to many knowledge searches. Please try again or contact support.",
+                    "folder_path": folder_path
+                }
             
             # Cache the Go/No-Go analysis for consistency
             if SESSION_MANAGER_AVAILABLE and session_manager.redis and summary_result.get("response"):
