@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { apiClient } from '../../utils/api';type UserLite = { id?: string; name: string; email?: string };
+import { useAppContext } from '../../context/AppContext';
+import { apiClient } from '../../utils/api';
+type UserLite = { id?: string; name: string; email?: string };
 
 interface Task {
   id: string;
@@ -25,6 +27,7 @@ interface Task {
  
 const RecentDocuments: React.FC = () => {
   const { currentUser } = useAuth();
+  const { tasksCache, updateTasksCache, clearTasksCache, usersCache, updateUsersCache } = useAppContext();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTask, setNewTask] = useState({
     category: 'Project',
@@ -43,8 +46,18 @@ const RecentDocuments: React.FC = () => {
   const FIXED_ASSIGNEES = ["Sakshi", "Rohith", "Masood", "Uzi", "Abhir", "Divya"];
 
 
-  // Real users from API
-  const [availableUsers, setAvailableUsers] = useState<string[]>([]);
+  // Real users from API - initialize from cache if available
+  const [availableUsers, setAvailableUsers] = useState<string[]>(() => {
+    if (usersCache) {
+      const cacheAge = Date.now() - usersCache.lastFetchTime;
+      const CACHE_MAX_AGE = 10 * 60 * 1000; // 10 minutes for users
+      if (cacheAge < CACHE_MAX_AGE) {
+        console.log('✅ Initializing users from cache');
+        return usersCache.users;
+      }
+    }
+    return FIXED_ASSIGNEES; // Fallback to fixed list
+  });
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   // SharePoint folder browser state
@@ -54,7 +67,18 @@ const RecentDocuments: React.FC = () => {
   const [pathHistory, setPathHistory] = useState<string[]>(['']);
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
 
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Initialize tasks from cache immediately if available
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    if (tasksCache) {
+      const cacheAge = Date.now() - tasksCache.lastFetchTime;
+      const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
+      if (cacheAge < CACHE_MAX_AGE) {
+        console.log('✅ Initializing tasks from cache');
+        return tasksCache.tasks;
+      }
+    }
+    return [];
+  });
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -66,14 +90,33 @@ const RecentDocuments: React.FC = () => {
 
   // Load SharePoint folders, users, and tasks when component mounts
   useEffect(() => {
-    loadSharePointFolders();
+    // Load tasks first (will use cache if available)
+    loadTasks(false); // Don't force refresh on mount if cache exists
+    
+    // Load users and SharePoint folders in background (non-blocking)
     loadUsers();
-    loadTasks();
-    // Cleanup old completed tasks on component mount
-    cleanupOldTasks();
+    // Only load SharePoint folders if folder browser is shown
+    // loadSharePointFolders(); // Load lazily when needed
+    
+    // Cleanup old completed tasks on component mount (only once per session)
+    if (!tasksCache) {
+      cleanupOldTasks();
+    }
   }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = async (forceRefresh: boolean = false) => {
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh && usersCache) {
+      const cacheAge = Date.now() - usersCache.lastFetchTime;
+      const CACHE_MAX_AGE = 10 * 60 * 1000; // 10 minutes
+      
+      if (cacheAge < CACHE_MAX_AGE) {
+        console.log('✅ Using cached users');
+        setAvailableUsers(usersCache.users);
+        return;
+      }
+    }
+    
     setLoadingUsers(true);
     try {
       console.log('🔍 Fetching users from API...');
@@ -83,14 +126,19 @@ const RecentDocuments: React.FC = () => {
       
       // Extract user names from the API response
       const userNames = users.map((user: any) => user.name);
-      setAvailableUsers(userNames.length ? userNames : FIXED_ASSIGNEES);
-      console.log('🔍 User names:', userNames);
-      setAvailableUsers(userNames);
+      const finalUsers = userNames.length ? userNames : FIXED_ASSIGNEES;
+      setAvailableUsers(finalUsers);
+      // Update cache
+      updateUsersCache(finalUsers);
+      console.log('✅ Loaded and cached users:', finalUsers.length);
     } catch (error) {
       console.error('❌ Failed to load users:', error);
-      // Fallback to current user only
-      setAvailableUsers([currentUser?.name || 'Current User']);
-
+      // Use cached users if available, otherwise fallback
+      if (usersCache && usersCache.users.length > 0) {
+        setAvailableUsers(usersCache.users);
+      } else {
+        setAvailableUsers(FIXED_ASSIGNEES);
+      }
     } finally {
       setLoadingUsers(false);
     }
@@ -108,7 +156,22 @@ const RecentDocuments: React.FC = () => {
 };
 
 
-  const loadTasks = async () => {
+  const loadTasks = async (forceRefresh: boolean = false) => {
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh && tasksCache) {
+      const cacheAge = Date.now() - tasksCache.lastFetchTime;
+      const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
+      
+      // Use cache if it's fresh (less than 5 minutes old)
+      if (cacheAge < CACHE_MAX_AGE) {
+        console.log('✅ Using cached tasks (age:', Math.round(cacheAge / 1000), 'seconds)');
+        setTasks(tasksCache.tasks);
+        return;
+      } else {
+        console.log('⚠️ Cache expired, fetching fresh tasks...');
+      }
+    }
+    
     try {
       console.log('🔍 Fetching tasks from API...');
       const tasks = await apiClient.getTasks();
@@ -128,14 +191,27 @@ const RecentDocuments: React.FC = () => {
         dueDate: task.due_date,
         decision: task.decision || 'Decision Pending',
         createdAt: task.created_at,
-        updatedAt: task.updated_at
+        updatedAt: task.updated_at,
+        parentTaskId: task.parent_task_id,
+        parentRfpPath: task.parent_rfp_path,
+        documentDetails: task.document_details,
+        originalStatus: task.original_status,
+        documentCount: task.document_count
       }));
       
       setTasks(taskList);
-      console.log('🔍 Loaded tasks:', taskList.length);
+      // Update cache
+      updateTasksCache(taskList);
+      console.log('✅ Loaded and cached tasks:', taskList.length);
     } catch (error) {
       console.error('❌ Failed to load tasks:', error);
-      setTasks([]);
+      // If we have cached tasks, use them even if fetch failed
+      if (tasksCache && tasksCache.tasks.length > 0) {
+        console.log('⚠️ Using cached tasks as fallback');
+        setTasks(tasksCache.tasks);
+      } else {
+        setTasks([]);
+      }
     }
   };
 
@@ -145,8 +221,8 @@ const RecentDocuments: React.FC = () => {
       const response = await apiClient.cleanupOldTasks();
       console.log('🧹 Cleanup result:', response);
       
-      // Reload tasks after cleanup
-      await loadTasks();
+      // Reload tasks after cleanup (force refresh)
+      await loadTasks(true);
       
       // Show success message
       if (response.deleted_count > 0) {
@@ -169,8 +245,8 @@ const RecentDocuments: React.FC = () => {
       console.log('🗑️ Deleting task:', taskToDelete.title);
       await apiClient.deleteTask(taskToDelete.id);
       
-      // Reload tasks after deletion
-      await loadTasks();
+      // Reload tasks after deletion (force refresh)
+      await loadTasks(true);
       
       console.log(`✅ Successfully deleted task: ${taskToDelete.title}`);
     } catch (error) {
@@ -186,7 +262,7 @@ const RecentDocuments: React.FC = () => {
     setTaskToDelete(null);
   };
 
-  // Load folders when currentPath changes (for navigation)
+  // Load folders when currentPath changes (for navigation) - lazy load only when needed
   useEffect(() => {
     if (showFolderBrowser) {
       loadSharePointFolders(currentPath);
@@ -290,8 +366,8 @@ const RecentDocuments: React.FC = () => {
         const createdTask = await apiClient.createTask(taskData);
         console.log('✅ Task created:', createdTask);
         
-        // Reload tasks to get the latest data
-        await loadTasks();
+        // Reload tasks to get the latest data (force refresh)
+        await loadTasks(true);
         
         // Reset form
         setNewTask({
@@ -325,8 +401,14 @@ const RecentDocuments: React.FC = () => {
       await apiClient.updateTaskStatus(task.id, newStatus);
       console.log('✅ Task status updated');
       
-      // Reload tasks to get the latest data
-      await loadTasks();
+      // Optimistically update local state and cache
+      const updatedTasks = [...tasks];
+      updatedTasks[index].status = newStatus;
+      setTasks(updatedTasks);
+      updateTasksCache(updatedTasks);
+      
+      // Reload tasks to get the latest data (force refresh in background)
+      await loadTasks(true);
       
     } catch (error) {
       console.error('❌ Failed to update task status:', error);
@@ -348,8 +430,14 @@ const RecentDocuments: React.FC = () => {
       await apiClient.updateTaskDecision(task.id, newDecision);
       console.log('✅ Task decision updated');
       
-      // Reload tasks to get the latest data
-      await loadTasks();
+      // Optimistically update local state and cache
+      const updatedTasks = [...tasks];
+      updatedTasks[index].decision = newDecision;
+      setTasks(updatedTasks);
+      updateTasksCache(updatedTasks);
+      
+      // Reload tasks to get the latest data (force refresh in background)
+      await loadTasks(true);
       
     } catch (error) {
       console.error('❌ Failed to update task decision:', error);

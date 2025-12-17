@@ -18,6 +18,42 @@ interface SharePointCache {
   currentPath: string
 }
 
+interface Task {
+  id: string
+  category: string
+  type: string
+  title: string
+  document: string
+  status: string
+  assignedTo: string
+  assignedBy: string
+  priority: string
+  dueDate: string
+  decision: string
+  createdAt: string
+  updatedAt: string
+  parentTaskId?: string
+  parentRfpPath?: string
+  documentDetails?: string
+  originalStatus?: string
+  documentCount?: number
+}
+
+interface TasksCache {
+  tasks: Task[]
+  lastFetchTime: number
+}
+
+interface StatsCache {
+  counts: { rfp: number; rfi: number; rfq: number }
+  lastFetchTime: number
+}
+
+interface UsersCache {
+  users: string[]
+  lastFetchTime: number
+}
+
 interface AppContextType {
   tools: Tool[]
   prompts: Prompt[]
@@ -39,6 +75,19 @@ interface AppContextType {
   sharePointCache: SharePointCache | null
   setSharePointCache: (cache: SharePointCache | null) => void
   clearSharePointCache: () => void
+  // Tasks cache
+  tasksCache: TasksCache | null
+  setTasksCache: (cache: TasksCache | null) => void
+  clearTasksCache: () => void
+  updateTasksCache: (tasks: Task[]) => void
+  // Stats cache
+  statsCache: StatsCache | null
+  setStatsCache: (cache: StatsCache | null) => void
+  updateStatsCache: (counts: { rfp: number; rfi: number; rfq: number }) => void
+  // Users cache
+  usersCache: UsersCache | null
+  setUsersCache: (cache: UsersCache | null) => void
+  updateUsersCache: (users: string[]) => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -64,6 +113,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [isSwitchingSession, setIsSwitchingSession] = useState(false)
   const [sharePointCache, setSharePointCache] = useState<SharePointCache | null>(null)
+  const [tasksCache, setTasksCache] = useState<TasksCache | null>(null)
+  const [statsCache, setStatsCache] = useState<StatsCache | null>(null)
+  const [usersCache, setUsersCache] = useState<UsersCache | null>(null)
 
   // Initialize with empty sessions - all data comes from Redis
   useEffect(() => {
@@ -255,6 +307,31 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setSharePointCache(null)
   }
 
+  const clearTasksCache = () => {
+    setTasksCache(null)
+  }
+
+  const updateTasksCache = (tasks: Task[]) => {
+    setTasksCache({
+      tasks,
+      lastFetchTime: Date.now()
+    })
+  }
+
+  const updateStatsCache = (counts: { rfp: number; rfi: number; rfq: number }) => {
+    setStatsCache({
+      counts,
+      lastFetchTime: Date.now()
+    })
+  }
+
+  const updateUsersCache = (users: string[]) => {
+    setUsersCache({
+      users,
+      lastFetchTime: Date.now()
+    })
+  }
+
   return (
     <AppContext.Provider value={{
       tools,
@@ -275,7 +352,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       loadUserSessions,
       sharePointCache,
       setSharePointCache,
-      clearSharePointCache
+      clearSharePointCache,
+      tasksCache,
+      setTasksCache,
+      clearTasksCache,
+      updateTasksCache,
+      statsCache,
+      setStatsCache,
+      updateStatsCache,
+      usersCache,
+      setUsersCache,
+      updateUsersCache
     }}>
       {children}
     </AppContext.Provider>

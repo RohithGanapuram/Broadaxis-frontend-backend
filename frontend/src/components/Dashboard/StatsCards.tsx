@@ -1,5 +1,6 @@
 import React from 'react';
 import { apiClient } from '../../utils/api';
+import { useAppContext } from '../../context/AppContext';
 
 interface StatItem {
   title: string;
@@ -22,10 +23,34 @@ const isToday = (iso?: string) => {
 };
 
 const StatsCards: React.FC = () => {
-  const [counts, setCounts] = React.useState({ rfp: 0, rfi: 0, rfq: 0 });
+  const { statsCache, updateStatsCache } = useAppContext();
+  // Initialize from cache if available
+  const [counts, setCounts] = React.useState(() => {
+    if (statsCache) {
+      const cacheAge = Date.now() - statsCache.lastFetchTime;
+      const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
+      if (cacheAge < CACHE_MAX_AGE) {
+        console.log('✅ Initializing stats from cache');
+        return statsCache.counts;
+      }
+    }
+    return { rfp: 0, rfi: 0, rfq: 0 };
+  });
   const [loading, setLoading] = React.useState(false);
 
-  const loadCounts = async () => {
+  const loadCounts = async (forceRefresh: boolean = false) => {
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh && statsCache) {
+      const cacheAge = Date.now() - statsCache.lastFetchTime;
+      const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
+      
+      if (cacheAge < CACHE_MAX_AGE) {
+        console.log('✅ Using cached stats');
+        setCounts(statsCache.counts);
+        return;
+      }
+    }
+    
     try {
       setLoading(true);
       const res = await apiClient.getFetchedEmails();
@@ -56,17 +81,26 @@ const StatsCards: React.FC = () => {
         }
 
       }
-      setCounts({ rfp, rfi, rfq });
+      const newCounts = { rfp, rfi, rfq };
+      setCounts(newCounts);
+      // Update cache
+      updateStatsCache(newCounts);
+      console.log('✅ Loaded and cached stats');
     } catch (e) {
       console.error('[StatsCards] failed to load counts', e);
-      setCounts({ rfp: 0, rfi: 0, rfq: 0 });
+      // Use cached stats if available
+      if (statsCache) {
+        setCounts(statsCache.counts);
+      } else {
+        setCounts({ rfp: 0, rfi: 0, rfq: 0 });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   React.useEffect(() => {
-    loadCounts();
+    loadCounts(false); // Don't force refresh on mount if cache exists
   }, []);
 
   const stats: StatItem[] = [
