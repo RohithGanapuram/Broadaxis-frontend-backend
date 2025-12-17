@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 from typing import Dict, List, Optional
 from contextlib import AsyncExitStack
 
@@ -63,8 +64,10 @@ class MCPInterface:
         # Pass current environment to subprocess
         env = os.environ.copy()
         
+        # Use sys.executable to use the same Python interpreter
+        # This works across different systems (python, python3, etc.)
         self.server_params = StdioServerParameters(
-            command='python',
+            command=sys.executable,
             args=[os.path.join(os.path.dirname(__file__), "ba-server", "server.py")],
             env=env,
         )

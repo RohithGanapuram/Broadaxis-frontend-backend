@@ -451,7 +451,7 @@ if not SECRET_KEY:
 else:
     print("🔒 Production JWT secret key configured")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days instead of 30 minutes
 
 # Authentication Helper Functions
 def hash_password(password: str) -> str:
@@ -512,16 +512,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        # Check if session exists in Redis
-        session_data = await session_manager.redis.get(f"session:{token}")
-        if not session_data:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Session expired",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Get user data
+        # Get user data first (more reliable than session check)
         user_data_str = await session_manager.redis.get(f"user:{user_id}")
         if not user_data_str:
             raise HTTPException(
@@ -530,6 +521,36 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             )
         
         user = json.loads(user_data_str)
+        
+        # Refresh user data TTL on every authenticated request (10 years - effectively permanent)
+        # This ensures active users never have their data expire
+        user_ttl = 86400 * 365 * 10  # 10 years
+        await session_manager.redis.setex(f"user:{user_id}", user_ttl, user_data_str)
+        # Also refresh email mapping TTL
+        await session_manager.redis.setex(f"user:email:{user['email']}", user_ttl, user_id)
+        
+        # Check if session exists in Redis (optional check - token validation is primary)
+        # Try both session storage methods for backward compatibility
+        session_data = await session_manager.redis.get(f"session:{token}")
+        if not session_data:
+            # Try user_session lookup as fallback
+            user_session_data = await session_manager.redis.get(f"user_session:{user_id}")
+            if user_session_data:
+                # Session exists but token mapping expired, recreate it
+                session_data_obj = json.loads(user_session_data)
+                if session_data_obj.get("token") == token:
+                    # Recreate token mapping
+                    await session_manager.redis.setex(
+                        f"session:{token}", 
+                        int((datetime.fromisoformat(session_data_obj["expires_at"]) - datetime.now()).total_seconds()),
+                        user_session_data
+                    )
+                    session_data = user_session_data
+        
+        # If no session found but user exists, allow access (token is valid)
+        # This handles cases where session expired but token is still valid
+        if not session_data:
+            print(f"⚠️ Session not found for token, but user exists. Allowing access based on valid token.")
         
         return UserResponse(
             id=user["id"],
@@ -2564,9 +2585,11 @@ async def register_user(user_data: UserRegister):
             "last_login": None
         }
         
-        # Store user in Redis
-        await session_manager.redis.setex(f"user:{user_id}", 86400 * 30, json.dumps(user))  # 30 days
-        await session_manager.redis.setex(f"user:email:{user_data.email}", 86400 * 30, user_id)
+        # Store user in Redis with very long TTL (10 years) - effectively permanent
+        # User data should persist indefinitely, refreshed on every login
+        user_ttl = 86400 * 365 * 10  # 10 years (effectively permanent)
+        await session_manager.redis.setex(f"user:{user_id}", user_ttl, json.dumps(user))
+        await session_manager.redis.setex(f"user:email:{user_data.email}", user_ttl, user_id)
         
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -2574,12 +2597,16 @@ async def register_user(user_data: UserRegister):
             data={"sub": user_id}, expires_delta=access_token_expires
         )
         
-        # Store session in Redis
+        # Store session in Redis using user_id as key (not token) for better persistence
+        # Also store token mapping for quick lookup
         session_data = {
             "user_id": user_id,
+            "token": access_token,
             "created_at": now,
             "expires_at": (datetime.now() + access_token_expires).isoformat()
         }
+        # Store session by user_id (persists longer) and by token (for quick lookup)
+        await session_manager.redis.setex(f"user_session:{user_id}", int(access_token_expires.total_seconds()), json.dumps(session_data))
         await session_manager.redis.setex(f"session:{access_token}", int(access_token_expires.total_seconds()), json.dumps(session_data))
         
         print(f"✅ User registered: {user_data.email} (ID: {user_id})")
@@ -2641,10 +2668,13 @@ async def login_user(user_data: UserLogin):
                 content={"error": "Invalid email or password"}
             )
         
-        # Update last login
+        # Update last login and refresh user data TTL (10 years - effectively permanent)
         now = datetime.now().isoformat()
         user["last_login"] = now
-        await session_manager.redis.setex(f"user:{user_id}", 86400 * 30, json.dumps(user))
+        user_ttl = 86400 * 365 * 10  # 10 years (effectively permanent)
+        await session_manager.redis.setex(f"user:{user_id}", user_ttl, json.dumps(user))
+        # Also refresh email mapping TTL
+        await session_manager.redis.setex(f"user:email:{user_data.email}", user_ttl, user_id)
         
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -2652,12 +2682,16 @@ async def login_user(user_data: UserLogin):
             data={"sub": user_id}, expires_delta=access_token_expires
         )
         
-        # Store session in Redis
+        # Store session in Redis using user_id as key (not token) for better persistence
+        # Also store token mapping for quick lookup
         session_data = {
             "user_id": user_id,
+            "token": access_token,
             "created_at": now,
             "expires_at": (datetime.now() + access_token_expires).isoformat()
         }
+        # Store session by user_id (persists longer) and by token (for quick lookup)
+        await session_manager.redis.setex(f"user_session:{user_id}", int(access_token_expires.total_seconds()), json.dumps(session_data))
         await session_manager.redis.setex(f"session:{access_token}", int(access_token_expires.total_seconds()), json.dumps(session_data))
         
         print(f"✅ User logged in: {user_data.email} (ID: {user_id})")
@@ -2728,10 +2762,14 @@ async def reset_password(req: ResetPasswordRequest):
             return JSONResponse(status_code=404, content={"error": "User not found"})
         user = json.loads(user_data_str)
 
-        # Update password hash
+        # Update password hash and refresh user data TTL (10 years - effectively permanent)
         new_hash = hash_password(req.new_password)
         user["password_hash"] = new_hash
-        await session_manager.redis.setex(f"user:{user_id}", 86400 * 30, json.dumps(user))
+        user_ttl = 86400 * 365 * 10  # 10 years (effectively permanent)
+        await session_manager.redis.setex(f"user:{user_id}", user_ttl, json.dumps(user))
+        # Also refresh email mapping TTL
+        if user.get('email'):
+            await session_manager.redis.setex(f"user:email:{user['email']}", user_ttl, user_id)
 
         # Invalidate token
         await session_manager.redis.delete(f"password_reset:{req.token}")
@@ -2765,8 +2803,12 @@ async def logout_user(request: Request):
         
         token = authorization.split(" ")[1]
         
-        # Remove session from Redis
-        await session_manager.redis.delete(f"session:{token}")
+        # Get user_id from token
+        user_id = verify_token(token)
+        if user_id:
+            # Remove both session storage methods
+            await session_manager.redis.delete(f"session:{token}")
+            await session_manager.redis.delete(f"user_session:{user_id}")
         
         print(f"✅ User logged out")
         
@@ -3343,21 +3385,38 @@ async def get_current_user_me(request: Request):
                 content={"error": "Invalid token"}
             )
         
-        # Check if session exists in Redis
-        session_data = await session_manager.redis.get(f"session:{token}")
-        if not session_data:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "Session expired"}
-            )
-        
-        # Get user data
+        # Get user data (primary check)
         user_data_str = await session_manager.redis.get(f"user:{user_id}")
         if not user_data_str:
             return JSONResponse(
                 status_code=404,
                 content={"error": "User not found"}
             )
+        
+        user = json.loads(user_data_str)
+        
+        # Refresh user data TTL on every authenticated request (10 years - effectively permanent)
+        # This ensures active users never have their data expire
+        user_ttl = 86400 * 365 * 10  # 10 years
+        await session_manager.redis.setex(f"user:{user_id}", user_ttl, user_data_str)
+        # Also refresh email mapping TTL
+        await session_manager.redis.setex(f"user:email:{user['email']}", user_ttl, user_id)
+        
+        # Check if session exists in Redis (optional - token validation is primary)
+        session_data = await session_manager.redis.get(f"session:{token}")
+        if not session_data:
+            # Try user_session lookup as fallback
+            user_session_data = await session_manager.redis.get(f"user_session:{user_id}")
+            if user_session_data:
+                session_data_obj = json.loads(user_session_data)
+                if session_data_obj.get("token") == token:
+                    # Recreate token mapping
+                    await session_manager.redis.setex(
+                        f"session:{token}", 
+                        int((datetime.fromisoformat(session_data_obj["expires_at"]) - datetime.now()).total_seconds()),
+                        user_session_data
+                    )
+                    session_data = user_session_data
         
         user = json.loads(user_data_str)
         

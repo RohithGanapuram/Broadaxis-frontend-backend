@@ -84,9 +84,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration successful, user needs to login')
       
       return true
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed:', error)
-      return false
+      // Extract error message from response if available
+      const errorMessage = error?.response?.data?.error || error?.message || 'Registration failed'
+      console.error('Registration error details:', errorMessage)
+      // Throw error with message so Register component can display it
+      throw new Error(errorMessage)
     } finally {
       setLoading(false)
     }

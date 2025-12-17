@@ -34,43 +34,46 @@ const Register: React.FC<RegisterProps> = ({ switchToLogin }) => {
     try {
       if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
         setError('Please fill in all fields');
+        setIsLoading(false);
         return;
       }
 
       if (formData.password !== formData.confirmPassword) {
         setError('Passwords do not match');
+        setIsLoading(false);
         return;
       }
 
       if (formData.password.length < 6) {
         setError('Password must be at least 6 characters long');
+        setIsLoading(false);
         return;
       }
 
-      const success = await register({
+      await register({
         name: formData.name,
         email: formData.email,
         password: formData.password
       });
 
-      if (success) {
-        toast.success('Account created successfully! Please login to continue.');
-        // Clear form
-        setFormData({
-          name: '',
-          email: '',
-          password: '',
-          confirmPassword: ''
-        });
-        // Switch to login after 2 seconds
-        setTimeout(() => {
-          switchToLogin();
-        }, 2000);
-      } else {
-        setError('Registration failed. Please try again.');
-      }
-    } catch (error) {
-      setError('Registration failed. Please try again.');
+      // If we get here, registration was successful
+      toast.success('Account created successfully! Please login to continue.');
+      // Clear form
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+      // Switch to login after 2 seconds
+      setTimeout(() => {
+        switchToLogin();
+      }, 2000);
+    } catch (error: any) {
+      // Extract error message from error object
+      const errorMessage = error?.message || 'Registration failed. Please try again.';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -170,9 +173,10 @@ const Register: React.FC<RegisterProps> = ({ switchToLogin }) => {
  
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg"
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create Account
+            {isLoading ? 'Creating Account...' : 'Create Account'}
           </button>
  
           <div className="text-center">
